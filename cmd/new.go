@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"log"
-	"github.com/deta/cli/pkg/choose"
-	"github.com/deta/cli/pkg/confirm"
-	"github.com/deta/cli/pkg/text"
+
+	"github.com/deta/pc-cli/pkg/choose"
+	"github.com/deta/pc-cli/pkg/confirm"
+	"github.com/deta/pc-cli/pkg/text"
 	"github.com/spf13/cobra"
 )
 
@@ -43,6 +44,6 @@ func new(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		log.Println("Error:", err)
 	}
-	
+
 	return nil
 }

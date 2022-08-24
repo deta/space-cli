@@ -1,4 +1,4 @@
-module github.com/deta/cli
+module github.com/deta/pc-cli
 
 go 1.18
 
