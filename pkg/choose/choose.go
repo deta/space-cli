@@ -38,7 +38,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyEsc:
+		case tea.KeyEnter:
 			m.Chosen = true
 			m.Quitting = true
 			return m, tea.Quit
@@ -81,7 +81,7 @@ func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 func choicesView(m Model) string {
 	c := m.Cursor
 
-	tpl := fmt.Sprintf("? %s\n", m.Prompt)
+	tpl := fmt.Sprintf("? %s\n\n", m.Prompt)
 
 	tpl += "%s\n"
 	choices := ""

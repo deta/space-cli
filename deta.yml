@@ -1,0 +1,15 @@
+v: 0
+icon: ""
+micros:
+    - name: client
+      src: src/client
+      engine: react
+      primary: true
+    - name: redwan
+      src: src/redwan
+      engine: svelte-kit
+      primary: false
+    - name: client
+      src: src/client
+      engine: react
+      primary: false

@@ -1,8 +1,11 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
+	"log"
 	"os"
+
+	"github.com/deta/pc-cli/internal/api"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -17,11 +20,16 @@ Complete documentation available at https://docs.deta.sh`,
 		// no usage shown on errors
 		SilenceUsage: true,
 	}
+
+	client = api.NewDetaClient()
+
+	logger = log.New(os.Stderr, "", 0)
 )
 
 // Execute xx
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		logger.Println(err)
 		os.Exit(1)
 	}
 }

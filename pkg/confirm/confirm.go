@@ -38,7 +38,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n", "N":
 			m.Confirm = false
 			return m, tea.Quit
-		case "esc", "enter":
+		case "enter":
 			return m, tea.Quit
 		case "ctrl+c":
 			os.Exit(1)
@@ -51,17 +51,17 @@ func (m Model) View() string {
 	return fmt.Sprintf("? %s (y/n)\n\n", m.Prompt)
 }
 
-func Run(i *Input) (*Model, error) {
+func Run(i *Input) (bool, error) {
 	program := tea.NewProgram(initialModel(i))
 
 	m, err := program.StartReturningModel()
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	if m, ok := m.(Model); ok {
-		return &m, nil
+		return m.Confirm, nil
 	}
 
-	return nil, err
+	return false, err
 }
