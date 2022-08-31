@@ -1,15 +1,18 @@
 v: 0
-icon: ""
 micros:
-    - name: client
-      src: src/client
-      engine: react
+    - name: default
+      src: default
+      engine: python3.9
       primary: true
-    - name: redwan
-      src: src/redwan
+    - name: ddddd
+      src: ddddd
+      engine: next
+      primary: false
+    - name: dhlifsalidf
+      src: dhlifsalidf
       engine: svelte-kit
       primary: false
-    - name: client
-      src: src/client
-      engine: react
+    - name: dlskda
+      src: pkg
+      engine: next
       primary: false

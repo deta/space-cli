@@ -3,9 +3,14 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/deta/pc-cli/internal/auth"
 )
 
 type DetaClient struct {
@@ -77,6 +82,38 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		q.Add(k, v)
 	}
 	req.URL.RawQuery = q.Encode()
+
+	if i.NeedsAuth {
+		accessToken, err := auth.GetAccessToken()
+		if err != nil {
+			if errors.Is(err, auth.ErrNoAccessTokenFound) {
+				return nil, fmt.Errorf("no access token found, provide access token")
+			}
+			return nil, fmt.Errorf("failed to authorize")
+		}
+
+		//  request timestamp
+		now := time.Now().UTC().Unix()
+		timestamp := strconv.FormatInt(now, 10)
+
+		// compute signature
+		signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
+			AccessToken: accessToken,
+			HTTPMethod:  i.Method,
+			URI:         req.URL.RequestURI(),
+			Timestamp:   timestamp,
+			ContentType: i.ContentType,
+			RawBody:     marshalled,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// set needed access key auth headers
+		req.Header.Set("X-Deta-Timestamp", timestamp)
+		req.Header.Set("X-Deta-Signature", signature)
+		fmt.Println(signature)
+	}
 
 	res, err := d.Client.Do(req)
 	if err != nil {

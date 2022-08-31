@@ -3,6 +3,7 @@ package fs
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -71,4 +72,41 @@ func FileExists(dir, filename string) (bool, error) {
 	}
 
 	return !info.IsDir(), nil
+}
+
+func IsEmpty(dir string) (bool, error) {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+
+	f, err := os.Open(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, err
+		}
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+	if errors.Is(err, io.EOF) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// CheckIfAnyFileExists returns true if any of the filenames exist in a dir
+func CheckIfAnyFileExists(dir string, filenames ...string) (bool, error) {
+	for _, filename := range filenames {
+		exists, err := FileExists(dir, filename)
+		if err != nil {
+			return false, err
+		}
+		if exists {
+			return true, err
+		}
+	}
+	return false, nil
 }

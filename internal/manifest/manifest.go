@@ -5,16 +5,17 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/deta/pc-cli/internal/fs"
+	"github.com/deta/pc-cli/pkg/util/fs"
+	"github.com/deta/pc-cli/shared"
 	"gopkg.in/yaml.v3"
 )
 
 var (
 	// ManifestName manifest file name
-	ManifestName = "deta.yaml"
+	ManifestName = "deta.yml"
 )
 
-func ManifestExists(sourceDir string) (bool, error) {
+func IsManifestPresent(sourceDir string) (bool, error) {
 	var exists bool
 	var err error
 	for _, name := range getSupportedManifestNames() {
@@ -110,7 +111,7 @@ func (m *Manifest) Save(sourceDir string) error {
 	return nil
 }
 
-func (m *Manifest) AddMicro(newMicro *Micro) error {
+func (m *Manifest) AddMicro(newMicro *shared.Micro) error {
 	// mark new micro as primary if it is the only one
 	if len(m.Micros) == 0 {
 		newMicro.Primary = true
