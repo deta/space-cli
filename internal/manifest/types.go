@@ -19,5 +19,5 @@ type Manifest struct {
 }
 
 func getSupportedManifestNames() []string {
-	return []string{"deta.yml", "deta.yaml", "deta_manifest.yml", "deta_manifest.yaml"}
+	return []string{"space.yml", "space.yaml"}
 }

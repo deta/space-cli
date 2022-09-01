@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"path/filepath"
+	"fmt"
 
 	"github.com/deta/pc-cli/pkg/util/fs"
 	"github.com/deta/pc-cli/shared"
@@ -17,8 +17,13 @@ func pythonScanner(dir string) (*shared.Micro, error) {
 	if !exists {
 		return nil, nil
 	}
+
+	name, err := getMicroNameFromPath(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
+	}
 	m := &shared.Micro{
-		Name:   filepath.Base(dir),
+		Name:   name,
 		Src:    dir,
 		Engine: shared.Python39,
 	}
@@ -36,8 +41,13 @@ func nodeScanner(dir string) (*shared.Micro, error) {
 		return nil, nil
 	}
 
+	name, err := getMicroNameFromPath(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
+	}
+
 	m := &shared.Micro{
-		Name:   filepath.Base(dir),
+		Name:   name,
 		Src:    dir,
 		Engine: shared.Node16x,
 	}
@@ -60,8 +70,12 @@ func goScanner(dir string) (*shared.Micro, error) {
 		return nil, nil
 	}
 
+	name, err := getMicroNameFromPath(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
+	}
 	m := &shared.Micro{
-		Name:     filepath.Base(dir),
+		Name:     name,
 		Src:      dir,
 		Engine:   "custom",
 		Commands: []string{"go build cmd/main.go"},
@@ -82,8 +96,12 @@ func staticScanner(dir string) (*shared.Micro, error) {
 		return nil, nil
 	}
 
+	name, err := getMicroNameFromPath(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
+	}
 	m := &shared.Micro{
-		Name:   filepath.Base(dir),
+		Name:   name,
 		Src:    dir,
 		Engine: shared.Static,
 	}

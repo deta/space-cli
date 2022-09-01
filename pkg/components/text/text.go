@@ -28,8 +28,6 @@ func initialModel(i *Input) Model {
 	ti := textinput.New()
 	ti.Placeholder = i.Placeholder
 	ti.Focus()
-	ti.CharLimit = 20
-	ti.Width = 20
 
 	return Model{
 		TextInput: ti,

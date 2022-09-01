@@ -62,3 +62,12 @@ func scanDir(dir string) (*shared.Micro, error) {
 	}
 	return nil, nil
 }
+
+func getMicroNameFromPath(dir string) (string, error) {
+	absPath, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Base(absPath), nil
+}

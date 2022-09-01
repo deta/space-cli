@@ -12,7 +12,7 @@ import (
 
 var (
 	// ManifestName manifest file name
-	ManifestName = "deta.yml"
+	ManifestName = "space.yml"
 )
 
 func IsManifestPresent(sourceDir string) (bool, error) {
