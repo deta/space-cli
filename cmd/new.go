@@ -35,7 +35,7 @@ const (
 
 func init() {
 	newCmd.Flags().StringVarP(&projectName, "name", "n", "", "what's your project name?")
-	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "", "where is this project?")
+	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "where is this project?")
 	rootCmd.AddCommand(newCmd)
 }
 
@@ -106,13 +106,7 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if isFlagEmpty(projectDir) {
-		projectDir, err = selectProjectDir()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get project's dir through text prompt, %v", err)
-		}
-		projectDir = filepath.Clean(projectDir)
-	}
+	projectDir = filepath.Clean(projectDir)
 
 	runtimeManager, err := runtime.NewManager(&projectDir, false)
 	if err != nil {
@@ -142,7 +136,7 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 
 		logger.Println("Downloading template files...")
-		logger.Printf("Creating project \"%s\"...", projectName)
+		logger.Printf("Creating project %s...", projectName)
 		logger.Println("TODO: create project request")
 		return nil
 		// TODO: download template files
@@ -158,7 +152,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf(`Creating project with name "%s" in "%s"...`, projectName, projectDir)
+		logger.Printf(`Creating project "%s" with the existing manifest...`, projectName)
 		logger.Println("TODO: create project request")
 		// TODO: parse manifest and validate
 		// TODO: make api call to create project

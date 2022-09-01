@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
@@ -25,7 +26,7 @@ func init() {
 }
 
 func isFlagEmpty(flag string) bool {
-	return flag == ""
+	return strings.TrimSpace(flag) == ""
 }
 
 func selectDir() (string, error) {
