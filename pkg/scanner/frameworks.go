@@ -109,5 +109,5 @@ func detectFramework(dir string) (string, error) {
 			return framework.Name, nil
 		}
 	}
-	return "node", nil
+	return shared.Node16x, nil
 }

@@ -41,6 +41,7 @@ const (
 	Python39  = "python3.9"
 	Node14x   = "nodejs14.x"
 	Node16x   = "nodejs16.x"
+	Custom    = "custom"
 	Go        = "go"
 	Rust      = "rust"
 )
