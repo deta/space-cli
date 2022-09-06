@@ -45,3 +45,7 @@ const (
 	Go        = "go"
 	Rust      = "rust"
 )
+
+var (
+	SupportedEngines = []string{Static, React, Svelte, Vue, Next, Nuxt, SvelteKit, Python38, Python39, Node14x, Node16x, Custom, Go, Rust}
+)

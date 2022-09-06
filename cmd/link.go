@@ -77,7 +77,6 @@ func link(cmd *cobra.Command, args []string) error {
 	// yes yaml
 	if isManifestPresent {
 		logger.Printf(`Linking project with id "%s"...`, linkProjectId)
-		// TODO: parse manifest and validate
 		// TODO: verify project id through request
 		// TODO: write project id to .space/meta
 		return nil
@@ -102,7 +101,6 @@ func link(cmd *cobra.Command, args []string) error {
 		// link project with detected config
 		if link {
 			logger.Printf("Linking project with id %s with detected config....\n", linkProjectId)
-			// TODO: parse manifest and validate
 			// TODO: verify project id through request
 			// TODO: write project id to .space/meta
 			return nil
@@ -112,7 +110,6 @@ func link(cmd *cobra.Command, args []string) error {
 	// don't link project with blank config, link blank project, point to docs
 	logger.Printf("Linking project with id %s with blank project...\n", linkProjectId)
 	logger.Println("Read docs...")
-	// TODO: parse manifest and validate
 	// TODO: verify project id through request
 	// TODO: write project id to .space/meta
 	return nil

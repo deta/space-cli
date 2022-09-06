@@ -29,7 +29,6 @@ Complete documentation available at https://docs.deta.sh`,
 // Execute xx
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		logger.Println(err)
 		os.Exit(1)
 	}
 }

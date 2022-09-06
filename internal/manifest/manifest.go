@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -58,7 +59,10 @@ func Open(sourceDir string) (*Manifest, error) {
 
 	// parse raw manifest file content
 	m := Manifest{}
-	err = yaml.Unmarshal([]byte(c), &m)
+	dec := yaml.NewDecoder(bytes.NewReader(c))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to do parse manifest file, please check for correct syntax: %w", err)
 	}
@@ -130,10 +134,19 @@ func (m *Manifest) AddMicro(newMicro *shared.Micro) error {
 	return nil
 }
 
-func CreateBlankManifest(sourceDir string) (*Manifest, error) {
-	manifest := &Manifest{
-		V: 0,
+func CreateManifestWithMicros(sourceDir string, micros []*shared.Micro) (*Manifest, error) {
+	manifest := new(Manifest)
+	copy(manifest.Micros, micros)
+	err := manifest.Save(sourceDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create manifest with micros in %s, %w", sourceDir, err)
 	}
+
+	return manifest, nil
+}
+
+func CreateBlankManifest(sourceDir string) (*Manifest, error) {
+	manifest := new(Manifest)
 
 	err := manifest.Save(sourceDir)
 	if err != nil {

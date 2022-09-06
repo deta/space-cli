@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -58,28 +61,41 @@ func push(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !isProjectInitialized {
+	if isProjectInitialized {
+		projectMeta, err := runtimeManager.GetProjectMeta()
+		if err != nil {
+			return err
+		}
+		pushProjectId = projectMeta.ID
+	} else {
 		if isFlagEmpty(pushProjectId) {
-
 			logger.Printf("No project initialized.\n\n")
 			pushProjectId, err = selectPushProjectId()
 			if err != nil {
 				return fmt.Errorf("problem while trying to get project id to push from text prompt, %w", err)
 			}
 		}
+	}
 
-		logger.Println("Pushing code....")
-		logger.Println("TODO: push code request with project id")
+	// parse manifest and validate
+	logger.Printf("Validating manifest...\n\n")
+
+	manifest, err := manifest.Open(projectDir)
+	if err != nil {
+		logger.Printf("Error: %v\n", err)
 		return nil
 	}
+	manifestErrors := scanner.ValidateManifest(manifest)
 
-	projectMeta, err := runtimeManager.GetProjectMeta()
-	if err != nil {
-		return err
+	if len(manifestErrors) > 0 {
+		logValidationErrors(manifest, manifestErrors)
+		logger.Println(styles.Error.Render("\nPlease try to fix the issues with manifest before pushing code for project."))
+		return nil
+	} else {
+		logger.Printf("Nice! Manifest looks good 🎉!\n\n")
 	}
-	pushProjectId = projectMeta.ID
 
-	logger.Println("Pushing code...")
-	logger.Println("TODO: push code request with project id...")
+	logger.Println("Pushing code....")
+	logger.Println("TODO: push code request with project id")
 	return nil
 }

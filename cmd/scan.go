@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	scanCmd.Flags().StringVarP(&dir, "dir", "d", "", "where should the scanner run?")
+	scanCmd.Flags().StringVarP(&dir, "dir", "d", "./", "where should the scanner run?")
 	rootCmd.AddCommand(scanCmd)
 }
 

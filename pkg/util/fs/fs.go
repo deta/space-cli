@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 func UnzipTemplates(rootZip []byte, dest string, rootDir string) error {
@@ -89,11 +91,15 @@ func IsEmpty(dir string) (bool, error) {
 	}
 	defer f.Close()
 
-	_, err = f.Readdirnames(1)
+	names, err := f.Readdirnames(1)
 	if errors.Is(err, io.EOF) {
 		return true, nil
 	}
-
+	if err == nil {
+		if slices.Contains(names, ".space") {
+			return true, nil
+		}
+	}
 	return false, nil
 }
 

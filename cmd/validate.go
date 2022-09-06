@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/manifest"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
 )
@@ -24,9 +25,65 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 }
 
-func validate(cmd *cobra.Command, args []string) error {
+// logValidationErrors logs manifest validation errors
+func logValidationErrors(manifest *manifest.Manifest, manifestErrors []error) {
+	// micro specfic errors
+	microErrors := map[string][]error{}
+	for _, err := range manifestErrors {
+		if microError, ok := err.(*scanner.MicroError); ok {
+			// filter micro specific errors
+			micro := microError.Micro
+			microErrors[micro.Name] = append(microErrors[micro.Name], microError.Err)
+		} else {
+			// general errors
+			switch {
+			case errors.Is(scanner.ErrExceedsMaxMicroLimit, err):
+				logger.Println(styles.Error.Render("❌ Manifest exceeds max micro limit. Please make sure to use a max of 5 micros."))
+			case errors.Is(scanner.ErrDuplicateMicros, err):
+				logger.Println(styles.Error.Render("❌ Duplicate micro names. Please make sure to use unique names for micros."))
+			case errors.Is(scanner.ErrNoPrimaryMicro, err):
+				logger.Println(styles.Error.Render("❌ No primary micro specified. Please mark one of the micros as primary."))
+			case errors.Is(scanner.ErrInvalidIcon, err):
+				logger.Println(styles.Error.Render("❌ Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon.\n"))
+			default:
+				logger.Println(styles.Error.Render(fmt.Sprintf("❌ Error: %v", err)))
+			}
+		}
+	}
 
-	var valid bool = true
+	// basic validation, check src of micros and make sure they exist, invalid names/engines
+	logger.Println(styles.Green.Render("\nScanned micros:"))
+	for _, micro := range manifest.Micros {
+		microLog := fmt.Sprintf("name: %s\n", micro.Name)
+		microLog += fmt.Sprintf(" L src: %s\n", micro.Src)
+		microLog += fmt.Sprintf(" L engine: %s", micro.Engine)
+		logger.Println(microLog)
+
+		microErrors := microErrors[micro.Name]
+		logger.Println("Errors:")
+		if len(microErrors) == 0 {
+			logger.Println(styles.Green.Render("✔ No errors detected for this micro."))
+		}
+		for _, err := range microErrors {
+			switch {
+			case errors.Is(scanner.ErrEmptyMicroName, err):
+				logger.Println(styles.Error.Render("❌ Empty micro name. Please provide a valid name (cannot be empty)."))
+			case errors.Is(scanner.ErrEmptyMicroSrc, err):
+				logger.Println(styles.Error.Render("❌ Empty micro src. Please provide a valid src for micro."))
+			case errors.Is(scanner.ErrEmptyMicroEngine, err):
+				logger.Println(styles.Error.Render("❌ Empty micro engine. Please provide a valid engine for micro."))
+			case errors.Is(scanner.ErrInvalidMicroSrc, err):
+				logger.Println(styles.Error.Render("❌ Cannot find src for micro. Please provide a valid src for where the micro exists."))
+			case errors.Is(scanner.ErrInvalidMicroEngine, err):
+				logger.Println(styles.Error.Render("❌ Invalid engine. Please check the docs for all the supported engines."))
+			default:
+				logger.Println(styles.Error.Render(fmt.Sprintf("❌ Micro Error: %v", err)))
+			}
+		}
+	}
+}
+
+func validate(cmd *cobra.Command, args []string) error {
 
 	validateDir = filepath.Clean(validateDir)
 
@@ -36,7 +93,7 @@ func validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isManifestPresent {
-		logger.Printf("No manifest file found in dir: %s to validate\n", validateDir)
+		logger.Printf("No manifest file found in dir %s to validate\n", validateDir)
 		return nil
 	}
 
@@ -45,48 +102,13 @@ func validate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("problem while opening manifest in dir %s, %w", validateDir, err)
 	}
 
-	// basic validation, check for path's of icon, micros and make sure they exist
-	err = scanner.ValidateManifestIcon(manifest)
-	if errors.Is(scanner.ErrInvalidIcon, err) {
-		valid = false
-		logger.Println("Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon.")
-	}
+	manifestErrors := scanner.ValidateManifest(manifest)
+	logValidationErrors(manifest, manifestErrors)
 
-	logger.Println("Scanning micros...")
-	for _, micro := range manifest.Micros {
-		microLog := fmt.Sprintf("%s\n", micro.Name)
-		microLog += fmt.Sprintf("L src: %s\n", micro.Src)
-		microLog += fmt.Sprintf("L engine: %s", micro.Engine)
-		logger.Println(microLog)
-
-		err = scanner.ValidateMicro(micro)
-
-		if err != nil {
-			valid = false
-		}
-
-		if errors.Is(scanner.ErrEmptyMicroName, err) {
-			logger.Println("L Error: Empty micro name. Please provide a valid name (cannot be empty).")
-		}
-
-		if errors.Is(scanner.ErrEmptyMicroSrc, err) {
-			logger.Println("L Error: Empty micro src. Please provide a valid src for micro.")
-		}
-
-		if errors.Is(scanner.ErrEmptyMicroEngine, err) {
-			logger.Println("L Error: Empty micro engine. Please provide a valid engine for micro.")
-		}
-
-		if errors.Is(scanner.ErrInvalidMicroSrc, err) {
-			logger.Println("L Error: Cannot find src for micro. Please provide a valid src for where the micro exists.")
-		}
-	}
-
-	if valid {
-		logger.Println("Manifest looks ✨!")
+	if len(manifestErrors) == 0 {
+		logger.Println(styles.Green.Render("Nice! Manifest looks good ✨!"))
 	} else {
-		logger.Println("Detected some issues with the manifest as stated earlier. Please try to fix them before pushing your code.")
+		logger.Println(styles.Error.Render("\nDetected some issues with the manifest. Please try to fix them before pushing your code."))
 	}
-
 	return nil
 }

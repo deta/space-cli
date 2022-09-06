@@ -2,8 +2,11 @@ package runtime
 
 import "encoding/json"
 
+// ProjectMeta xx
 type ProjectMeta struct {
-	ID string `json:"id"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Alias string `json:"alias"`
 }
 
 // unmarshals data into a ProjectMeta

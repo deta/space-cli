@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/deta/pc-cli/pkg/components/styles"
 )
 
 type errMsg error
@@ -78,12 +79,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	s := fmt.Sprintf(
-		"? %s %s\n\n",
+		"%s %s %s\n\n",
+		styles.Question,
 		m.Prompt,
 		m.TextInput.View(),
 	)
 	if m.Err != nil {
-		s += fmt.Sprintf("Error: %v", m.Err)
+		s += styles.Error.Render(fmt.Sprintf("Error: %v", m.Err))
 	}
 	return s
 }

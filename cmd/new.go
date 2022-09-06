@@ -3,11 +3,14 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 
+	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/deta/pc-cli/pkg/util/fs"
@@ -18,6 +21,7 @@ import (
 var (
 	projectName string
 	projectDir  string
+	blank       bool
 
 	newCmd = &cobra.Command{
 		Use:   "new [flags]",
@@ -36,6 +40,7 @@ const (
 func init() {
 	newCmd.Flags().StringVarP(&projectName, "name", "n", "", "what's your project name?")
 	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "where is this project?")
+	newCmd.Flags().BoolVarP(&blank, "blank", "b", false, "create blank project")
 	rootCmd.AddCommand(newCmd)
 }
 
@@ -47,6 +52,11 @@ func logScannedMicros(micros []*shared.Micro) {
 		microMsg += fmt.Sprintf("\tL engine: %s\n\n", micro.Engine)
 		logger.Printf(microMsg)
 	}
+}
+
+func getDefaultAlias(projectName string) string {
+	aliasRegexp := regexp.MustCompile(`/([^\w])/g,`)
+	return aliasRegexp.ReplaceAllString(projectName, "")
 }
 
 func projectNameValidator(projectName string) error {
@@ -96,6 +106,35 @@ func confirmCreateProjectWithDetectedConfig() (bool, error) {
 	return confirm.Run(&confirm.Input{Prompt: "Do you want to create a project with the auto-detected configuration?"})
 }
 
+func createProject(name string, runtimeManager *runtime.Manager) error {
+	res, err := client.CreateProject(&api.CreateProjectRequest{
+		Name:  name,
+		Alias: getDefaultAlias(name),
+	})
+	if err != nil {
+		return err
+	}
+
+	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias})
+	if err != nil {
+		return fmt.Errorf("failed to write project id to .space/meta, %w", err)
+	}
+
+	return nil
+}
+
+func createProjectSuccessLogs(projectName string) string {
+	logs := `
+Project "%s" created successfully! https://deta.space/builder/%s
+We created a "space.yml" for you, it contains the configuration of your project & tells Deta how to build and run it.
+
+Please modify your "space.yml" file to add micros. Here is a referece for information on adding more micros https://docs.deta.sh/manifest/add-micro
+
+To push this project, run the command "deta push".`
+
+	return styles.Success.Render(fmt.Sprintf(logs, projectName, projectName))
+}
+
 func new(cmd *cobra.Command, args []string) error {
 	var err error
 
@@ -108,7 +147,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	projectDir = filepath.Clean(projectDir)
 
-	runtimeManager, err := runtime.NewManager(&projectDir, false)
+	runtimeManager, err := runtime.NewManager(&projectDir, true)
 	if err != nil {
 		return err
 	}
@@ -120,6 +159,17 @@ func new(cmd *cobra.Command, args []string) error {
 
 	if isProjectInitialized {
 		logger.Println("A project already exists in this dir.")
+		return nil
+	}
+
+	// create blank project if blank flag provided
+	if blank {
+		logger.Printf("Creating blank project %s...\n", projectName)
+		err = createProject(projectName, runtimeManager)
+		if err != nil {
+			return err
+		}
+		logger.Println(createProjectSuccessLogs(projectName))
 		return nil
 	}
 
@@ -135,13 +185,16 @@ func new(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("problem while trying to get template from select prompt, %v", err)
 		}
 
-		logger.Println("Downloading template files...")
-		logger.Printf("Creating project %s...", projectName)
-		logger.Println("TODO: create project request")
+		// TODO: Download template files
+		logger.Printf("Creating project %s with the template...\n", projectName)
+
+		err = createProject(projectName, runtimeManager)
+		if err != nil {
+			return err
+		}
+		logger.Println(createProjectSuccessLogs(projectName))
 		return nil
 		// TODO: download template files
-		// TODO: make api call to create project
-		// TODO: write project id from create project api request's response to .space/meta
 		// TODO: improve successfull create project logs
 	}
 
@@ -152,17 +205,34 @@ func new(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf(`Creating project "%s" with the existing manifest...`, projectName)
-		logger.Println("TODO: create project request")
-		// TODO: parse manifest and validate
-		// TODO: make api call to create project
-		// TODO: write project id from create project api request's response to .space/meta
-		// TODO: improve successfull create project logs
+		logger.Printf("Validating manifest...\n\n")
+
+		manifest, err := manifest.Open(projectDir)
+		if err != nil {
+			logger.Printf("Error: %v\n", err)
+			return nil
+		}
+		manifestErrors := scanner.ValidateManifest(manifest)
+
+		if len(manifestErrors) > 0 {
+			logValidationErrors(manifest, manifestErrors)
+			logger.Println(styles.Error.Render("\nPlease try to fix the issues with manifest before creating a new project with the manifest."))
+			return nil
+		} else {
+			logger.Printf("Nice! Manifest looks good 🎉!\n\n")
+		}
+
+		logger.Printf("Creating project \"%s\" with the existing manifest...\n", projectName)
+		err = createProject(projectName, runtimeManager)
+		if err != nil {
+			return err
+		}
+		logger.Println(createProjectSuccessLogs(projectName))
 		return nil
+		// TODO: improve successfull create project logs
 	}
 
 	// no yaml present
-
 	// auto-detect micros
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
@@ -179,15 +249,32 @@ func new(cmd *cobra.Command, args []string) error {
 
 		// create project with detected config
 		if create {
+			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
+			if err != nil {
+				return fmt.Errorf("failed to create project with detected micros, %v", err)
+			}
+
 			logger.Printf("Creating project %s with detected config....\n", projectName)
-			logger.Println("TODO: create project request")
+			err = createProject(projectName, runtimeManager)
+			if err != nil {
+				return err
+			}
+			logger.Println(createProjectSuccessLogs(projectName))
 			return nil
 		}
 	}
 
 	// don't create project with detected config, create blank project, point to docs
+	_, err = manifest.CreateBlankManifest(projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to create blank project, %v", err)
+	}
+
 	logger.Printf("Creating blank project %s...\n", projectName)
-	logger.Println("read docs...")
-	logger.Println("TODO: create project request")
+	err = createProject(projectName, runtimeManager)
+	if err != nil {
+		return err
+	}
+	logger.Println(createProjectSuccessLogs(projectName))
 	return nil
 }

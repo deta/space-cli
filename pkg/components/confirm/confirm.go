@@ -5,6 +5,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/deta/pc-cli/pkg/components/styles"
 )
 
 type Model struct {
@@ -48,7 +49,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return fmt.Sprintf("? %s (y/n)\n\n", m.Prompt)
+	return fmt.Sprintf("%s %s %s\n\n", styles.Question, m.Prompt, styles.Subtle.Render("(y/n)"))
 }
 
 func Run(i *Input) (bool, error) {
