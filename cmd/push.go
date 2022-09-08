@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/styles"
@@ -13,33 +14,26 @@ import (
 )
 
 var (
-	pushProjectId  string
+	pushProjectID  string
 	pushProjectDir string
 	pushCmd        = &cobra.Command{
 		Use:   "push [flags]",
-		Short: "push code",
+		Short: "push code for project",
 		RunE:  push,
 	}
 )
 
 func init() {
-	pushCmd.Flags().StringVarP(&pushProjectId, "id", "i", "", "what's your project id?")
-	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "where's your project that you want to push?")
+	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
+	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
 	rootCmd.AddCommand(pushCmd)
 }
 
-func projectIdValidator(projectId string) error {
-	if projectId == "" {
-		return fmt.Errorf("please provide a valid id, empty project id is not valid")
-	}
-	return nil
-}
-
-func selectPushProjectId() (string, error) {
+func selectPushProjectID() (string, error) {
 	promptInput := text.Input{
 		Prompt:      "What's the project id?",
 		Placeholder: "",
-		Validator:   projectIdValidator,
+		Validator:   projectIDValidator,
 	}
 
 	return text.Run(&promptInput)
@@ -66,36 +60,94 @@ func push(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		pushProjectId = projectMeta.ID
-	} else {
-		if isFlagEmpty(pushProjectId) {
-			logger.Printf("No project initialized.\n\n")
-			pushProjectId, err = selectPushProjectId()
-			if err != nil {
-				return fmt.Errorf("problem while trying to get project id to push from text prompt, %w", err)
-			}
+		pushProjectID = projectMeta.ID
+	} else if isFlagEmpty(pushProjectID) {
+		logger.Printf("No project initialized.\n\n")
+
+		pushProjectID, err = selectPushProjectID()
+		if err != nil {
+			return fmt.Errorf("problem while trying to get project id to push from text prompt, %w", err)
 		}
+	}
+
+	isManifestPrsent, err := manifest.IsManifestPresent(pushProjectDir)
+	if err != nil {
+		return err
+	}
+
+	if !isManifestPrsent {
+		logger.Println("No manifest present. Please add a manifest before pushing code.")
 	}
 
 	// parse manifest and validate
 	logger.Printf("Validating manifest...\n\n")
 
-	manifest, err := manifest.Open(projectDir)
+	m, err := manifest.Open(projectDir)
 	if err != nil {
 		logger.Printf("Error: %v\n", err)
 		return nil
 	}
-	manifestErrors := scanner.ValidateManifest(manifest)
+	manifestErrors := scanner.ValidateManifest(m)
 
 	if len(manifestErrors) > 0 {
-		logValidationErrors(manifest, manifestErrors)
+		logValidationErrors(m, manifestErrors)
 		logger.Println(styles.Error.Render("\nPlease try to fix the issues with manifest before pushing code for project."))
 		return nil
 	} else {
 		logger.Printf("Nice! Manifest looks good 🎉!\n\n")
 	}
 
-	logger.Println("Pushing code....")
-	logger.Println("TODO: push code request with project id")
+	logger.Println("Creating build....")
+	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: "nd"})
+	if err != nil {
+		return err
+	}
+
+	logger.Println("Successfully created build!")
+
+	logger.Println("Pushing manifest...")
+
+	raw, err := manifest.OpenRaw(pushProjectDir)
+	if err != nil {
+		return err
+	}
+
+	if _, err = client.PushManifest(&api.PushManifestRequest{
+		Manifest: raw,
+		BuildID:  br.ID,
+	}); err != nil {
+		return err
+	}
+
+	logger.Println("Successfully pushed manifest!")
+	logger.Println("Pushing code...")
+	zippedCode, err := runtime.ZipDir(pushProjectDir)
+
+	if err != nil {
+		return err
+	}
+
+	if _, err = client.PushCode(&api.PushCodeRequest{
+		BuildID: br.ID, ZippedCode: zippedCode,
+	}); err != nil {
+		return err
+	}
+
+	buildLogs := make(chan string)
+
+	getLogs := func() {
+		err = client.GetBuildLogs(&api.GetBuildLogsRequest{BuildID: br.ID}, buildLogs)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		close(buildLogs)
+	}
+	go getLogs()
+
+	for msg := range buildLogs {
+		logger.Print(msg)
+	}
+
+	logger.Println("Successfully pushed code and created a build artefact!")
 	return nil
 }

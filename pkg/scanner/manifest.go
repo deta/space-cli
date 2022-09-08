@@ -48,7 +48,7 @@ func (me *MicroError) Error() string {
 }
 
 // ValidateManifest checks for general errors such as duplicate micros and max micro limit
-func ValidateManifest(manifest *manifest.Manifest) []error {
+func ValidateManifest(m *manifest.Manifest) []error {
 
 	var isPrimaryMicroPresent bool
 
@@ -57,11 +57,11 @@ func ValidateManifest(manifest *manifest.Manifest) []error {
 
 	errors := []error{}
 
-	if len(manifest.Micros) > 5 {
+	if len(m.Micros) > 5 {
 		errors = append(errors, ErrExceedsMaxMicroLimit)
 	}
 
-	for _, micro := range manifest.Micros {
+	for _, micro := range m.Micros {
 		if _, ok := microNames[micro.Name]; ok {
 			errors = append(errors, ErrDuplicateMicros)
 		}
@@ -77,7 +77,7 @@ func ValidateManifest(manifest *manifest.Manifest) []error {
 		}
 	}
 
-	if !isPrimaryMicroPresent && len(manifest.Micros) > 1 {
+	if !isPrimaryMicroPresent && len(m.Micros) > 1 {
 		errors = append(errors, ErrNoPrimaryMicro)
 	}
 

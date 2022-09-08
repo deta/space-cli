@@ -16,22 +16,6 @@ var (
 	ManifestName = "space.yml"
 )
 
-func IsManifestPresent(sourceDir string) (bool, error) {
-	var exists bool
-	var err error
-	for _, name := range getSupportedManifestNames() {
-		exists, err = fs.FileExists(sourceDir, name)
-		if err != nil {
-			return false, err
-		}
-
-		if exists {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func Open(sourceDir string) (*Manifest, error) {
 	var exists bool
 	var err error
@@ -115,6 +99,15 @@ func (m *Manifest) Save(sourceDir string) error {
 	return nil
 }
 
+func (m *Manifest) AddMicros(newMicros []*shared.Micro) error {
+	for _, micro := range newMicros {
+		if err := m.AddMicro(micro); err != nil {
+			return fmt.Errorf("failed to add micro %s to manifest, %w", micro.Name, err)
+		}
+	}
+	return nil
+}
+
 func (m *Manifest) AddMicro(newMicro *shared.Micro) error {
 	// mark new micro as primary if it is the only one
 	if len(m.Micros) == 0 {
@@ -135,23 +128,48 @@ func (m *Manifest) AddMicro(newMicro *shared.Micro) error {
 }
 
 func CreateManifestWithMicros(sourceDir string, micros []*shared.Micro) (*Manifest, error) {
-	manifest := new(Manifest)
-	copy(manifest.Micros, micros)
-	err := manifest.Save(sourceDir)
+	m := new(Manifest)
+	copy(m.Micros, micros)
+	err := m.Save(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest with micros in %s, %w", sourceDir, err)
 	}
 
-	return manifest, nil
+	return m, nil
 }
 
 func CreateBlankManifest(sourceDir string) (*Manifest, error) {
-	manifest := new(Manifest)
+	m := new(Manifest)
 
-	err := manifest.Save(sourceDir)
+	err := m.Save(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a blank manifest in %s, %w", sourceDir, err)
 	}
 
-	return manifest, nil
+	return m, nil
+}
+
+func (m *Manifest) HasMicro(otherMicro *shared.Micro) bool {
+	for _, micro := range m.Micros {
+		if micro.Name == otherMicro.Name && micro.Src == otherMicro.Src {
+			return true
+		}
+	}
+	return false
+}
+
+func IsManifestPresent(sourceDir string) (bool, error) {
+	var exists bool
+	var err error
+	for _, name := range getSupportedManifestNames() {
+		exists, err = fs.FileExists(sourceDir, name)
+		if err != nil {
+			return false, err
+		}
+
+		if exists {
+			return true, nil
+		}
+	}
+	return false, nil
 }

@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -24,8 +26,8 @@ func NewDetaClient() *DetaClient {
 }
 
 type errorResp struct {
-	Errors  []string `json:"errors,omitempty"`
-	Message string   `json:"message,omitempty"`
+	Errors []string `json:"errors,omitempty"`
+	Detail string   `json:"message,omitempty"`
 }
 
 // requestInput input to Request function
@@ -38,6 +40,7 @@ type requestInput struct {
 	Body        interface{}
 	NeedsAuth   bool
 	ContentType string
+	LogStream   chan<- string
 }
 
 // requestOutput ouput of Request function
@@ -120,9 +123,25 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	}
 	defer res.Body.Close()
 
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
+	var b []byte
+
+	if i.LogStream != nil {
+		reader := bufio.NewReader(res.Body)
+		for {
+			line, err := reader.ReadBytes('\n')
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return nil, err
+			}
+			i.LogStream <- string(line)
+		}
+	} else {
+		b, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	o := &requestOutput{
@@ -139,20 +158,14 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 
 	var er errorResp
 
-	if res.StatusCode == 404 {
-		er.Message = "Template not found"
-		o.Error = &er
-		return o, nil
-	}
-
 	if res.StatusCode == 413 {
-		er.Message = "Request entity too large"
+		er.Detail = "Request entity too large"
 		o.Error = &er
 		return o, nil
 	}
 
 	if res.StatusCode == 502 {
-		er.Message = "Internal server error"
+		er.Detail = "Internal server error"
 		o.Error = &er
 		return o, nil
 	}

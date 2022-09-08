@@ -15,18 +15,18 @@ var (
 	validateDir string
 	validateCmd = &cobra.Command{
 		Use:   "validate [flags]",
-		Short: "validate micros in dir",
+		Short: "validate manifest in dir",
 		RunE:  validate,
 	}
 )
 
 func init() {
-	validateCmd.Flags().StringVarP(&validateDir, "dir", "d", "./", "where's the project you want to validate?")
+	validateCmd.Flags().StringVarP(&validateDir, "dir", "d", "./", "src of project to validate")
 	rootCmd.AddCommand(validateCmd)
 }
 
 // logValidationErrors logs manifest validation errors
-func logValidationErrors(manifest *manifest.Manifest, manifestErrors []error) {
+func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 	// micro specfic errors
 	microErrors := map[string][]error{}
 	for _, err := range manifestErrors {
@@ -53,11 +53,8 @@ func logValidationErrors(manifest *manifest.Manifest, manifestErrors []error) {
 
 	// basic validation, check src of micros and make sure they exist, invalid names/engines
 	logger.Println(styles.Green.Render("\nScanned micros:"))
-	for _, micro := range manifest.Micros {
-		microLog := fmt.Sprintf("name: %s\n", micro.Name)
-		microLog += fmt.Sprintf(" L src: %s\n", micro.Src)
-		microLog += fmt.Sprintf(" L engine: %s", micro.Engine)
-		logger.Println(microLog)
+	for _, micro := range m.Micros {
+		logMicro(micro)
 
 		microErrors := microErrors[micro.Name]
 		logger.Println("Errors:")
@@ -97,13 +94,13 @@ func validate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	manifest, err := manifest.Open(validateDir)
+	m, err := manifest.Open(validateDir)
 	if err != nil {
 		return fmt.Errorf("problem while opening manifest in dir %s, %w", validateDir, err)
 	}
 
-	manifestErrors := scanner.ValidateManifest(manifest)
-	logValidationErrors(manifest, manifestErrors)
+	manifestErrors := scanner.ValidateManifest(m)
+	logValidationErrors(m, manifestErrors)
 
 	if len(manifestErrors) == 0 {
 		logger.Println(styles.Green.Render("Nice! Manifest looks good ✨!"))

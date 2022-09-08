@@ -8,13 +8,11 @@ import (
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
-	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/deta/pc-cli/pkg/util/fs"
-	"github.com/deta/pc-cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -25,11 +23,9 @@ var (
 
 	newCmd = &cobra.Command{
 		Use:   "new [flags]",
-		Short: "new project",
+		Short: "create new project",
 		RunE:  new,
 	}
-
-	templates = []string{"todo", "notes", "hello-world", "blank"}
 )
 
 const (
@@ -38,20 +34,10 @@ const (
 )
 
 func init() {
-	newCmd.Flags().StringVarP(&projectName, "name", "n", "", "what's your project name?")
-	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "where is this project?")
+	newCmd.Flags().StringVarP(&projectName, "name", "n", "", "project name")
+	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "src of project to release")
 	newCmd.Flags().BoolVarP(&blank, "blank", "b", false, "create blank project")
 	rootCmd.AddCommand(newCmd)
-}
-
-func logScannedMicros(micros []*shared.Micro) {
-	logger.Println("Scanned micros:")
-	for _, micro := range micros {
-		microMsg := fmt.Sprintf("L %s\n", micro.Name)
-		microMsg += fmt.Sprintf("\tL src: %s\n", micro.Src)
-		microMsg += fmt.Sprintf("\tL engine: %s\n\n", micro.Engine)
-		logger.Printf(microMsg)
-	}
 }
 
 func getDefaultAlias(projectName string) string {
@@ -82,25 +68,27 @@ func selectProjectName() (string, error) {
 	return text.Run(&promptInput)
 }
 
-func selectProjectDir() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "Where do you want to create your project?",
-		Placeholder: "./",
+/*
+	func selectProjectDir() (string, error) {
+		promptInput := text.Input{
+			Prompt:      "Where do you want to create your project?",
+			Placeholder: "./",
+		}
+
+		return text.Run(&promptInput)
 	}
 
-	return text.Run(&promptInput)
-}
+	func selectTemplate() (string, error) {
+		promptInput := choose.Input{
+			Prompt:  "What type of micro do you want to create?",
+			Choices: templates,
+		}
 
-func selectTemplate() (string, error) {
-	promptInput := choose.Input{
-		Prompt:  "What type of micro do you want to create?",
-		Choices: templates,
+		m, err := choose.Run(&promptInput)
+		return templates[m.Cursor], err
+
 	}
-
-	m, err := choose.Run(&promptInput)
-	return templates[m.Cursor], err
-
-}
+*/
 
 func confirmCreateProjectWithDetectedConfig() (bool, error) {
 	return confirm.Run(&confirm.Input{Prompt: "Do you want to create a project with the auto-detected configuration?"})
@@ -123,25 +111,13 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 	return nil
 }
 
-func createProjectSuccessLogs(projectName string) string {
-	logs := `
-Project "%s" created successfully! https://deta.space/builder/%s
-We created a "space.yml" for you, it contains the configuration of your project & tells Deta how to build and run it.
-
-Please modify your "space.yml" file to add micros. Here is a referece for information on adding more micros https://docs.deta.sh/manifest/add-micro
-
-To push this project, run the command "deta push".`
-
-	return styles.Success.Render(fmt.Sprintf(logs, projectName, projectName))
-}
-
 func new(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if isFlagEmpty(projectName) {
 		projectName, err = selectProjectName()
 		if err != nil {
-			return fmt.Errorf("problem while trying to get project's name through text prompt, %v", err)
+			return fmt.Errorf("problem while trying to get project's name through text prompt, %w", err)
 		}
 	}
 
@@ -162,60 +138,58 @@ func new(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// create blank project if blank flag provided
-	if blank {
-		logger.Printf("Creating blank project %s...\n", projectName)
-		err = createProject(projectName, runtimeManager)
-		if err != nil {
-			return err
-		}
-		logger.Println(createProjectSuccessLogs(projectName))
-		return nil
-	}
-
 	isEmpty, err := fs.IsEmpty(projectDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to check contents of dir %s, %v", projectDir, err)
+		return fmt.Errorf("problem while trying to check contents of dir %s, %w", projectDir, err)
 	}
 
-	// prompt to start from template
-	if isEmpty {
-		_, err := selectTemplate()
+	// create blank project if blank flag provided or if project folder is empty
+	if blank || isEmpty {
+		_, err = manifest.CreateBlankManifest(projectDir)
 		if err != nil {
-			return fmt.Errorf("problem while trying to get template from select prompt, %v", err)
+			return fmt.Errorf("failed to create blank project, %w", err)
 		}
 
-		// TODO: Download template files
-		logger.Printf("Creating project %s with the template...\n", projectName)
+		logger.Printf("Creating blank project %s...\n", projectName)
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
 			return err
 		}
+
 		logger.Println(createProjectSuccessLogs(projectName))
 		return nil
-		// TODO: download template files
-		// TODO: improve successfull create project logs
 	}
+
+	/*
+		// prompt to start from template
+		if isEmpty {
+			// TODO: select template
+			// TODO: download template files
+			// TODO: improve successfull create project logs
+		}
+	*/
 
 	isManifestPresent, err := manifest.IsManifestPresent(projectDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to check for manifest file in dir %s, %v", projectDir, err)
+		return fmt.Errorf("problem while trying to check for manifest file in dir %s, %w", projectDir, err)
 	}
 
 	// yes yaml
 	if isManifestPresent {
 		logger.Printf("Validating manifest...\n\n")
 
-		manifest, err := manifest.Open(projectDir)
+		m, err := manifest.Open(projectDir)
 		if err != nil {
 			logger.Printf("Error: %v\n", err)
 			return nil
 		}
-		manifestErrors := scanner.ValidateManifest(manifest)
+
+		// validate manifest before creating new project with the existing manifest
+		manifestErrors := scanner.ValidateManifest(m)
 
 		if len(manifestErrors) > 0 {
-			logValidationErrors(manifest, manifestErrors)
+			logValidationErrors(m, manifestErrors)
 			logger.Println(styles.Error.Render("\nPlease try to fix the issues with manifest before creating a new project with the manifest."))
 			return nil
 		} else {
@@ -223,20 +197,20 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 
 		logger.Printf("Creating project \"%s\" with the existing manifest...\n", projectName)
+
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
 			return err
 		}
+
 		logger.Println(createProjectSuccessLogs(projectName))
 		return nil
-		// TODO: improve successfull create project logs
 	}
 
-	// no yaml present
-	// auto-detect micros
+	// no yaml present, auto-detect micros
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks for project %s, %v", projectName, err)
+		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks for project %s, %w", projectName, err)
 	}
 
 	if len(autoDetectedMicros) > 0 {
@@ -244,14 +218,14 @@ func new(cmd *cobra.Command, args []string) error {
 		logScannedMicros(autoDetectedMicros)
 		create, err := confirmCreateProjectWithDetectedConfig()
 		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to create project with the auto-detected configuration from confirm prompt, %v", err)
+			return fmt.Errorf("problem while trying to get confirmation to create project with the auto-detected configuration from confirm prompt, %w", err)
 		}
 
 		// create project with detected config
 		if create {
 			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
-				return fmt.Errorf("failed to create project with detected micros, %v", err)
+				return fmt.Errorf("failed to create project with detected micros, %w", err)
 			}
 
 			logger.Printf("Creating project %s with detected config....\n", projectName)
@@ -259,6 +233,7 @@ func new(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			logger.Println(createProjectSuccessLogs(projectName))
 			return nil
 		}
@@ -267,7 +242,7 @@ func new(cmd *cobra.Command, args []string) error {
 	// don't create project with detected config, create blank project, point to docs
 	_, err = manifest.CreateBlankManifest(projectDir)
 	if err != nil {
-		return fmt.Errorf("failed to create blank project, %v", err)
+		return fmt.Errorf("failed to create blank project, %w", err)
 	}
 
 	logger.Printf("Creating blank project %s...\n", projectName)
@@ -275,6 +250,19 @@ func new(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	logger.Println(createProjectSuccessLogs(projectName))
+
 	return nil
+}
+
+func createProjectSuccessLogs(projectName string) string {
+	logs := `
+Project "%s" created successfully! https://deta.space/builder/%s
+"space.yml", contains the configuration of your project & tells Deta how to build and run it.
+
+Please modify your "space.yml" file to add micros. Here is a referece for information on adding more micros https://docs.deta.sh/manifest/add-micro
+
+To push this project, run the command "deta push".`
+	return fmt.Sprintf(logs, projectName, projectName)
 }

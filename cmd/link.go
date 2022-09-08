@@ -13,26 +13,26 @@ import (
 )
 
 var (
-	linkProjectId  string
+	linkProjectID  string
 	linkProjectDir string
 	linkCmd        = &cobra.Command{
 		Use:   "link [flags]",
-		Short: "link code",
+		Short: "link code to project",
 		RunE:  link,
 	}
 )
 
 func init() {
-	linkCmd.Flags().StringVarP(&linkProjectId, "id", "i", "", "what's your project id?")
-	linkCmd.Flags().StringVarP(&linkProjectDir, "dir", "d", "./", "where's the project you want to link?")
+	linkCmd.Flags().StringVarP(&linkProjectID, "id", "i", "", "project id of project to link")
+	linkCmd.Flags().StringVarP(&linkProjectDir, "dir", "d", "./", "src of project to link")
 	rootCmd.AddCommand(linkCmd)
 }
 
-func selectLinkProjectId() (string, error) {
+func selectLinkProjectID() (string, error) {
 	promptInput := text.Input{
 		Prompt:      "What's the project id of the project that you want to link?",
 		Placeholder: "",
-		Validator:   projectIdValidator,
+		Validator:   projectIDValidator,
 	}
 
 	return text.Run(&promptInput)
@@ -45,8 +45,8 @@ func confirmLinkProjectWithDetectedConfig() (bool, error) {
 func link(cmd *cobra.Command, args []string) error {
 	var err error
 
-	if isFlagEmpty(linkProjectId) {
-		linkProjectId, err = selectLinkProjectId()
+	if isFlagEmpty(linkProjectID) {
+		linkProjectID, err = selectLinkProjectID()
 		if err != nil {
 			return err
 		}
@@ -76,15 +76,17 @@ func link(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf(`Linking project with id "%s"...`, linkProjectId)
+		logger.Printf(`Linking project with id "%s"...`, linkProjectID)
 		// TODO: verify project id through request
-		// TODO: write project id to .space/meta
+		err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
+		if err != nil {
+			return fmt.Errorf("failed to link project, %w", err)
+		}
+		logger.Println("Successfully linked project!")
 		return nil
 	}
 
-	// no yaml present
-
-	// auto-detect micros
+	// no yaml present, auto-detect micros
 	autoDetectedMicros, err := scanner.Scan(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks, %v", err)
@@ -100,17 +102,34 @@ func link(cmd *cobra.Command, args []string) error {
 
 		// link project with detected config
 		if link {
-			logger.Printf("Linking project with id %s with detected config....\n", linkProjectId)
+			_, err = manifest.CreateManifestWithMicros(linkProjectDir, autoDetectedMicros)
+			if err != nil {
+				return fmt.Errorf("failed to link project with detected micros, %w", err)
+			}
+
+			logger.Printf("Linking project with id %s with detected config....\n", linkProjectID)
 			// TODO: verify project id through request
-			// TODO: write project id to .space/meta
+			err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
+			if err != nil {
+				return fmt.Errorf("failed to link project, %w", err)
+			}
+			logger.Println("Successfully linked project!")
 			return nil
 		}
 	}
 
-	// don't link project with blank config, link blank project, point to docs
-	logger.Printf("Linking project with id %s with blank project...\n", linkProjectId)
-	logger.Println("Read docs...")
+	// linking with blank
+	_, err = manifest.CreateBlankManifest(linkProjectDir)
+	if err != nil {
+		return fmt.Errorf("failed to create blank project, %w", err)
+	}
+
+	logger.Printf("Linking project with id %s with blank project...\n", linkProjectID)
 	// TODO: verify project id through request
-	// TODO: write project id to .space/meta
+	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
+	if err != nil {
+		return fmt.Errorf("failed to link project, %w", err)
+	}
+	logger.Println("Successfully linked project!")
 	return nil
 }
