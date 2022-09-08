@@ -12,6 +12,11 @@ Build:
 go build
 ./pc-cli [command]
 ```
+
+The CLI is linked to a dummy backend API micro for testing purposes. 
+
+
+
 ## How to run scanner tests?
 
 Run `go test` from `pkg/scanner` folder. 
