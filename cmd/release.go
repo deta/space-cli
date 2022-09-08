@@ -99,7 +99,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 		releaseProjectID = projectMeta.ID
 	} else if isFlagEmpty(releaseProjectID) {
-		logger.Printf("No project initialized.\n\n")
+		logger.Printf("> No project initialized. You can still create a release by providing a valid project id.\n")
 
 		releaseProjectID, err = selectProjectID()
 		if err != nil {
