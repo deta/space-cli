@@ -62,7 +62,7 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		pushProjectID = projectMeta.ID
 	} else if isFlagEmpty(pushProjectID) {
-		logger.Printf("No project initialized.\n\n")
+		logger.Printf("> No project initialized. You can still create a push by providing a valid project id.\n\n")
 
 		pushProjectID, err = selectPushProjectID()
 		if err != nil {

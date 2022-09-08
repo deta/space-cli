@@ -111,7 +111,6 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		// set needed access key auth headers
 		req.Header.Set("X-Deta-Timestamp", timestamp)
 		req.Header.Set("X-Deta-Signature", signature)
