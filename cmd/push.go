@@ -27,7 +27,7 @@ var (
 func init() {
 	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
 	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
-	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify revision for this push")
+	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
 	rootCmd.AddCommand(pushCmd)
 }
 

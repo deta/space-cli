@@ -52,7 +52,10 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 	}
 
 	// basic validation, check src of micros and make sure they exist, invalid names/engines
-	logger.Println(styles.Green.Render("\nScanned micros:"))
+	if len(m.Micros) > 0 {
+		logger.Println(styles.Green.Render("\nScanned micros:"))
+	}
+
 	for _, micro := range m.Micros {
 		logMicro(micro)
 

@@ -129,6 +129,7 @@ func (m *Manifest) AddMicro(newMicro *shared.Micro) error {
 
 func CreateManifestWithMicros(sourceDir string, micros []*shared.Micro) (*Manifest, error) {
 	m := new(Manifest)
+	m.Micros = make([]*shared.Micro, len(micros))
 	copy(m.Micros, micros)
 	err := m.Save(sourceDir)
 	if err != nil {
