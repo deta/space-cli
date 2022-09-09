@@ -103,7 +103,7 @@ func validate(cmd *cobra.Command, args []string) error {
 	logValidationErrors(m, manifestErrors)
 
 	if len(manifestErrors) == 0 {
-		logger.Println(styles.Green.Render("Nice! Manifest looks good ✨!"))
+		logger.Println(styles.Green.Render("\nNice! Manifest looks good ✨!"))
 	} else {
 		logger.Println(styles.Error.Render("\nDetected some issues with the manifest. Please try to fix them before pushing your code."))
 	}

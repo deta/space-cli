@@ -16,6 +16,7 @@ import (
 var (
 	pushProjectID  string
 	pushProjectDir string
+	pushTag        string
 	pushCmd        = &cobra.Command{
 		Use:   "push [flags]",
 		Short: "push code for project",
@@ -26,6 +27,7 @@ var (
 func init() {
 	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
 	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
+	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify revision for this push")
 	rootCmd.AddCommand(pushCmd)
 }
 
@@ -34,6 +36,15 @@ func selectPushProjectID() (string, error) {
 		Prompt:      "What's the project id?",
 		Placeholder: "",
 		Validator:   projectIDValidator,
+	}
+
+	return text.Run(&promptInput)
+}
+
+func selectPushTag() (string, error) {
+	promptInput := text.Input{
+		Prompt:      "Provide a tag for this push",
+		Placeholder: "",
 	}
 
 	return text.Run(&promptInput)
@@ -62,7 +73,7 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		pushProjectID = projectMeta.ID
 	} else if isFlagEmpty(pushProjectID) {
-		logger.Printf("> No project initialized. You can still create a push by providing a valid project id.\n\n")
+		logger.Printf("> No project initialized. You can still push by providing a valid project id.\n\n")
 
 		pushProjectID, err = selectPushProjectID()
 		if err != nil {
@@ -77,6 +88,13 @@ func push(cmd *cobra.Command, args []string) error {
 
 	if !isManifestPrsent {
 		logger.Println("No manifest present. Please add a manifest before pushing code.")
+	}
+
+	if isFlagEmpty(pushTag) {
+		pushTag, err = selectPushTag()
+		if err != nil {
+			return fmt.Errorf("problem while trying to get tag from prompt, %w", err)
+		}
 	}
 
 	// parse manifest and validate
@@ -94,39 +112,34 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error.Render("\nPlease try to fix the issues with manifest before pushing code for project."))
 		return nil
 	} else {
-		logger.Printf("Nice! Manifest looks good 🎉!\n\n")
+		logger.Printf(styles.Green.Render("Nice! Manifest looks good 🎉!\n\n"))
 	}
 
-	logger.Println("Creating build....")
+	logger.Println("Creating a build job....")
 	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: "nd"})
 	if err != nil {
 		return err
 	}
-
-	logger.Println("Successfully created build!")
+	logger.Println("Successfully created build job!")
 
 	logger.Println("Pushing manifest...")
-
 	raw, err := manifest.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
 	}
-
 	if _, err = client.PushManifest(&api.PushManifestRequest{
 		Manifest: raw,
 		BuildID:  br.ID,
 	}); err != nil {
 		return err
 	}
-
 	logger.Println("Successfully pushed manifest!")
+
 	logger.Println("Pushing code...")
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
-
 	if err != nil {
 		return err
 	}
-
 	if _, err = client.PushCode(&api.PushCodeRequest{
 		BuildID: br.ID, ZippedCode: zippedCode,
 	}); err != nil {
@@ -134,7 +147,6 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	buildLogs := make(chan string)
-
 	getLogs := func() {
 		err = client.GetBuildLogs(&api.GetBuildLogsRequest{BuildID: br.ID}, buildLogs)
 		if err != nil {

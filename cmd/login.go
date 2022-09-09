@@ -40,7 +40,7 @@ func login(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger.Println(styles.Highlight.Render("Successfully set access token!"))
+	logger.Println(styles.Highlight.Render("Login Successful!"))
 
 	return nil
 }

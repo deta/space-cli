@@ -196,7 +196,7 @@ func new(cmd *cobra.Command, args []string) error {
 			logger.Printf("Nice! Manifest looks good 🎉!\n\n")
 		}
 
-		logger.Printf("Creating project \"%s\" with the existing manifest...\n", projectName)
+		logger.Printf("Creating project \"%s\" with existing manifest file...\n", projectName)
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
