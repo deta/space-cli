@@ -57,6 +57,11 @@ func ValidateManifest(m *manifest.Manifest) []error {
 
 	errors := []error{}
 
+	err := ValidateManifestIcon(m.Icon)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
 	if len(m.Micros) > 5 {
 		errors = append(errors, ErrExceedsMaxMicroLimit)
 	}

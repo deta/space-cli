@@ -44,7 +44,7 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 			case errors.Is(scanner.ErrNoPrimaryMicro, err):
 				logger.Println(styles.Error.Render("❌ No primary micro specified. Please mark one of the micros as primary."))
 			case errors.Is(scanner.ErrInvalidIcon, err):
-				logger.Println(styles.Error.Render("❌ Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon.\n"))
+				logger.Println(styles.Error.Render("❌ Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon."))
 			default:
 				logger.Println(styles.Error.Render(fmt.Sprintf("❌ Error: %v", err)))
 			}
