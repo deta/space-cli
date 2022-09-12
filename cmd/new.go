@@ -185,8 +185,8 @@ func new(cmd *cobra.Command, args []string) error {
 
 		if len(manifestErrors) > 0 {
 			logValidationErrors(m, manifestErrors)
-			logger.Println(styles.Error.Render("\nPlease fix the issues with your Space Manifest before creating webcrate."))
-			logger.Println("The Space Manifest documentation is here: https://docs.deta.sh/manifest")
+			logger.Println(styles.Error.Render(fmt.Sprintf("\nPlease fix the issues with your Space Manifest before creating %s.\n", projectName)))
+			logger.Printf("The Space Manifest documentation is here: https://docs.deta.sh/%s\n", projectName)
 
 			return nil
 		} else {
@@ -220,7 +220,7 @@ func new(cmd *cobra.Command, args []string) error {
 		logMicros(autoDetectedMicros)
 
 		create, err := confirm.Run(&confirm.Input{
-			Prompt: "Do you want to bootstrap webcrate with this configuration?",
+			Prompt: fmt.Sprintf("Do you want to bootstrap %s with this configuration?", projectName),
 		})
 		if err != nil {
 			return fmt.Errorf("problem while trying to get confirmation to create project with the auto-detected configuration from confirm prompt, %w", err)

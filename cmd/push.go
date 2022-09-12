@@ -91,13 +91,6 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println("No Space Manifest is present. Please add a Space Manifest before pushing code.")
 	}
 
-	if isFlagEmpty(pushTag) {
-		pushTag, err = selectPushTag()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get tag from prompt, %w", err)
-		}
-	}
-
 	// parse manifest and validate
 	logger.Printf("Validating Space Manifest...\n\n")
 
