@@ -18,11 +18,12 @@ func logMicro(micro *shared.Micro) {
 	logger.Println(msg)
 }
 
-func logScannedMicros(micros []*shared.Micro) {
-	logger.Println("Scanned micros:")
+func logMicros(micros []*shared.Micro) {
+	logger.Println("Micros:")
 	for _, micro := range micros {
 		logMicro(micro)
 	}
+	logger.Println()
 }
 
 func emptyPromptValidator(value string) error {
@@ -37,4 +38,15 @@ func projectIDValidator(projectID string) error {
 		return fmt.Errorf("please provide a valid id, empty project id is not valid")
 	}
 	return nil
+}
+
+func projectNotes(projectName string) string {
+	return fmt.Sprintf(`
+Notes:
+	- Find your project in Builder here: https://deta.space/builder/%s
+	- Your Space Manifest ("space.yml") contains the configuration of your project. 
+	  Please modify your "space.yml" file to add your first Micro. 
+	  Here is a reference: https://docs.deta.sh/manifest/add-micro
+	- To push your code and create a Revision, use the command "deta push".
+`, projectName)
 }

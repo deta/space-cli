@@ -128,9 +128,15 @@ func (m *Manifest) AddMicro(newMicro *shared.Micro) error {
 }
 
 func CreateManifestWithMicros(sourceDir string, micros []*shared.Micro) (*Manifest, error) {
+	// mark one micro as primary
+	if len(micros) > 0 {
+		micros[0].Primary = true
+	}
+
 	m := new(Manifest)
 	m.Micros = make([]*shared.Micro, len(micros))
 	copy(m.Micros, micros)
+
 	err := m.Save(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest with micros in %s, %w", sourceDir, err)

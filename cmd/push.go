@@ -33,7 +33,7 @@ func init() {
 
 func selectPushProjectID() (string, error) {
 	promptInput := text.Input{
-		Prompt:      "What's the project id?",
+		Prompt:      "What is your Project ID?",
 		Placeholder: "",
 		Validator:   projectIDValidator,
 	}
@@ -43,7 +43,7 @@ func selectPushProjectID() (string, error) {
 
 func selectPushTag() (string, error) {
 	promptInput := text.Input{
-		Prompt:      "Provide a tag for this push",
+		Prompt:      "Provide a Tag for this push (or leave it empty to auto-generate)",
 		Placeholder: "",
 	}
 
@@ -73,11 +73,12 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		pushProjectID = projectMeta.ID
 	} else if isFlagEmpty(pushProjectID) {
-		logger.Printf("> No project initialized. You can still push by providing a valid project id.\n\n")
+		logger.Printf("> No project was found in the current directory.\n\n")
+		logger.Printf("You can still push by providing a valid Project ID.\n\n")
 
 		pushProjectID, err = selectPushProjectID()
 		if err != nil {
-			return fmt.Errorf("problem while trying to get project id to push from text prompt, %w", err)
+			return fmt.Errorf("problem while trying to get project id to push from prompt, %w", err)
 		}
 	}
 
@@ -87,7 +88,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isManifestPrsent {
-		logger.Println("No manifest present. Please add a manifest before pushing code.")
+		logger.Println("No Space Manifest is present. Please add a Space Manifest before pushing code.")
 	}
 
 	if isFlagEmpty(pushTag) {
@@ -98,31 +99,31 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// parse manifest and validate
-	logger.Printf("Validating manifest...\n\n")
+	logger.Printf("Validating Space Manifest...\n\n")
 
 	m, err := manifest.Open(projectDir)
 	if err != nil {
-		logger.Printf("Error: %v\n", err)
+		logger.Printf("❗ Error: %v\n", err)
 		return nil
 	}
 	manifestErrors := scanner.ValidateManifest(m)
 
 	if len(manifestErrors) > 0 {
 		logValidationErrors(m, manifestErrors)
-		logger.Println(styles.Error.Render("\nPlease try to fix the issues with manifest before pushing code for project."))
+		logger.Println(styles.Error.Render("\nPlease try to fix the issues with your Space Manifest before pushing code."))
 		return nil
 	} else {
-		logger.Printf(styles.Green.Render("Nice! Manifest looks good 🎉!\n\n"))
+		logger.Printf(styles.Green.Render("Your Space Manifest looks good, proceeding with your push!!\n"))
 	}
 
-	logger.Println("Creating a build job....")
+	logger.Println("⚙️  Working on starting your build ...")
 	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: "nd"})
 	if err != nil {
 		return err
 	}
-	logger.Println("Successfully created build job!")
+	logger.Println("✅ Successfully started your build!")
 
-	logger.Println("Pushing manifest...")
+	logger.Println("⚙️  Pushing your Space Manifest...")
 	raw, err := manifest.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
@@ -133,9 +134,9 @@ func push(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
-	logger.Println("Successfully pushed manifest!")
+	logger.Println("✅ Successfully pushed your Space Manifest!")
 
-	logger.Println("Pushing code...")
+	logger.Println("⚙️  Pushing your code...")
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -160,6 +161,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Print(msg)
 	}
 
-	logger.Println("Successfully pushed code and created a build artefact!")
+	logger.Printf("🎉 Successfully pushed your code and created a new Revision!\n\n")
+	logger.Println("Run \"deta release\" to create an installable Release for this Revision.")
 	return nil
 }

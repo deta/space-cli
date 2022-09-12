@@ -3,6 +3,7 @@ package text
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -85,7 +86,7 @@ func (m Model) View() string {
 		m.TextInput.View(),
 	)
 	if m.Err != nil {
-		s += styles.Error.Render(fmt.Sprintf("Error: %v", m.Err))
+		s += styles.Error.Render(fmt.Sprintf("❗ Error: %s", strings.Title(m.Err.Error())))
 	}
 	return s
 }

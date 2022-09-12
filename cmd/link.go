@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
+	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -30,16 +32,12 @@ func init() {
 
 func selectLinkProjectID() (string, error) {
 	promptInput := text.Input{
-		Prompt:      "What's the project id of the project that you want to link?",
+		Prompt:      "What is your Project ID of the project that you want to link to?",
 		Placeholder: "",
 		Validator:   projectIDValidator,
 	}
 
 	return text.Run(&promptInput)
-}
-
-func confirmLinkProjectWithDetectedConfig() (bool, error) {
-	return confirm.Run(&confirm.Input{Prompt: "Do you want to link to a project with the auto-detected configuration?"})
 }
 
 func link(cmd *cobra.Command, args []string) error {
@@ -65,7 +63,12 @@ func link(cmd *cobra.Command, args []string) error {
 	}
 
 	if isProjectInitialized {
-		logger.Println("A project already exists in this dir.")
+		existingProjectMeta, err := runtimeManager.GetProjectMeta()
+		if err != nil {
+			return err
+		}
+		logger.Printf("🤠 This directory is already linked to a project named \"%s\".\n", existingProjectMeta.Name)
+		logger.Println(projectNotes(existingProjectMeta.Name))
 		return nil
 	}
 
@@ -76,17 +79,29 @@ func link(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf(`Linking project with id "%s"...`, linkProjectID)
-		// TODO: verify project id through request
-		err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
+		logger.Printf("⚙️  Space Manifest found, linking project with id \"%s\" to Space ...\n", linkProjectID)
+
+		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
+		if err != nil {
+			if errors.Is(err, api.ErrProjectNotFound) {
+				logger.Println("❗ No project found. Please provide a valid Project ID.")
+				return nil
+			}
+			return err
+		}
+
+		err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: project.ID, Name: project.Name, Alias: project.Alias})
 		if err != nil {
 			return fmt.Errorf("failed to link project, %w", err)
 		}
-		logger.Println("Successfully linked project!")
+
+		logger.Printf("🔗 Project \"%s\" was linked!\n", project.Name)
+		logger.Println(projectNotes(project.Name))
 		return nil
 	}
 
 	// no yaml present, auto-detect micros
+	logger.Println("⚙️  No Space Manifest found, trying to auto-detect configuration ...")
 	autoDetectedMicros, err := scanner.Scan(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks, %v", err)
@@ -94,42 +109,70 @@ func link(cmd *cobra.Command, args []string) error {
 
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to link project with detected configuration
-		logScannedMicros(autoDetectedMicros)
-		link, err := confirmLinkProjectWithDetectedConfig()
+		logger.Printf("👇 Deta detected the following configuration:\n\n")
+		logMicros(autoDetectedMicros)
+
+		link, err := confirm.Run(&confirm.Input{
+			Prompt: "Do you want to use this configuration?",
+		})
 		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to link project with the auto-detected configuration from confirm prompt, %v", err)
+			return fmt.Errorf("problem while trying to get confirmation to link project with the auto-detected configuration from prompt, %v", err)
 		}
 
 		// link project with detected config
 		if link {
+			logger.Printf("⚙️  Linking project with ID \"%s\" using bootstrapped configuration ...\n", linkProjectID)
+
+			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
+			if err != nil {
+				if errors.Is(err, api.ErrProjectNotFound) {
+					logger.Println("No project found. Please provide a valid Project ID.")
+					return nil
+				}
+				return err
+			}
+
 			_, err = manifest.CreateManifestWithMicros(linkProjectDir, autoDetectedMicros)
 			if err != nil {
 				return fmt.Errorf("failed to link project with detected micros, %w", err)
 			}
 
-			logger.Printf("Linking project with id %s with detected config....\n", linkProjectID)
 			// TODO: verify project id through request
 			err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
 			if err != nil {
 				return fmt.Errorf("failed to link project, %w", err)
 			}
-			logger.Println("Successfully linked project!")
+
+			logger.Printf("🔗 Project \"%s\" was linked!\n", project.Name)
+			logger.Println(projectNotes(project.Name))
 			return nil
 		}
 	}
 
 	// linking with blank
+	logger.Printf("⚙️  Linking project with id \"%s\" with a blank configuration ...\n", linkProjectID)
+
+	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
+	if err != nil {
+		if errors.Is(err, api.ErrProjectNotFound) {
+			logger.Println("No project found. Please provide a valid Project ID.")
+			return nil
+		}
+		return err
+	}
+
 	_, err = manifest.CreateBlankManifest(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("failed to create blank project, %w", err)
 	}
 
-	logger.Printf("Linking project with id %s with blank project...\n", linkProjectID)
 	// TODO: verify project id through request
 	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
 	if err != nil {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
-	logger.Println("Successfully linked project!")
+
+	logger.Printf("🔗 Project \"%s\" was linked!\n", project.Name)
+	logger.Println(projectNotes(project.Name))
 	return nil
 }

@@ -82,7 +82,7 @@ func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 func choicesView(m Model) string {
 	c := m.Cursor
 
-	tpl := fmt.Sprintf("%s %s Use arrow-keys to navigate. Press entr to submit. \n\n", styles.Question, m.Prompt)
+	tpl := fmt.Sprintf("%s %s  \n\n", styles.Question, m.Prompt)
 
 	tpl += "%s\n"
 	choices := ""

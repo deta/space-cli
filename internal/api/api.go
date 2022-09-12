@@ -10,6 +10,54 @@ const (
 	version   = "v0"
 )
 
+var (
+	// ErrProjectNotFound project not found error
+	ErrProjectNotFound = fmt.Errorf("project not found")
+)
+
+type GetProjectRequest struct {
+	ID string `json:"id"`
+}
+
+type GetProjectResponse struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Alias string `json:"alias"`
+}
+
+func (c *DetaClient) GetProject(r *GetProjectRequest) (*GetProjectResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s", version, r.ID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status == 401 {
+		return nil, ErrProjectNotFound
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to get project: %v", msg)
+	}
+
+	var resp GetProjectResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project: %w", err)
+	}
+	return &resp, nil
+}
+
 type CreateProjectRequest struct {
 	Name  string `json:"name"`
 	Alias string `json:"alias"`
@@ -37,7 +85,7 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 
 	if o.Status != 200 {
 		msg := o.Error.Detail
-		if msg == "" {
+		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
 		return nil, fmt.Errorf("failed to create project: %v", msg)
@@ -77,8 +125,9 @@ func (c *DetaClient) CreateRelease(r *CreateReleaseRequest) (*CreateReleaseRespo
 	}
 
 	if o.Status != 200 {
+
 		msg := o.Error.Detail
-		if msg == "" {
+		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
 		return nil, fmt.Errorf("failed to create release: %v", msg)
@@ -112,13 +161,73 @@ func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest, logs chan<- string
 
 	if o.Status != 200 {
 		msg := o.Error.Detail
-		if msg == "" {
+		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
 		return fmt.Errorf("failed to create release: %v", msg)
 	}
 
 	return nil
+}
+
+type GetRevisionsRequest struct {
+	ID string `json:"id"`
+}
+
+type Revision struct {
+	ID        string `json:"id"`
+	Tag       string `json:"tag"`
+	CreatedAt string `json:"created_at"`
+}
+
+type Page struct {
+	Size int     `json:"size"`
+	Last *string `json:"last"`
+}
+
+type fetchRevisionsResponse struct {
+	Revisions []Revision `json:"revisions"`
+	Page      *Page      `json:"page"`
+}
+
+type GetRevisionsResponse struct {
+	Revisions []*Revision `json:"revisions"`
+}
+
+func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/revisions?limit=20", version, r.ID),
+		Method:    "GET",
+		NeedsAuth: true,
+		Body:      r,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch revisions: %v", msg)
+	}
+
+	var fetchResp fetchRevisionsResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch revisions: %w", err)
+	}
+
+	var revisions []*Revision
+	for i := range fetchResp.Revisions {
+		revisions = append(revisions, &fetchResp.Revisions[i])
+	}
+
+	return &GetRevisionsResponse{Revisions: revisions}, nil
 }
 
 type CreateBuildRequest struct {
@@ -146,7 +255,7 @@ func (c *DetaClient) CreateBuild(r *CreateBuildRequest) (*CreateBuildResponse, e
 
 	if o.Status != 200 {
 		msg := o.Error.Detail
-		if msg == "" {
+		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
 		return nil, fmt.Errorf("failed to create build request: %v", msg)
@@ -262,7 +371,7 @@ func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest, logs chan<- string) er
 
 	if o.Status != 200 {
 		msg := o.Error.Detail
-		if msg == "" {
+		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
 		return fmt.Errorf("failed to get build logs: %v", msg)

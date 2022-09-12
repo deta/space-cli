@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,21 +90,21 @@ func IsEmpty(dir string) (bool, error) {
 	}
 	defer f.Close()
 
-	names, err := f.Readdirnames(1)
+	_, err = f.Readdirnames(1)
 	if errors.Is(err, io.EOF) {
 		return true, nil
 	}
 
-	names, err = f.Readdirnames(0)
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return false, err
 	}
 
-	if len(names) == 1 && names[0] == ".space" {
+	if len(files) == 1 && files[0].Name() == ".space" {
 		return true, err
 	}
 
-	return false, nil
+	return false, err
 }
 
 // CheckIfAnyFileExists returns true if any of the filenames exist in a dir

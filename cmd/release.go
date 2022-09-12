@@ -6,6 +6,8 @@ import (
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/pkg/components/choose"
+	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/spf13/cobra"
 )
@@ -33,19 +35,9 @@ func init() {
 	rootCmd.AddCommand(releaseCmd)
 }
 
-func selectRevisionID() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "What is the revision id?",
-		Placeholder: "",
-		Validator:   emptyPromptValidator,
-	}
-
-	return text.Run(&promptInput)
-}
-
 func selectProjectID() (string, error) {
 	promptInput := text.Input{
-		Prompt:      "What is your project id?",
+		Prompt:      "What is your Project ID?",
 		Placeholder: "",
 		Validator:   emptyPromptValidator,
 	}
@@ -53,22 +45,21 @@ func selectProjectID() (string, error) {
 	return text.Run(&promptInput)
 }
 
-func selectVersion() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "What is the version for the release?",
-		Placeholder: "",
+func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
+	tags := []string{}
+	for _, revision := range revisions {
+		tags = append(tags, revision.Tag)
 	}
 
-	return text.Run(&promptInput)
-}
-
-func selectDescription() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "What is a short description for your release?",
-		Placeholder: "",
+	m, err := choose.Run(&choose.Input{
+		Prompt:  "Choose a revision.",
+		Choices: tags,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return text.Run(&promptInput)
+	return revisions[m.Cursor], nil
 }
 
 func release(cmd *cobra.Command, args []string) error {
@@ -85,13 +76,6 @@ func release(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if isFlagEmpty(revisionID) {
-		revisionID, err = selectRevisionID()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get revision id from prompt, %w", err)
-		}
-	}
-
 	if isProjectInitialized {
 		projectMeta, err := runtimeManager.GetProjectMeta()
 		if err != nil {
@@ -99,7 +83,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 		releaseProjectID = projectMeta.ID
 	} else if isFlagEmpty(releaseProjectID) {
-		logger.Printf("> No project initialized. You can still create a release by providing a valid project id.\n")
+		logger.Printf("> No project was found locally. You can still create a Release by providing a valid Project ID.\n\n")
 
 		releaseProjectID, err = selectProjectID()
 		if err != nil {
@@ -107,26 +91,46 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if isFlagEmpty(releaseVersion) {
-		releaseVersion, err = selectVersion()
+	if isFlagEmpty(revisionID) {
+		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
-			return fmt.Errorf("problem while trying to get version from prompt, %w", err)
+			return err
 		}
-	}
+		latestRevision := r.Revisions[0]
 
-	if isFlagEmpty(releaseDesc) {
-		releaseDesc, err = selectDescription()
+		useLatestRevision, err := confirm.Run(&confirm.Input{
+			Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
+		})
 		if err != nil {
-			return fmt.Errorf("problem while trying to get short description from prompt, %w", err)
+			return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
 		}
+
+		if !useLatestRevision {
+			latestRevision, err = selectRevision(r.Revisions)
+			if err != nil {
+				return fmt.Errorf("problem while trying to get latest revision from prompt, %w", err)
+			}
+		}
+
+		revisionID = latestRevision.ID
 	}
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	logger.Println("Creating a release...")
+	logger.Println("⚙️  Creating a Release...")
+	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
+		RevisionID:  revisionID,
+		AppID:       releaseProjectID,
+		Version:     releaseVersion,
+		Description: releaseDesc,
+	})
+	if err != nil {
+		return err
+	}
+
 	logs := make(chan string)
 	go func() {
-		err = client.GetReleaseLogs(&api.GetReleaseLogsRequest{ID: "project-id"}, logs)
+		err = client.GetReleaseLogs(&api.GetReleaseLogsRequest{ID: cr.ID}, logs)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -136,5 +140,9 @@ func release(cmd *cobra.Command, args []string) error {
 	for msg := range logs {
 		logger.Print(msg)
 	}
+
+	logger.Println("🚀 Lift off -- successfully created a new Release!")
+	logger.Println("🌍 Your Release is available globally on 5 Deta Edges")
+	logger.Println("🥳 Anyone can install their own copy of your app.")
 	return nil
 }
