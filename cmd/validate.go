@@ -79,15 +79,15 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 		for _, err := range microErrors {
 			switch {
 			case errors.Is(scanner.ErrEmptyMicroName, err):
-				logger.Println(styles.Error.Render("L Missing \"name\""))
+				logger.Println(styles.Error.Render("L Missing \"name\"\n"))
 			case errors.Is(scanner.ErrEmptyMicroSrc, err):
-				logger.Println(styles.Error.Render("L Missing \"src\""))
+				logger.Println(styles.Error.Render("L Missing \"src\"\n"))
 			case errors.Is(scanner.ErrEmptyMicroEngine, err):
-				logger.Println(styles.Error.Render("L Missing \"engine\""))
+				logger.Println(styles.Error.Render("L Missing \"engine\"\n"))
 			case errors.Is(scanner.ErrInvalidMicroSrc, err):
-				logger.Println(styles.Error.Render(fmt.Sprintf("L Cannot find src for micro \"%s\"", micro.Src)))
+				logger.Println(styles.Error.Render(fmt.Sprintf("L Cannot find src for micro \"%s\"\n", micro.Src)))
 			case errors.Is(scanner.ErrInvalidMicroEngine, err):
-				logger.Println(styles.Error.Render(fmt.Sprintf("L Invalid engine value \"%s\"", micro.Src)))
+				logger.Println(styles.Error.Render(fmt.Sprintf("L Invalid engine value \"%s\"\n", micro.Src)))
 			default:
 				logger.Println(styles.Error.Render(fmt.Sprintf("L %v", err)))
 			}
@@ -109,7 +109,7 @@ func validate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger.Printf("⚙️  Validating Space Manifest file ...\n\n")
+	logger.Printf("⚙️ Validating Space Manifest file ...\n\n")
 
 	m, err := manifest.Open(validateDir)
 	if err != nil {

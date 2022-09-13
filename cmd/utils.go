@@ -41,11 +41,11 @@ func projectIDValidator(projectID string) error {
 
 func projectNotes(projectName string) string {
 	return fmt.Sprintf(`
-Notes:
-	- Find your project in Builder here: https://deta.space/builder/%s
-	- Your Space Manifest ("space.yml") contains the configuration of your project. 
-	  Please modify your "space.yml" file to add your first Micro. 
-	  Here is a reference: https://docs.deta.sh/manifest/add-micro
-	- To push your code and create a Revision, use the command "deta push".
+Next Steps:
+
+👀 Find your project in Builder: https://deta.space/builder/%s
+⚙️ Use the "space.yml" file to configure your app: https://alpha.deta.space/docs/en/reference/manifest
+⚡ Push your code to Space with "deta push"
+🚀 Launch your app to the world with "deta release"
 `, projectName)
 }
