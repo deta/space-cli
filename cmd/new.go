@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -53,10 +54,11 @@ func projectNameValidator(projectName string) error {
 	return nil
 }
 
-func selectProjectName() (string, error) {
+func selectProjectName(placeholder string) (string, error) {
+
 	promptInput := text.Input{
 		Prompt:      "What is your project's name?",
-		Placeholder: "default",
+		Placeholder: placeholder,
 		Validator:   projectNameValidator,
 	}
 
@@ -106,7 +108,18 @@ func new(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if isFlagEmpty(projectName) {
-		projectName, err = selectProjectName()
+
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		absWd, err := filepath.Abs(wd)
+		if err != nil {
+			return err
+		}
+		projectName = filepath.Base(absWd)
+
+		projectName, err = selectProjectName(projectName)
 		if err != nil {
 			return fmt.Errorf("problem while trying to get project's name through prompt, %w", err)
 		}
@@ -217,7 +230,7 @@ func new(cmd *cobra.Command, args []string) error {
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to create project with detected configuration
 		logger.Printf("👇 Deta detected the following configuration:\n\n")
-		logMicros(autoDetectedMicros)
+		logDetectedMicros(autoDetectedMicros)
 
 		create, err := confirm.Run(&confirm.Input{
 			Prompt: fmt.Sprintf("Do you want to bootstrap %s with this configuration?", projectName),

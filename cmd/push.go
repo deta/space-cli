@@ -106,7 +106,8 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error.Render("\nPlease try to fix the issues with your Space Manifest before pushing code."))
 		return nil
 	} else {
-		logger.Printf(styles.Green.Render("Your Space Manifest looks good, proceeding with your push!!\n"))
+		logValidationErrors(m, manifestErrors)
+		logger.Printf(styles.Green.Render("\nYour Space Manifest looks good, proceeding with your push!!\n"))
 	}
 
 	logger.Println("⚙️  Working on starting your build ...")

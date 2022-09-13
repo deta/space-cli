@@ -18,12 +18,11 @@ func logMicro(micro *shared.Micro) {
 	logger.Println(msg)
 }
 
-func logMicros(micros []*shared.Micro) {
-	logger.Println("Micros:")
+func logDetectedMicros(micros []*shared.Micro) {
 	for _, micro := range micros {
-		logMicro(micro)
+		logger.Printf("Micro found in \"%s/\"\n", micro.Src)
+		logger.Printf("L engine: %s\n\n", micro.Engine)
 	}
-	logger.Println()
 }
 
 func emptyPromptValidator(value string) error {

@@ -110,7 +110,7 @@ func link(cmd *cobra.Command, args []string) error {
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to link project with detected configuration
 		logger.Printf("👇 Deta detected the following configuration:\n\n")
-		logMicros(autoDetectedMicros)
+		logDetectedMicros(autoDetectedMicros)
 
 		link, err := confirm.Run(&confirm.Input{
 			Prompt: "Do you want to use this configuration?",
