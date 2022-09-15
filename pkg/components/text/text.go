@@ -81,11 +81,11 @@ func (m Model) View() string {
 	s := fmt.Sprintf(
 		"%s %s %s\n\n",
 		styles.Question,
-		m.Prompt,
+		styles.Bold(m.Prompt),
 		m.TextInput.View(),
 	)
 	if m.Err != nil {
-		s += styles.Error.Render(fmt.Sprintf("❗ Error: %s", m.Err.Error()))
+		s += styles.Error(fmt.Sprintf("❗ Error: %s", m.Err.Error()))
 	}
 	return s
 }

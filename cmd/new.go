@@ -105,6 +105,7 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 }
 
 func new(cmd *cobra.Command, args []string) error {
+	logger.Println()
 	var err error
 
 	projectDir = filepath.Clean(projectDir)
@@ -120,7 +121,8 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	if isProjectInitialized {
-		logger.Println("A project already exists in this directory. You can use \"deta push\" to create a Revision.")
+		logger.Println(styles.Error("\nA project already exists in this directory. You can use"),
+			styles.Code("deta push"), styles.Error("to create a Revision."))
 		return nil
 	}
 
@@ -150,7 +152,7 @@ func new(cmd *cobra.Command, args []string) error {
 	if blank || isEmpty {
 
 		logger.Println("⚙️ No Space Manifest found, trying to auto-detect configuration ...")
-		logger.Printf("⚙️ Empty directory detected, creating \"%s\" from scratch ...\n", projectName)
+		logger.Printf("⚙️ Empty directory detected, creating %s from scratch ...\n", styles.Pink(projectName))
 
 		_, err = manifest.CreateBlankManifest(projectDir)
 		if err != nil {
@@ -162,7 +164,7 @@ func new(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		logger.Printf("✅ Project \"%s\" created successfully!\n", projectName)
+		logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
 		logger.Println(projectNotes(projectName))
 		return nil
 	}
@@ -197,22 +199,22 @@ func new(cmd *cobra.Command, args []string) error {
 
 		if len(manifestErrors) > 0 {
 			logValidationErrors(m, manifestErrors)
-			logger.Println(styles.Error.Render(fmt.Sprintf("\nPlease fix the issues with your Space Manifest before creating %s.\n", projectName)))
-			logger.Printf("The Space Manifest documentation is here: https://docs.deta.sh/%s\n", projectName)
+			logger.Println(styles.Error(fmt.Sprintf("Please fix the issues with your Space Manifest before creating %s.\n", styles.Pink(projectName))))
+			logger.Printf("%s The Space Manifest documentation is here: %s", styles.Info, styles.Bold(fmt.Sprintf("https://docs.deta.sh/%s\n", projectName)))
 
 			return nil
 		} else {
 			logger.Printf("👍 Nice, your Space Manifest looks good!\n")
 		}
 
-		logger.Printf("⚙️ Creating project \"%s\" with your Space Manifest ...\n", projectName)
+		logger.Printf("⚙️ Creating project %s with your Space Manifest ...\n", styles.Pink(projectName))
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
 			return err
 		}
 
-		logger.Printf("✅ Project \"%s\" created successfully!\n", projectName)
+		logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
 		logger.Println(projectNotes(projectName))
 
 		return nil
@@ -232,7 +234,7 @@ func new(cmd *cobra.Command, args []string) error {
 		logDetectedMicros(autoDetectedMicros)
 
 		create, err := confirm.Run(&confirm.Input{
-			Prompt: fmt.Sprintf("Do you want to bootstrap %s with this configuration?", projectName),
+			Prompt: fmt.Sprintf("Do you want to bootstrap %s with this configuration?", styles.Pink(projectName)),
 		})
 		if err != nil {
 			return fmt.Errorf("problem while trying to get confirmation to create project with the auto-detected configuration from confirm prompt, %w", err)
@@ -240,7 +242,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 		// create project with detected config
 		if create {
-			logger.Printf("⚙️ Bootstrapping \"%s\" ...\n", projectName)
+			logger.Printf("⚙️ Bootstrapping %s ...\n", styles.Pink(projectName))
 
 			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
@@ -252,7 +254,7 @@ func new(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			logger.Printf("✅ Project \"%s\" created successfully!\n", projectName)
+			logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
 			logger.Println(projectNotes(projectName))
 
 			return nil
@@ -260,7 +262,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// don't create project with detected config, create blank project, point to docs
-	logger.Printf("⚙️ Creating \"%s\" from scratch ...\n", projectName)
+	logger.Printf("⚙️ Creating %s from scratch ...\n", styles.Pink(projectName))
 
 	_, err = manifest.CreateBlankManifest(projectDir)
 	if err != nil {
@@ -272,7 +274,7 @@ func new(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger.Printf("✅ Project \"%s\" created successfully!\n", projectName)
+	logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
 	logger.Println(projectNotes(projectName))
 
 	return nil

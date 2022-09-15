@@ -42,22 +42,22 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 			// general errors
 			switch {
 			case errors.Is(scanner.ErrExceedsMaxMicroLimit, err):
-				logger.Println(styles.Error.Render("❌ Validation Error: Manifest exceeds max micro limit. Please make sure to use a max of 5 micros."))
+				logger.Println(styles.Error("❌ Validation Error: Manifest exceeds max micro limit. Please make sure to use a max of 5 micros."))
 			case errors.Is(scanner.ErrDuplicateMicros, err):
-				logger.Println(styles.Error.Render("❌ Validation Error: Duplicate micro names. Please make sure to use unique names for micros."))
+				logger.Println(styles.Error("❌ Validation Error: Duplicate micro names. Please make sure to use unique names for micros."))
 			case errors.Is(scanner.ErrNoPrimaryMicro, err):
-				logger.Println(styles.Error.Render("❌ Validation Error: No primary micro specified. Please mark one of the micros as primary."))
+				logger.Println(styles.Error("❌ Validation Error: No primary micro specified. Please mark one of the micros as primary."))
 			case errors.Is(scanner.ErrInvalidIcon, err):
 				isIconValid = false
-				logger.Println(styles.Error.Render("❌ \"icon\": Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon."))
+				logger.Println(styles.Error("❌ \"icon\": Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon."))
 			default:
-				logger.Println(styles.Error.Render(fmt.Sprintf("❌ Validation Error: %v", err)))
+				logger.Println(styles.Error(fmt.Sprintf("❌ Validation Error: %v", err)))
 			}
 		}
 	}
 
 	if isIconValid {
-		logger.Println("✅ Icon")
+		logger.Printf("✅ Icon")
 	}
 
 	for _, micro := range m.Micros {
@@ -79,17 +79,17 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 		for _, err := range microErrors {
 			switch {
 			case errors.Is(scanner.ErrEmptyMicroName, err):
-				logger.Println(styles.Error.Render("L Missing \"name\"\n"))
+				logger.Println(styles.Error("L Missing \"name\"\n"))
 			case errors.Is(scanner.ErrEmptyMicroSrc, err):
-				logger.Println(styles.Error.Render("L Missing \"src\"\n"))
+				logger.Println(styles.Error("L Missing \"src\"\n"))
 			case errors.Is(scanner.ErrEmptyMicroEngine, err):
-				logger.Println(styles.Error.Render("L Missing \"engine\"\n"))
+				logger.Println(styles.Error("L Missing \"engine\"\n"))
 			case errors.Is(scanner.ErrInvalidMicroSrc, err):
-				logger.Println(styles.Error.Render(fmt.Sprintf("L Cannot find src for micro \"%s\"\n", micro.Src)))
+				logger.Println(styles.Error(fmt.Sprintf("L Cannot find src for micro \"%s\"\n", micro.Src)))
 			case errors.Is(scanner.ErrInvalidMicroEngine, err):
-				logger.Println(styles.Error.Render(fmt.Sprintf("L Invalid engine value \"%s\"\n", micro.Src)))
+				logger.Println(styles.Error(fmt.Sprintf("L Invalid engine value \"%s\"\n", micro.Src)))
 			default:
-				logger.Println(styles.Error.Render(fmt.Sprintf("L %v", err)))
+				logger.Println(styles.Error(fmt.Sprintf("L %v", err)))
 			}
 		}
 	}
@@ -121,9 +121,9 @@ func validate(cmd *cobra.Command, args []string) error {
 	logValidationErrors(m, manifestErrors)
 
 	if len(manifestErrors) == 0 {
-		logger.Println(styles.Green.Render("\n✨ Manifest looks good!"))
+		logger.Println(styles.Green("\n✨ Manifest looks good!"))
 	} else {
-		logger.Println(styles.Error.Render("\n❗ Detected some issues with your Space Manifest. Please fix them before pushing your code."))
+		logger.Println(styles.Error("\n❗ Detected some issues with your Space Manifest. Please fix them before pushing your code."))
 	}
 	return nil
 }

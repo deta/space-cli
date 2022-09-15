@@ -40,7 +40,7 @@ func login(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger.Println(styles.Green.Render("👍 Login Successful!"))
+	logger.Println(styles.Green("👍 Login Successful!"))
 
 	return nil
 }

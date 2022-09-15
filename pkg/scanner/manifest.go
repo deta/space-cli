@@ -50,7 +50,7 @@ func (me *MicroError) Error() string {
 // ValidateManifest checks for general errors such as duplicate micros and max micro limit
 func ValidateManifest(m *manifest.Manifest) []error {
 
-	var isPrimaryMicroPresent bool
+	var primarySpecified bool
 
 	// microNames used to check if micros are unique
 	microNames := make(map[string]struct{})
@@ -71,7 +71,7 @@ func ValidateManifest(m *manifest.Manifest) []error {
 			errors = append(errors, ErrDuplicateMicros)
 		}
 		if micro.Primary {
-			isPrimaryMicroPresent = true
+			primarySpecified = true
 		}
 		microNames[micro.Name] = struct{}{}
 		microErrors := ValidateMicro(micro)
@@ -82,7 +82,7 @@ func ValidateManifest(m *manifest.Manifest) []error {
 		}
 	}
 
-	if !isPrimaryMicroPresent && len(m.Micros) > 1 {
+	if !primarySpecified && len(m.Micros) > 1 {
 		errors = append(errors, ErrNoPrimaryMicro)
 	}
 

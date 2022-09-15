@@ -49,7 +49,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return fmt.Sprintf("%s %s %s\n\n", styles.Question, m.Prompt, styles.Subtle.Render("(y/n)"))
+	return fmt.Sprintf("%s %s %s\n\n", styles.Question, styles.Bold(m.Prompt), styles.Subtle("(y/n)"))
 }
 
 func Run(i *Input) (bool, error) {

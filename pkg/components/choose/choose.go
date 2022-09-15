@@ -82,7 +82,7 @@ func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 func choicesView(m Model) string {
 	c := m.Cursor
 
-	tpl := fmt.Sprintf("%s %s  \n\n", styles.Question, m.Prompt)
+	tpl := fmt.Sprintf("%s %s  \n\n", styles.Question, styles.Bold(m.Prompt))
 
 	tpl += "%s\n"
 	choices := ""
@@ -95,7 +95,7 @@ func choicesView(m Model) string {
 	}
 
 	if m.Quitting && m.Chosen {
-		tpl += fmt.Sprintf("\n%s Selected %s\n\n", styles.SelectTag, styles.Highlight.Render(m.Choices[m.Cursor]))
+		tpl += fmt.Sprintf("\n%s Selected %s\n\n", styles.SelectTag, styles.Pink(m.Choices[m.Cursor]))
 	}
 	return fmt.Sprintf(tpl, choices)
 }
