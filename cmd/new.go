@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/manifest"
@@ -38,7 +39,7 @@ func init() {
 
 func getDefaultAlias(projectName string) string {
 	aliasRegexp := regexp.MustCompile(`/([^\w])/g,`)
-	return aliasRegexp.ReplaceAllString(projectName, "")
+	return strings.ToLower(aliasRegexp.ReplaceAllString(projectName, ""))
 }
 
 func projectNameValidator(projectName string) error {
