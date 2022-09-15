@@ -118,7 +118,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	logger.Println("⚙️  Creating a Release...")
+	logger.Printf("⚙️ Creating a Release ...\n\n")
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:  revisionID,
 		AppID:       releaseProjectID,
@@ -145,7 +145,7 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Printf("Error: %v\n", err)
 		return nil
 	}
-	logger.Println("🚀 Lift off -- successfully created a new Release!")
+	logger.Println("\n🚀 Lift off -- successfully created a new Release!")
 	logger.Println("🌍 Your Release is available globally on 5 Deta Edges")
 	logger.Println("🥳 Anyone can install their own copy of your app.")
 	return nil

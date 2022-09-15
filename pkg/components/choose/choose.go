@@ -95,7 +95,7 @@ func choicesView(m Model) string {
 	}
 
 	if m.Quitting && m.Chosen {
-		tpl += fmt.Sprintf("\n%s selected %s\n\n", styles.SelectTag, styles.Highlight.Render(m.Choices[m.Cursor]))
+		tpl += fmt.Sprintf("\n%s Selected %s\n\n", styles.SelectTag, styles.Highlight.Render(m.Choices[m.Cursor]))
 	}
 	return fmt.Sprintf(tpl, choices)
 }

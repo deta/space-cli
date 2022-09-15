@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -54,10 +55,11 @@ func projectNameValidator(projectName string) error {
 	return nil
 }
 
-func selectProjectName() (string, error) {
+func selectProjectName(placeholder string) (string, error) {
+
 	promptInput := text.Input{
 		Prompt:      "What is your project's name?",
-		Placeholder: "default",
+		Placeholder: placeholder,
 		Validator:   projectNameValidator,
 	}
 
@@ -106,13 +108,6 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 func new(cmd *cobra.Command, args []string) error {
 	var err error
 
-	if isFlagEmpty(projectName) {
-		projectName, err = selectProjectName()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get project's name through prompt, %w", err)
-		}
-	}
-
 	projectDir = filepath.Clean(projectDir)
 
 	runtimeManager, err := runtime.NewManager(&projectDir, true)
@@ -130,6 +125,23 @@ func new(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if isFlagEmpty(projectName) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		absWd, err := filepath.Abs(wd)
+		if err != nil {
+			return err
+		}
+		projectName = filepath.Base(absWd)
+
+		projectName, err = selectProjectName(projectName)
+		if err != nil {
+			return fmt.Errorf("problem while trying to get project's name through prompt, %w", err)
+		}
+	}
+
 	isEmpty, err := fs.IsEmpty(projectDir)
 	if err != nil {
 		return fmt.Errorf("problem while trying to check contents of dir %s, %w", projectDir, err)
@@ -138,8 +150,8 @@ func new(cmd *cobra.Command, args []string) error {
 	// create blank project if blank flag provided or if project folder is empty
 	if blank || isEmpty {
 
-		logger.Println("⚙️  No Space Manifest found, trying to auto-detect configuration ...")
-		logger.Printf("⚙️  Empty directory detected, creating \"%s\" from scratch ...\n", projectName)
+		logger.Println("⚙️ No Space Manifest found, trying to auto-detect configuration ...")
+		logger.Printf("⚙️ Empty directory detected, creating \"%s\" from scratch ...\n", projectName)
 
 		_, err = manifest.CreateBlankManifest(projectDir)
 		if err != nil {
@@ -172,7 +184,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf("⚙️  Space Manifest found locally, validating Space Manifest ...\n\n")
+		logger.Printf("⚙️ Space Manifest found locally, validating Space Manifest ...\n\n")
 		logger.Printf("Validating Space Manifest ...\n\n")
 
 		m, err := manifest.Open(projectDir)
@@ -186,15 +198,15 @@ func new(cmd *cobra.Command, args []string) error {
 
 		if len(manifestErrors) > 0 {
 			logValidationErrors(m, manifestErrors)
-			logger.Println(styles.Error.Render("\nPlease fix the issues with your Space Manifest before creating webcrate."))
-			logger.Println("The Space Manifest documentation is here: https://docs.deta.sh/manifest")
+			logger.Println(styles.Error.Render(fmt.Sprintf("\nPlease fix the issues with your Space Manifest before creating %s.\n", projectName)))
+			logger.Printf("The Space Manifest documentation is here: https://docs.deta.sh/%s\n", projectName)
 
 			return nil
 		} else {
 			logger.Printf("👍 Nice, your Space Manifest looks good!\n")
 		}
 
-		logger.Printf("⚙️  Creating project \"%s\" with your Space Manifest ...\n", projectName)
+		logger.Printf("⚙️ Creating project \"%s\" with your Space Manifest ...\n", projectName)
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
@@ -208,7 +220,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// no yaml present, auto-detect micros
-	logger.Println("⚙️  No Space Manifest found, trying to auto-detect configuration ...")
+	logger.Println("⚙️ No Space Manifest found, trying to auto-detect configuration ...")
 
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
@@ -218,10 +230,10 @@ func new(cmd *cobra.Command, args []string) error {
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to create project with detected configuration
 		logger.Printf("👇 Deta detected the following configuration:\n\n")
-		logMicros(autoDetectedMicros)
+		logDetectedMicros(autoDetectedMicros)
 
 		create, err := confirm.Run(&confirm.Input{
-			Prompt: "Do you want to bootstrap webcrate with this configuration?",
+			Prompt: fmt.Sprintf("Do you want to bootstrap %s with this configuration?", projectName),
 		})
 		if err != nil {
 			return fmt.Errorf("problem while trying to get confirmation to create project with the auto-detected configuration from confirm prompt, %w", err)
@@ -229,7 +241,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 		// create project with detected config
 		if create {
-			logger.Printf("⚙️  Bootstrapping \"%s\" ...\n", projectName)
+			logger.Printf("⚙️ Bootstrapping \"%s\" ...\n", projectName)
 
 			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
@@ -249,7 +261,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// don't create project with detected config, create blank project, point to docs
-	logger.Printf("⚙️  Creating \"%s\" from scratch ...\n", projectName)
+	logger.Printf("⚙️ Creating \"%s\" from scratch ...\n", projectName)
 
 	_, err = manifest.CreateBlankManifest(projectDir)
 	if err != nil {

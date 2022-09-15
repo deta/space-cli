@@ -92,13 +92,6 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println("No Space Manifest is present. Please add a Space Manifest before pushing code.")
 	}
 
-	if isFlagEmpty(pushTag) {
-		pushTag, err = selectPushTag()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get tag from prompt, %w", err)
-		}
-	}
-
 	// parse manifest and validate
 	logger.Printf("Validating Space Manifest...\n\n")
 
@@ -114,17 +107,18 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error.Render("\nPlease try to fix the issues with your Space Manifest before pushing code."))
 		return nil
 	} else {
-		logger.Printf(styles.Green.Render("Your Space Manifest looks good, proceeding with your push!!\n"))
+		logValidationErrors(m, manifestErrors)
+		logger.Printf(styles.Green.Render("\nYour Space Manifest looks good, proceeding with your push!!\n"))
 	}
 
-	logger.Println("⚙️  Working on starting your build ...")
+	logger.Println("⚙️ Working on starting your build ...")
 	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: "nd"})
 	if err != nil {
 		return err
 	}
 	logger.Println("✅ Successfully started your build!")
 
-	logger.Println("⚙️  Pushing your Space Manifest...")
+	logger.Println("⚙️ Pushing your Space Manifest...")
 	raw, err := manifest.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
@@ -137,7 +131,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	logger.Println("✅ Successfully pushed your Space Manifest!")
 
-	logger.Println("⚙️  Pushing your code...")
+	logger.Printf("⚙️ Pushing your code ...\n\n")
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -166,7 +160,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("Error: %v\n", err)
 		return nil
 	}
-	logger.Printf("🎉 Successfully pushed your code and created a new Revision!\n\n")
+	logger.Printf("\n🎉 Successfully pushed your code and created a new Revision!\n\n")
 	logger.Println("Run \"deta release\" to create an installable Release for this Revision.")
 	return nil
 }
