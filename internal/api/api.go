@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 )
 
 const (
-	spaceRoot = "https://d8xfzk.deta.dev" // "https://alpha.deta.space"
+	spaceRoot = "https://alpha.deta.space/api" // "https://alpha.deta.space"
+	//spaceRoot = "http://localhost:9900/api"
 	version   = "v0"
 )
 
@@ -83,7 +85,7 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 		return nil, err
 	}
 
-	if o.Status != 200 {
+	if o.Status != 201 {
 		msg := o.Error.Detail
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
@@ -94,7 +96,7 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 	var resp CreateProjectResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new program: %w", err)
+		return nil, fmt.Errorf("failed to create new project: %w", err)
 	}
 	return &resp, nil
 }
@@ -104,6 +106,7 @@ type CreateReleaseRequest struct {
 	AppID       string `json:"app_id"`
 	Version     string `json:"version"`
 	Description string `json:"description"`
+	Channel string `json:"channel"`
 }
 
 type CreateReleaseResponse struct {
@@ -124,8 +127,7 @@ func (c *DetaClient) CreateRelease(r *CreateReleaseRequest) (*CreateReleaseRespo
 		return nil, err
 	}
 
-	if o.Status != 200 {
-
+	if o.Status != 202 {
 		msg := o.Error.Detail
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
@@ -145,18 +147,18 @@ type GetReleaseLogsRequest struct {
 	ID string `json:"id"`
 }
 
-func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest, logs chan<- string) error {
+func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, error){
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/promotions/%s/logs/?follow=true", version, r.ID),
+		Path:      fmt.Sprintf("/%s/promotions/%s/logs?follow=true", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
-		LogStream: logs,
+		ReturnReadCloser: true,
 	}
 
 	o, err := c.request(i)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if o.Status != 200 {
@@ -164,10 +166,9 @@ func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest, logs chan<- string
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return fmt.Errorf("failed to create release: %v", msg)
+		return nil, fmt.Errorf("failed to create release: %v", msg)
 	}
-
-	return nil
+	return o.BodyReadCloser, nil
 }
 
 type GetRevisionsRequest struct {
@@ -243,7 +244,7 @@ func (c *DetaClient) CreateBuild(r *CreateBuildRequest) (*CreateBuildResponse, e
 	i := &requestInput{
 		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/builds", version),
-		Method:    "GET",
+		Method:    "POST",
 		NeedsAuth: true,
 		Body:      r,
 	}
@@ -253,7 +254,7 @@ func (c *DetaClient) CreateBuild(r *CreateBuildRequest) (*CreateBuildResponse, e
 		return nil, err
 	}
 
-	if o.Status != 200 {
+	if o.Status != 202 {
 		msg := o.Error.Detail
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
@@ -355,18 +356,18 @@ type GetBuildLogsRequest struct {
 	BuildID string `json:"build_id"`
 }
 
-func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest, logs chan<- string) error {
+func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest) (io.ReadCloser, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/builds/%s/logs/?follow=true", version, r.BuildID),
+		Path:      fmt.Sprintf("/%s/builds/%s/logs?follow=true", version, r.BuildID),
 		Method:    "GET",
 		NeedsAuth: true,
-		LogStream: logs,
+		ReturnReadCloser: true,
 	}
 
 	o, err := c.request(i)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if o.Status != 200 {
@@ -374,8 +375,7 @@ func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest, logs chan<- string) er
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return fmt.Errorf("failed to get build logs: %v", msg)
+		return nil, fmt.Errorf("failed to get build logs: %v", msg)
 	}
-
-	return nil
+	return o.BodyReadCloser, nil
 }

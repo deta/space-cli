@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"path/filepath"
 
@@ -111,7 +112,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Println("⚙️ Working on starting your build ...")
-	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: "nd"})
+	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
 	if err != nil {
 		return err
 	}
@@ -141,20 +142,24 @@ func push(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	buildLogs := make(chan string)
-	getLogs := func() {
-		err = client.GetBuildLogs(&api.GetBuildLogsRequest{BuildID: br.ID}, buildLogs)
-		if err != nil {
-			logger.Fatal(err)
-		}
-		close(buildLogs)
-	}
-	go getLogs()
-
-	for msg := range buildLogs {
-		logger.Print(msg)
+	logger.Println("⚙️  Starting your build...")
+	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
+		BuildID: br.ID,
+	})
+	if err != nil {
+		logger.Printf("Error: %v\n", err)
+		return nil
 	}
 
+	defer readCloser.Close()
+	scanner := bufio.NewScanner(readCloser)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Printf("Error: %v\n", err)
+		return nil
+	}
 	logger.Printf("\n🎉 Successfully pushed your code and created a new Revision!\n\n")
 	logger.Println("Run \"deta release\" to create an installable Release for this Revision.")
 	return nil

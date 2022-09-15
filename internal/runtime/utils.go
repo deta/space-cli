@@ -14,7 +14,7 @@ func shouldSkip(path string) bool {
 	skipPaths := []string{"node_modules"}
 
 	for _, skipPath := range skipPaths {
-		if strings.Contains(skipPath, path) {
+		if strings.Contains(path, skipPath) {
 			return true
 		}
 	}
