@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -40,25 +39,24 @@ type requestInput struct {
 	Body        interface{}
 	NeedsAuth   bool
 	ContentType string
-	LogStream   chan<- string
+	ReturnReadCloser bool
 }
 
 // requestOutput ouput of Request function
 type requestOutput struct {
 	Status int
 	Body   []byte
+	BodyReadCloser io.ReadCloser
 	Header http.Header
 	Error  *errorResp
 }
 
 // Request send an http request to the deta api
 func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
-	marshalled := []byte("")
-	if i.Body != nil {
+	marshalled, _ := i.Body.([]byte)
+	if i.Body != nil && i.ContentType == ""{
 		// default set content-type to application/json
-		if i.ContentType == "" {
-			i.ContentType = "application/json"
-		}
+		i.ContentType = "application/json"
 		var err error
 		marshalled, err = json.Marshal(&i.Body)
 		if err != nil {
@@ -120,32 +118,22 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
 
-	var b []byte
-
-	if i.LogStream != nil {
-		reader := bufio.NewReader(res.Body)
-		for {
-			line, err := reader.ReadBytes('\n')
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return nil, err
-			}
-			i.LogStream <- string(line)
-		}
-	} else {
-		b, err = ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	o := &requestOutput{
 		Status: res.StatusCode,
 		Header: res.Header,
+	}
+
+	if i.ReturnReadCloser && res.StatusCode >= 200 && res.StatusCode <= 299 {
+		o.BodyReadCloser = res.Body
+		return o, nil
+	}
+
+	defer res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	if res.StatusCode >= 200 && res.StatusCode <= 299 {
@@ -156,19 +144,16 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	}
 
 	var er errorResp
-
 	if res.StatusCode == 413 {
 		er.Detail = "Request entity too large"
 		o.Error = &er
 		return o, nil
 	}
-
 	if res.StatusCode == 502 {
 		er.Detail = "Internal server error"
 		o.Error = &er
 		return o, nil
 	}
-
 	err = json.Unmarshal(b, &er)
 	if err != nil {
 		return nil, err

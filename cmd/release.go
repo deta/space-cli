@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"path/filepath"
 
@@ -127,20 +128,23 @@ func release(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	logs := make(chan string)
-	go func() {
-		err = client.GetReleaseLogs(&api.GetReleaseLogsRequest{ID: cr.ID}, logs)
-		if err != nil {
-			logger.Fatal(err)
-		}
-		close(logs)
-	}()
-
-	for msg := range logs {
-		logger.Print(msg)
+	readCloser, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
+		ID: cr.ID,
+	})
+	if err != nil {
+		logger.Printf("Error: %v\n", err)
+		return nil
 	}
 
+	defer readCloser.Close()
+	scanner := bufio.NewScanner(readCloser)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Printf("Error: %v\n", err)
+		return nil
+	}
 	logger.Println("🚀 Lift off -- successfully created a new Release!")
 	logger.Println("🌍 Your Release is available globally on 5 Deta Edges")
 	logger.Println("🥳 Anyone can install their own copy of your app.")
