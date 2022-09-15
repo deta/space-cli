@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/runtime"
@@ -11,6 +12,10 @@ import (
 	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/spf13/cobra"
+)
+
+const (
+	ReleaseChannelExp = "experimental"
 )
 
 var (
@@ -124,6 +129,7 @@ func release(cmd *cobra.Command, args []string) error {
 		AppID:       releaseProjectID,
 		Version:     releaseVersion,
 		Description: releaseDesc,
+		Channel: ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {
 		return err
@@ -139,7 +145,11 @@ func release(cmd *cobra.Command, args []string) error {
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+		line := scanner.Text()
+		fmt.Println(line)
+		if strings.Contains(line, "error:"){
+			return nil
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Printf("Error: %v\n", err)

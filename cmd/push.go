@@ -112,7 +112,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Println("⚙️ Working on starting your build ...")
-	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: "nd"})
+	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
 	if err != nil {
 		return err
 	}

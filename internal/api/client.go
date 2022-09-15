@@ -26,7 +26,7 @@ func NewDetaClient() *DetaClient {
 
 type errorResp struct {
 	Errors []string `json:"errors,omitempty"`
-	Detail string   `json:"message,omitempty"`
+	Detail string   `json:"detail,omitempty"`
 }
 
 // requestInput input to Request function
@@ -135,7 +135,6 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if res.StatusCode >= 200 && res.StatusCode <= 299 {
 		if res.StatusCode != 204 {
 			o.Body = b

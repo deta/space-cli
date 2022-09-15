@@ -8,6 +8,7 @@ import (
 
 const (
 	spaceRoot = "https://alpha.deta.space/api" // "https://alpha.deta.space"
+	//spaceRoot = "http://localhost:9900/api"
 	version   = "v0"
 )
 
@@ -105,6 +106,7 @@ type CreateReleaseRequest struct {
 	AppID       string `json:"app_id"`
 	Version     string `json:"version"`
 	Description string `json:"description"`
+	Channel string `json:"channel"`
 }
 
 type CreateReleaseResponse struct {
@@ -125,8 +127,7 @@ func (c *DetaClient) CreateRelease(r *CreateReleaseRequest) (*CreateReleaseRespo
 		return nil, err
 	}
 
-	if o.Status != 200 {
-
+	if o.Status != 202 {
 		msg := o.Error.Detail
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
@@ -149,7 +150,7 @@ type GetReleaseLogsRequest struct {
 func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, error){
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/promotions/%s/logs/?follow=true", version, r.ID),
+		Path:      fmt.Sprintf("/%s/promotions/%s/logs?follow=true", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
 		ReturnReadCloser: true,
