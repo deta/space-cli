@@ -38,7 +38,7 @@ func init() {
 }
 
 func getDefaultAlias(projectName string) string {
-	aliasRegexp := regexp.MustCompile(`/([^\w])/g,`)
+	aliasRegexp := regexp.MustCompile(`([^\w])`)
 	return strings.ToLower(aliasRegexp.ReplaceAllString(projectName, ""))
 }
 
@@ -166,7 +166,11 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 
 		logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
-		logger.Println(projectNotes(projectName))
+		projectInfo, err := runtimeManager.GetProjectMeta()
+		if err != nil {
+			return fmt.Errorf("failed to retrieve project info")
+		}
+		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 		return nil
 	}
 
@@ -201,7 +205,7 @@ func new(cmd *cobra.Command, args []string) error {
 		if len(manifestErrors) > 0 {
 			logValidationErrors(m, manifestErrors)
 			logger.Println(styles.Error(fmt.Sprintf("Please fix the issues with your Space Manifest before creating %s.\n", styles.Pink(projectName))))
-			logger.Printf("%s The Space Manifest documentation is here: %s", styles.Info, styles.Bold(fmt.Sprintf("https://docs.deta.sh/%s\n", projectName)))
+			logger.Printf("%s The Space Manifest documentation is here: %s", styles.Info, styles.Bold("https://alpha.deta.space/docs/en/reference/manifest"))
 
 			return nil
 		} else {
@@ -216,8 +220,11 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 
 		logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
-		logger.Println(projectNotes(projectName))
-
+		projectInfo, err := runtimeManager.GetProjectMeta()
+		if err != nil {
+			return fmt.Errorf("failed to retrieve project info")
+		}
+		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 		return nil
 	}
 
@@ -256,8 +263,11 @@ func new(cmd *cobra.Command, args []string) error {
 			}
 
 			logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
-			logger.Println(projectNotes(projectName))
-
+			projectInfo, err := runtimeManager.GetProjectMeta()
+			if err != nil {
+				return fmt.Errorf("failed to retrieve project info")
+			}
+			logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 			return nil
 		}
 	}
@@ -276,7 +286,11 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
-	logger.Println(projectNotes(projectName))
+	projectInfo, err := runtimeManager.GetProjectMeta()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve project info")
+	}
+	logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 
 	return nil
 }

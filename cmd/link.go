@@ -9,6 +9,7 @@ import (
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/confirm"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
@@ -41,6 +42,7 @@ func selectLinkProjectID() (string, error) {
 }
 
 func link(cmd *cobra.Command, args []string) error {
+	logger.Println()
 	var err error
 
 	if isFlagEmpty(linkProjectID) {
@@ -68,7 +70,7 @@ func link(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		logger.Printf("🤠 This directory is already linked to a project named \"%s\".\n", existingProjectMeta.Name)
-		logger.Println(projectNotes(existingProjectMeta.Name))
+		logger.Println(projectNotes(existingProjectMeta.Name, existingProjectMeta.ID))
 		return nil
 	}
 
@@ -84,7 +86,7 @@ func link(cmd *cobra.Command, args []string) error {
 		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 		if err != nil {
 			if errors.Is(err, api.ErrProjectNotFound) {
-				logger.Println("❗ No project found. Please provide a valid Project ID.")
+				logger.Println(styles.Error("❗ No project found. Please provide a valid Project ID."))
 				return nil
 			}
 			return err
@@ -95,8 +97,12 @@ func link(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to link project, %w", err)
 		}
 
-		logger.Printf("🔗 Project \"%s\" was linked!\n", project.Name)
-		logger.Println(projectNotes(project.Name))
+		logger.Println(styles.Green("🔗 Project"), styles.Pink(project.Name), styles.Green("was linked!"))
+		projectInfo, err := runtimeManager.GetProjectMeta()
+		if err != nil {
+			return fmt.Errorf("failed to retrieve project info")
+		}
+		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 		return nil
 	}
 
@@ -126,7 +132,7 @@ func link(cmd *cobra.Command, args []string) error {
 			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 			if err != nil {
 				if errors.Is(err, api.ErrProjectNotFound) {
-					logger.Println("No project found. Please provide a valid Project ID.")
+					logger.Println(styles.Error("❗ No project found. Please provide a valid Project ID."))
 					return nil
 				}
 				return err
@@ -143,8 +149,12 @@ func link(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to link project, %w", err)
 			}
 
-			logger.Printf("🔗 Project \"%s\" was linked!\n", project.Name)
-			logger.Println(projectNotes(project.Name))
+			logger.Println(styles.Green("🔗 Project"), styles.Pink(project.Name), styles.Green("was linked!"))
+			projectInfo, err := runtimeManager.GetProjectMeta()
+			if err != nil {
+				return fmt.Errorf("failed to retrieve project info")
+			}
+			logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 			return nil
 		}
 	}
@@ -155,7 +165,7 @@ func link(cmd *cobra.Command, args []string) error {
 	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 	if err != nil {
 		if errors.Is(err, api.ErrProjectNotFound) {
-			logger.Println("No project found. Please provide a valid Project ID.")
+			logger.Println(styles.Error("❗ No project found. Please provide a valid Project ID."))
 			return nil
 		}
 		return err
@@ -172,7 +182,11 @@ func link(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
 
-	logger.Printf("🔗 Project \"%s\" was linked!\n", project.Name)
-	logger.Println(projectNotes(project.Name))
+	logger.Println(styles.Green("🔗 Project"), styles.Pink(project.Name), styles.Green("was linked!"))
+	projectInfo, err := runtimeManager.GetProjectMeta()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve project info")
+	}
+	logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 	return nil
 }

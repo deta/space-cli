@@ -10,6 +10,7 @@ import (
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/spf13/cobra"
 )
@@ -69,7 +70,7 @@ func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
 }
 
 func release(cmd *cobra.Command, args []string) error {
-
+	logger.Println()
 	releaseDir = filepath.Clean(releaseDir)
 
 	runtimeManager, err := runtime.NewManager(&releaseDir, true)
@@ -89,7 +90,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 		releaseProjectID = projectMeta.ID
 	} else if isFlagEmpty(releaseProjectID) {
-		logger.Printf("> No project was found locally. You can still create a Release by providing a valid Project ID.\n\n")
+		logger.Printf("%s No project was found locally. You can still create a Release by providing a valid Project ID.\n\n", styles.Info)
 
 		releaseProjectID, err = selectProjectID()
 		if err != nil {
@@ -129,7 +130,7 @@ func release(cmd *cobra.Command, args []string) error {
 		AppID:       releaseProjectID,
 		Version:     releaseVersion,
 		Description: releaseDesc,
-		Channel: ReleaseChannelExp, // always experimental release for now
+		Channel:     ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {
 		return err
@@ -147,7 +148,7 @@ func release(cmd *cobra.Command, args []string) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Println(line)
-		if strings.Contains(line, "error:"){
+		if strings.Contains(line, "error:") {
 			return nil
 		}
 	}
@@ -155,8 +156,9 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Printf("Error: %v\n", err)
 		return nil
 	}
-	logger.Println("\n🚀 Lift off -- successfully created a new Release!")
-	logger.Println("🌍 Your Release is available globally on 5 Deta Edges")
-	logger.Println("🥳 Anyone can install their own copy of your app.")
+	logger.Println()
+	logger.Println(styles.Info, " 🚀 Lift off -- successfully created a new Release!")
+	logger.Println(styles.Info, " 🌍 Your Release is available globally on 5 Deta Edges")
+	logger.Println(styles.Info, " 🥳 Anyone can install their own copy of your app.")
 	return nil
 }

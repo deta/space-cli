@@ -30,6 +30,7 @@ func selectAccessToken() (string, error) {
 }
 
 func login(cmd *cobra.Command, args []string) error {
+	logger.Println()
 	accessToken, err := selectAccessToken()
 	if err != nil {
 		return err

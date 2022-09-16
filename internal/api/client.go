@@ -31,30 +31,30 @@ type errorResp struct {
 
 // requestInput input to Request function
 type requestInput struct {
-	Root        string
-	Path        string
-	Method      string
-	Headers     map[string]string
-	QueryParams map[string]string
-	Body        interface{}
-	NeedsAuth   bool
-	ContentType string
+	Root             string
+	Path             string
+	Method           string
+	Headers          map[string]string
+	QueryParams      map[string]string
+	Body             interface{}
+	NeedsAuth        bool
+	ContentType      string
 	ReturnReadCloser bool
 }
 
 // requestOutput ouput of Request function
 type requestOutput struct {
-	Status int
-	Body   []byte
+	Status         int
+	Body           []byte
 	BodyReadCloser io.ReadCloser
-	Header http.Header
-	Error  *errorResp
+	Header         http.Header
+	Error          *errorResp
 }
 
 // Request send an http request to the deta api
 func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	marshalled, _ := i.Body.([]byte)
-	if i.Body != nil && i.ContentType == ""{
+	if i.Body != nil && i.ContentType == "" {
 		// default set content-type to application/json
 		i.ContentType = "application/json"
 		var err error
@@ -118,7 +118,6 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	if err != nil {
 		return nil, err
 	}
-
 
 	o := &requestOutput{
 		Status: res.StatusCode,

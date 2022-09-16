@@ -33,7 +33,7 @@ func projectIDValidator(projectID string) error {
 	return nil
 }
 
-func projectNotes(projectName string) string {
+func projectNotes(projectName string, projectId string) string {
 	return fmt.Sprintf(`
 %s
 
@@ -42,7 +42,7 @@ func projectNotes(projectName string) string {
 ⚡ Push your code to Space with %s
 🚀 Launch your app to the world with %s
 `, styles.Bold("Next steps:"),
-		styles.Bold(fmt.Sprintf("https://deta.space/builder/%s", projectName)),
+		styles.Bold(fmt.Sprintf("https://alpha.deta.space/builder/%s", projectId)),
 		styles.Code("Space Manifest (space.yml)"), styles.Bold("https://alpha.deta.space/docs/en/reference/manifest"),
 		styles.Code("deta push"), styles.Code("deta release"))
 }

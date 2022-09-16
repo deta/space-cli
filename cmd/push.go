@@ -52,7 +52,7 @@ func selectPushTag() (string, error) {
 }
 
 func push(cmd *cobra.Command, args []string) error {
-
+	logger.Println()
 	var err error
 
 	pushProjectDir = filepath.Clean(pushProjectDir)
@@ -74,7 +74,7 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		pushProjectID = projectMeta.ID
 	} else if isFlagEmpty(pushProjectID) {
-		logger.Printf("> No project was found in the current directory.\n\n")
+		logger.Printf("%s No project was found in the current directory.\n\n", styles.Info)
 		logger.Printf("You can still push by providing a valid Project ID.\n\n")
 
 		pushProjectID, err = selectPushProjectID()
@@ -89,7 +89,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isManifestPrsent {
-		logger.Println("No Space Manifest is present. Please add a Space Manifest before pushing code.")
+		logger.Println(styles.Error("No Space Manifest is present. Please add a Space Manifest before pushing code."))
 	}
 
 	// parse manifest and validate
@@ -97,7 +97,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	m, err := manifest.Open(projectDir)
 	if err != nil {
-		logger.Printf("❗ Error: %v\n", err)
+		logger.Println(styles.Error(fmt.Sprintf("❗ Error: %v", err)))
 		return nil
 	}
 	manifestErrors := scanner.ValidateManifest(m)
@@ -131,7 +131,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	logger.Println("✅ Successfully pushed your Space Manifest!")
 
-	logger.Printf("⚙️ Pushing your code ...\n\n")
+	logger.Printf("⚙️ Pushing your code ...\n")
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("Error: %v\n", err)
 		return nil
 	}
-	logger.Printf("\n🎉 Successfully pushed your code and created a new Revision!\n\n")
-	logger.Println("Run \"deta release\" to create an installable Release for this Revision.")
+	logger.Println(styles.Green("\n🎉 Successfully pushed your code and created a new Revision!\n"))
+	logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("deta release"))
 	return nil
 }

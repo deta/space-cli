@@ -96,7 +96,7 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 }
 
 func validate(cmd *cobra.Command, args []string) error {
-
+	logger.Println()
 	validateDir = filepath.Clean(validateDir)
 
 	isManifestPresent, err := manifest.IsManifestPresent(validateDir)

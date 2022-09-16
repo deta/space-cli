@@ -9,7 +9,7 @@ import (
 const (
 	spaceRoot = "https://alpha.deta.space/api" // "https://alpha.deta.space"
 	//spaceRoot = "http://localhost:9900/api"
-	version   = "v0"
+	version = "v0"
 )
 
 var (
@@ -106,7 +106,7 @@ type CreateReleaseRequest struct {
 	AppID       string `json:"app_id"`
 	Version     string `json:"version"`
 	Description string `json:"description"`
-	Channel string `json:"channel"`
+	Channel     string `json:"channel"`
 }
 
 type CreateReleaseResponse struct {
@@ -147,12 +147,12 @@ type GetReleaseLogsRequest struct {
 	ID string `json:"id"`
 }
 
-func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, error){
+func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/promotions/%s/logs?follow=true", version, r.ID),
-		Method:    "GET",
-		NeedsAuth: true,
+		Root:             spaceRoot,
+		Path:             fmt.Sprintf("/%s/promotions/%s/logs?follow=true", version, r.ID),
+		Method:           "GET",
+		NeedsAuth:        true,
 		ReturnReadCloser: true,
 	}
 
@@ -358,10 +358,10 @@ type GetBuildLogsRequest struct {
 
 func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest) (io.ReadCloser, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/builds/%s/logs?follow=true", version, r.BuildID),
-		Method:    "GET",
-		NeedsAuth: true,
+		Root:             spaceRoot,
+		Path:             fmt.Sprintf("/%s/builds/%s/logs?follow=true", version, r.BuildID),
+		Method:           "GET",
+		NeedsAuth:        true,
 		ReturnReadCloser: true,
 	}
 

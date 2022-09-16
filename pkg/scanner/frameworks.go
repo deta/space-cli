@@ -24,7 +24,7 @@ var NodeFrameworks = [...]NodeFramework{
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"svelte":\s*".+?"[^}]*}`},
-				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"sirv-cli":\s*".+?"[^}]*}`},
+				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"@sveltejs/vite-plugin-svelte":\s*".+?"[^}]*}`},
 			},
 			Strict: true,
 		},
