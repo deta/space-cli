@@ -8,6 +8,7 @@ import (
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
@@ -97,7 +98,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	m, err := manifest.Open(projectDir)
 	if err != nil {
-		logger.Println(styles.Error(fmt.Sprintf("❗ Error: %v", err)))
+		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
 	manifestErrors := scanner.ValidateManifest(m)
@@ -111,14 +112,14 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Space Manifest looks good, proceeding with your push!!\n"))
 	}
 
-	logger.Println("⚙️ Working on starting your build ...")
+	logger.Printf("%s Working on starting your build ...\n", emoji.Gear)
 	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
 	if err != nil {
 		return err
 	}
-	logger.Println("✅ Successfully started your build!")
+	logger.Printf("%s Successfully started your build!\n", emoji.Check)
 
-	logger.Println("⚙️ Pushing your Space Manifest...")
+	logger.Printf("%s Pushing your Space Manifest...\n", emoji.Gear)
 	raw, err := manifest.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
@@ -129,9 +130,9 @@ func push(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
-	logger.Println("✅ Successfully pushed your Space Manifest!")
+	logger.Printf("%s Successfully pushed your Space Manifest!\n", emoji.Check)
 
-	logger.Printf("⚙️ Pushing your code ...\n")
+	logger.Printf("%s Pushing your code ...\n", emoji.Gear)
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -142,12 +143,12 @@ func push(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger.Println("⚙️  Starting your build...")
+	logger.Printf("%s Starting your build...", emoji.Check)
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: br.ID,
 	})
 	if err != nil {
-		logger.Printf("Error: %v\n", err)
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
 
@@ -157,10 +158,10 @@ func push(cmd *cobra.Command, args []string) error {
 		fmt.Println(scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Printf("Error: %v\n", err)
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
-	logger.Println(styles.Green("\n🎉 Successfully pushed your code and created a new Revision!\n"))
+	logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!\n", emoji.PartyPopper))
 	logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("deta release"))
 	return nil
 }

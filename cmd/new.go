@@ -11,6 +11,7 @@ import (
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/confirm"
+	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
@@ -122,7 +123,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	if isProjectInitialized {
-		logger.Println(styles.Error("\nA project already exists in this directory. You can use"),
+		logger.Println(styles.Error("A project already exists in this directory. You can use"),
 			styles.Code("deta push"), styles.Error("to create a Revision."))
 		return nil
 	}
@@ -152,8 +153,8 @@ func new(cmd *cobra.Command, args []string) error {
 	// create blank project if blank flag provided or if project folder is empty
 	if blank || isEmpty {
 
-		logger.Println("⚙️ No Space Manifest found, trying to auto-detect configuration ...")
-		logger.Printf("⚙️ Empty directory detected, creating %s from scratch ...\n", styles.Pink(projectName))
+		logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Gear)
+		logger.Printf("%s Empty directory detected, creating %s from scratch ...\n", emoji.Gear, styles.Pink(projectName))
 
 		_, err = manifest.CreateBlankManifest(projectDir)
 		if err != nil {
@@ -165,7 +166,7 @@ func new(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
+		logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
 		projectInfo, err := runtimeManager.GetProjectMeta()
 		if err != nil {
 			return fmt.Errorf("failed to retrieve project info")
@@ -190,12 +191,12 @@ func new(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf("⚙️ Space Manifest found locally, validating Space Manifest ...\n\n")
+		logger.Printf("%s Space Manifest found locally, validating Space Manifest ...\n\n", emoji.Gear)
 		logger.Printf("Validating Space Manifest ...\n\n")
 
 		m, err := manifest.Open(projectDir)
 		if err != nil {
-			logger.Printf("❗ Error: %v\n", err)
+			logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 			return nil
 		}
 
@@ -204,22 +205,22 @@ func new(cmd *cobra.Command, args []string) error {
 
 		if len(manifestErrors) > 0 {
 			logValidationErrors(m, manifestErrors)
-			logger.Println(styles.Error(fmt.Sprintf("Please fix the issues with your Space Manifest before creating %s.\n", styles.Pink(projectName))))
+			logger.Println(styles.Errorf("Please fix the issues with your Space Manifest before creating %s.\n", styles.Pink(projectName)))
 			logger.Printf("%s The Space Manifest documentation is here: %s", styles.Info, styles.Bold("https://alpha.deta.space/docs/en/reference/manifest"))
 
 			return nil
 		} else {
-			logger.Printf("👍 Nice, your Space Manifest looks good!\n")
+			logger.Printf("%s Nice, your Space Manifest looks good!\n", emoji.PointDown)
 		}
 
-		logger.Printf("⚙️ Creating project %s with your Space Manifest ...\n", styles.Pink(projectName))
+		logger.Printf("%s Creating project %s with your Space Manifest ...\n", emoji.Gear, styles.Pink(projectName))
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
 			return err
 		}
 
-		logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
+		logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
 		projectInfo, err := runtimeManager.GetProjectMeta()
 		if err != nil {
 			return fmt.Errorf("failed to retrieve project info")
@@ -229,7 +230,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// no yaml present, auto-detect micros
-	logger.Println("⚙️ No Space Manifest found, trying to auto-detect configuration ...")
+	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...", emoji.Gear)
 
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
@@ -238,7 +239,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to create project with detected configuration
-		logger.Printf("👇 Deta detected the following configuration:\n\n")
+		logger.Printf("%s Deta detected the following configuration:\n\n", emoji.PointDown)
 		logDetectedMicros(autoDetectedMicros)
 
 		create, err := confirm.Run(&confirm.Input{
@@ -250,7 +251,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 		// create project with detected config
 		if create {
-			logger.Printf("⚙️ Bootstrapping %s ...\n", styles.Pink(projectName))
+			logger.Printf("%s Bootstrapping %s ...\n", emoji.Gear, styles.Pink(projectName))
 
 			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
@@ -262,7 +263,7 @@ func new(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
+			logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
 			projectInfo, err := runtimeManager.GetProjectMeta()
 			if err != nil {
 				return fmt.Errorf("failed to retrieve project info")
@@ -273,7 +274,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// don't create project with detected config, create blank project, point to docs
-	logger.Printf("⚙️ Creating %s from scratch ...\n", styles.Pink(projectName))
+	logger.Printf("%s Creating %s from scratch ...\n", emoji.Gear, styles.Pink(projectName))
 
 	_, err = manifest.CreateBlankManifest(projectDir)
 	if err != nil {
@@ -285,7 +286,7 @@ func new(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger.Println(styles.Green("✅ Project"), styles.Pink(projectName), styles.Green("created successfully!"))
+	logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
 	projectInfo, err := runtimeManager.GetProjectMeta()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve project info")

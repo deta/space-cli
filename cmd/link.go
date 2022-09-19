@@ -9,6 +9,7 @@ import (
 	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/confirm"
+	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
@@ -69,7 +70,7 @@ func link(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		logger.Printf("🤠 This directory is already linked to a project named \"%s\".\n", existingProjectMeta.Name)
+		logger.Printf("%s This directory is already linked to a project named \"%s\".\n", emoji.Cowboy, existingProjectMeta.Name)
 		logger.Println(projectNotes(existingProjectMeta.Name, existingProjectMeta.ID))
 		return nil
 	}
@@ -81,12 +82,12 @@ func link(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf("⚙️ Space Manifest found, linking project with id \"%s\" to Space ...\n", linkProjectID)
+		logger.Printf("%s Space Manifest found, linking project with id \"%s\" to Space ...\n", emoji.Gear, linkProjectID)
 
 		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 		if err != nil {
 			if errors.Is(err, api.ErrProjectNotFound) {
-				logger.Println(styles.Error("❗ No project found. Please provide a valid Project ID."))
+				logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
 				return nil
 			}
 			return err
@@ -97,7 +98,7 @@ func link(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to link project, %w", err)
 		}
 
-		logger.Println(styles.Green("🔗 Project"), styles.Pink(project.Name), styles.Green("was linked!"))
+		logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 		projectInfo, err := runtimeManager.GetProjectMeta()
 		if err != nil {
 			return fmt.Errorf("failed to retrieve project info")
@@ -107,7 +108,7 @@ func link(cmd *cobra.Command, args []string) error {
 	}
 
 	// no yaml present, auto-detect micros
-	logger.Println("⚙️ No Space Manifest found, trying to auto-detect configuration ...")
+	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Gear)
 	autoDetectedMicros, err := scanner.Scan(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks, %v", err)
@@ -115,7 +116,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to link project with detected configuration
-		logger.Printf("👇 Deta detected the following configuration:\n\n")
+		logger.Printf("%s Deta detected the following configuration:\n\n", emoji.PointDown)
 		logDetectedMicros(autoDetectedMicros)
 
 		link, err := confirm.Run(&confirm.Input{
@@ -127,12 +128,12 @@ func link(cmd *cobra.Command, args []string) error {
 
 		// link project with detected config
 		if link {
-			logger.Printf("⚙️ Linking project with ID \"%s\" using bootstrapped configuration ...\n", linkProjectID)
+			logger.Printf("%s Linking project with ID \"%s\" using bootstrapped configuration ...\n", emoji.Gear, linkProjectID)
 
 			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 			if err != nil {
 				if errors.Is(err, api.ErrProjectNotFound) {
-					logger.Println(styles.Error("❗ No project found. Please provide a valid Project ID."))
+					logger.Println(styles.Error(fmt.Sprintf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)))
 					return nil
 				}
 				return err
@@ -149,7 +150,7 @@ func link(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to link project, %w", err)
 			}
 
-			logger.Println(styles.Green("🔗 Project"), styles.Pink(project.Name), styles.Green("was linked!"))
+			logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 			projectInfo, err := runtimeManager.GetProjectMeta()
 			if err != nil {
 				return fmt.Errorf("failed to retrieve project info")
@@ -160,12 +161,12 @@ func link(cmd *cobra.Command, args []string) error {
 	}
 
 	// linking with blank
-	logger.Printf("⚙️ Linking project with id \"%s\" with a blank configuration ...\n", linkProjectID)
+	logger.Printf("%s Linking project with id \"%s\" with a blank configuration ...\n", emoji.Gear, linkProjectID)
 
 	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 	if err != nil {
 		if errors.Is(err, api.ErrProjectNotFound) {
-			logger.Println(styles.Error("❗ No project found. Please provide a valid Project ID."))
+			logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
 			return nil
 		}
 		return err
@@ -182,7 +183,7 @@ func link(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
 
-	logger.Println(styles.Green("🔗 Project"), styles.Pink(project.Name), styles.Green("was linked!"))
+	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 	projectInfo, err := runtimeManager.GetProjectMeta()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve project info")

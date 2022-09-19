@@ -10,6 +10,7 @@ import (
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
+	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/spf13/cobra"
@@ -124,7 +125,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	logger.Printf("⚙️ Creating a Release ...\n\n")
+	logger.Printf("%s Creating a Release ...\n\n", emoji.Gear)
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:  revisionID,
 		AppID:       releaseProjectID,
@@ -153,12 +154,12 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Printf("Error: %v\n", err)
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
 	logger.Println()
-	logger.Println(styles.Info, " 🚀 Lift off -- successfully created a new Release!")
-	logger.Println(styles.Info, " 🌍 Your Release is available globally on 5 Deta Edges")
-	logger.Println(styles.Info, " 🥳 Anyone can install their own copy of your app.")
+	logger.Println(styles.Info, emoji.Rocket, "Lift off -- successfully created a new Release!")
+	logger.Println(styles.Info, emoji.Earth, "Your Release is available globally on 5 Deta Edges")
+	logger.Println(styles.Info, emoji.PartyFace, "Anyone can install their own copy of your app.")
 	return nil
 }
