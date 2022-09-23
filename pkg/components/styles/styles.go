@@ -1,50 +1,91 @@
 package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"fmt"
 
-func BoldStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true)
-}
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	SubtleStyle = ColorStyle("#383838")
+	GreenStyle  = ColorStyle("#16E58A")
+	BlueStyle   = ColorStyle("#4D73E0")
+	PinkStyle   = ColorStyle("#F26DAA")
+	ErrorStyle  = ColorStyle("#FFA7A7")
+	BoldStyle   = lipgloss.NewStyle().Bold(true)
+)
 
 func ColorStyle(str string) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(str))
 }
 
+func Subtlef(str string, a ...interface{}) string {
+	return SubtleStyle.Render(fmt.Sprintf(str, a...))
+}
+
 func Subtle(str string) string {
-	return ColorStyle("#383838").Render(str)
+	return SubtleStyle.Render(str)
+}
+
+func Greenf(str string, a ...interface{}) string {
+	return GreenStyle.Render(fmt.Sprintf(str, a...))
 }
 
 func Green(str string) string {
-	return ColorStyle("#16E58A").Render(str)
+	return GreenStyle.Render(str)
+}
+
+func Bluef(str string, a ...interface{}) string {
+	return BlueStyle.Render(fmt.Sprintf(str, a...))
 }
 
 func Blue(str string) string {
-	return ColorStyle("#4D73E0").Render(str)
+	return BlueStyle.Render(str)
+}
+
+func Pinkf(str string, a ...interface{}) string {
+	return PinkStyle.Render(fmt.Sprintf(str, a...))
 }
 
 func Pink(str string) string {
-	return ColorStyle("#F26DAA").Render(str)
+	return PinkStyle.Render(str)
+}
+
+func Errorf(str string, a ...interface{}) string {
+	return ErrorStyle.Render(fmt.Sprintf(str, a...))
 }
 
 func Error(str string) string {
-	return ColorStyle("#FFA7A7").Render(str)
+	return ErrorStyle.Render(str)
+}
+
+func Boldf(str string, a ...interface{}) string {
+	return BoldStyle.Render(fmt.Sprintf(str, a...))
 }
 
 func Bold(str string) string {
-	return BoldStyle().Render(str)
+	return BoldStyle.Render(str)
+}
+
+func Codef(str string, a ...interface{}) string {
+	return BoldStyle.Render(Bluef(str, a...))
 }
 
 func Code(str string) string {
-	return BoldStyle().Render(Blue(str))
+	return BoldStyle.Render(Blue(str))
+}
+
+func Highlightf(str string, a ...interface{}) string {
+	return BoldStyle.Background(PinkStyle.GetForeground()).Render(fmt.Sprintf(str, a...))
 }
 
 func Highlight(str string) string {
-	return BoldStyle().Background(lipgloss.Color("#F26DAA")).Render(str)
+	return BoldStyle.Background(PinkStyle.GetForeground()).Render(str)
 }
 
 var (
-	Question  = BoldStyle().Render(Pink("?"))
-	SelectTag = BoldStyle().Render(Pink(">"))
-	CheckMark = BoldStyle().Render(Green("✓"))
-	Info      = BoldStyle().Render(Blue("i"))
+	Question  = BoldStyle.Render(Pink("?"))
+	SelectTag = BoldStyle.Render(Pink(">"))
+	CheckMark = BoldStyle.Render(Green("✓"))
+	Info      = BoldStyle.Render(Blue("i"))
 )
