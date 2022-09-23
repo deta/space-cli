@@ -84,11 +84,16 @@ func OpenRaw(sourceDir string) ([]byte, error) {
 }
 
 func (m *Manifest) Save(sourceDir string) error {
+
+	manifestDocsUrl := fmt.Sprintf("# Manifest Docs: https://alpha.deta.space/docs/en/reference/manifest \n")
 	// marshall manifest object
-	c, err := yaml.Marshal(m)
+	rawManifest, err := yaml.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("failed to marshall manifest object: %w", err)
 	}
+
+	c := []byte(manifestDocsUrl)
+	c = append(c, rawManifest...)
 
 	// write manifest object to file
 	err = ioutil.WriteFile(filepath.Join(sourceDir, ManifestName), c, 0644)

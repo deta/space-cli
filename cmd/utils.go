@@ -41,8 +41,7 @@ func projectNotes(projectName string, projectId string) string {
 %s Find your project in Builder: %s
 %s Use %s the file to configure your app: %s
 %s Push your code to Space with %s
-%s Launch your app to the world with %s
-`, styles.Bold("Next steps:"), emoji.Eyes,
+%s Launch your app to the world with %s`, styles.Bold("Next steps:"), emoji.Eyes,
 		styles.Bold(fmt.Sprintf("https://alpha.deta.space/builder/%s", projectId)),
 		emoji.Package,
 		styles.Code("Space Manifest (space.yml)"), styles.Bold("https://alpha.deta.space/docs/en/reference/manifest"),
