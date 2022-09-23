@@ -79,7 +79,7 @@ func goScanner(dir string) (*shared.Micro, error) {
 		Src:      dir,
 		Engine:   "custom",
 		Commands: []string{"go build cmd/main.go"},
-		Artefact: "main",
+		Include:  []string{"main"},
 		Run:      "./main",
 	}
 

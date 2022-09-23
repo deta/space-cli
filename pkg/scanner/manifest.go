@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/deta/pc-cli/internal/manifest"
@@ -124,6 +125,22 @@ func ValidateMicro(micro *shared.Micro) []error {
 		} else {
 			errors = append(errors, ErrInvalidMicroSrc)
 		}
+	}
+
+	if micro.Serve != "" && !shared.IsFrontendEngine(micro.Engine) {
+		errors = append(errors, fmt.Errorf("serve is only valid for frontend engines"))
+	}
+
+	if micro.Serve != "" && len(micro.Include) > 0 {
+		errors = append(errors, fmt.Errorf("cannot use both serve and include"))
+	}
+
+	if len(micro.Include) > 0 && micro.Serve != "" {
+		errors = append(errors, fmt.Errorf("cannot use both serve and include"))
+	}
+
+	if shared.IsFrontendEngine(micro.Engine) && len(micro.Include) > 0 {
+		errors = append(errors, fmt.Errorf("include is not valid for frontend engines"))
 	}
 
 	return errors

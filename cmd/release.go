@@ -60,7 +60,7 @@ func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
 	}
 
 	m, err := choose.Run(&choose.Input{
-		Prompt:  "Choose a revision.",
+		Prompt:  "Choose a revision",
 		Choices: tags,
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func release(cmd *cobra.Command, args []string) error {
 		ID: cr.ID,
 	})
 	if err != nil {
-		logger.Printf("Error: %v\n", err)
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return nil
 	}
 
@@ -164,8 +164,8 @@ func release(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	logger.Println()
-	logger.Println(styles.Info, emoji.Rocket, "Lift off -- successfully created a new Release!")
-	logger.Println(styles.Info, emoji.Earth, "Your Release is available globally on 5 Deta Edges")
-	logger.Println(styles.Info, emoji.PartyFace, "Anyone can install their own copy of your app.")
+	logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
+	logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
+	logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
 	return nil
 }

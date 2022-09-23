@@ -43,14 +43,14 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 			// general errors
 			switch {
 			case errors.Is(scanner.ErrExceedsMaxMicroLimit, err):
-				logger.Println(styles.Errorf("%s Validation Error: Manifest exceeds max micro limit. Please make sure to use a max of 5 micros.", emoji.X))
+				logger.Println(styles.Errorf("%s Validation Error: Manifest exceeds max micro limit. Please make sure to use a max of 5 micros.\n", emoji.X))
 			case errors.Is(scanner.ErrDuplicateMicros, err):
-				logger.Println(styles.Errorf("%s Validation Error: Duplicate micro names. Please make sure to use unique names for micros.", emoji.X))
+				logger.Println(styles.Errorf("%s Validation Error: Duplicate micro names. Please make sure to use unique names for micros.\n", emoji.X))
 			case errors.Is(scanner.ErrNoPrimaryMicro, err):
-				logger.Println(styles.Errorf("%s Validation Error: No primary micro specified. Please mark one of the micros as primary.", emoji.X))
+				logger.Println(styles.Errorf("%s Validation Error: No primary micro specified. Please mark one of the micros as primary.\n", emoji.X))
 			case errors.Is(scanner.ErrInvalidIcon, err):
 				isIconValid = false
-				logger.Println(styles.Errorf("%s \"icon\": Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon.", emoji.X))
+				logger.Println(styles.Errorf("%s \"icon\": Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon.\n", emoji.X))
 			default:
 				logger.Println(styles.Error(fmt.Sprintf("%s Validation Error: %v", emoji.X, err)))
 			}
@@ -80,18 +80,22 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 		for _, err := range microErrors {
 			switch {
 			case errors.Is(scanner.ErrEmptyMicroName, err):
-				logger.Println(styles.Error("L Missing \"name\"\n"))
+				logger.Println(styles.Error("L Missing \"name\""))
 			case errors.Is(scanner.ErrEmptyMicroSrc, err):
-				logger.Println(styles.Error("L Missing \"src\"\n"))
+				logger.Println(styles.Error("L Missing \"src\""))
 			case errors.Is(scanner.ErrEmptyMicroEngine, err):
-				logger.Println(styles.Error("L Missing \"engine\"\n"))
+				logger.Println(styles.Error("L Missing \"engine\""))
 			case errors.Is(scanner.ErrInvalidMicroSrc, err):
-				logger.Println(styles.Error(fmt.Sprintf("L Cannot find src for micro \"%s\"\n", micro.Src)))
+				logger.Println(styles.Error(fmt.Sprintf("L Cannot find src for micro \"%s\"", micro.Src)))
 			case errors.Is(scanner.ErrInvalidMicroEngine, err):
-				logger.Println(styles.Error(fmt.Sprintf("L Invalid engine value \"%s\"\n", micro.Src)))
+				logger.Println(styles.Error(fmt.Sprintf("L Invalid engine value \"%s\"", micro.Src)))
 			default:
-				logger.Println(styles.Error(fmt.Sprintf("L %v", err)))
+				logger.Println(styles.Error(fmt.Sprintf("L Error: %v", err)))
 			}
+		}
+
+		if len(microErrors) > 0 {
+			logger.Println()
 		}
 	}
 }
