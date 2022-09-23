@@ -82,7 +82,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf("%s Space Manifest found, linking project with id \"%s\" to Space ...\n", emoji.Gear, linkProjectID)
+		logger.Printf("%s Space Manifest found, linking project with id \"%s\" to Space ...\n", emoji.Package, linkProjectID)
 
 		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 		if err != nil {
@@ -108,7 +108,7 @@ func link(cmd *cobra.Command, args []string) error {
 	}
 
 	// no yaml present, auto-detect micros
-	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Gear)
+	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Package)
 	autoDetectedMicros, err := scanner.Scan(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks, %v", err)
@@ -128,7 +128,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 		// link project with detected config
 		if link {
-			logger.Printf("%s Linking project with ID \"%s\" using bootstrapped configuration ...\n", emoji.Gear, linkProjectID)
+			logger.Printf("%s Linking project with ID \"%s\" using bootstrapped configuration ...\n", emoji.Package, linkProjectID)
 
 			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 			if err != nil {
@@ -161,7 +161,7 @@ func link(cmd *cobra.Command, args []string) error {
 	}
 
 	// linking with blank
-	logger.Printf("%s Linking project with id \"%s\" with a blank configuration ...\n", emoji.Gear, linkProjectID)
+	logger.Printf("%s Linking project with id \"%s\" with a blank configuration ...\n", emoji.Package, linkProjectID)
 
 	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 	if err != nil {

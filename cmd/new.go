@@ -153,8 +153,8 @@ func new(cmd *cobra.Command, args []string) error {
 	// create blank project if blank flag provided or if project folder is empty
 	if blank || isEmpty {
 
-		logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Gear)
-		logger.Printf("%s Empty directory detected, creating %s from scratch ...\n", emoji.Gear, styles.Pink(projectName))
+		logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Package)
+		logger.Printf("%s Empty directory detected, creating %s from scratch ...\n", emoji.Package, styles.Pink(projectName))
 
 		_, err = manifest.CreateBlankManifest(projectDir)
 		if err != nil {
@@ -191,7 +191,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	// yes yaml
 	if isManifestPresent {
-		logger.Printf("%s Space Manifest found locally, validating Space Manifest ...\n\n", emoji.Gear)
+		logger.Printf("%s Space Manifest found locally, validating Space Manifest ...\n\n", emoji.Package)
 		logger.Printf("Validating Space Manifest ...\n\n")
 
 		m, err := manifest.Open(projectDir)
@@ -213,7 +213,7 @@ func new(cmd *cobra.Command, args []string) error {
 			logger.Printf("%s Nice, your Space Manifest looks good!\n", emoji.PointDown)
 		}
 
-		logger.Printf("%s Creating project %s with your Space Manifest ...\n", emoji.Gear, styles.Pink(projectName))
+		logger.Printf("%s Creating project %s with your Space Manifest ...\n", emoji.Package, styles.Pink(projectName))
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
@@ -230,7 +230,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// no yaml present, auto-detect micros
-	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...", emoji.Gear)
+	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...", emoji.Package)
 
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
@@ -251,7 +251,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 		// create project with detected config
 		if create {
-			logger.Printf("%s Bootstrapping %s ...\n", emoji.Gear, styles.Pink(projectName))
+			logger.Printf("%s Bootstrapping %s ...\n", emoji.Package, styles.Pink(projectName))
 
 			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
@@ -274,7 +274,7 @@ func new(cmd *cobra.Command, args []string) error {
 	}
 
 	// don't create project with detected config, create blank project, point to docs
-	logger.Printf("%s Creating %s from scratch ...\n", emoji.Gear, styles.Pink(projectName))
+	logger.Printf("%s Creating %s from scratch ...\n", emoji.Package, styles.Pink(projectName))
 
 	_, err = manifest.CreateBlankManifest(projectDir)
 	if err != nil {

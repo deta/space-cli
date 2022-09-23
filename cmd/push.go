@@ -90,7 +90,8 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isManifestPrsent {
-		logger.Println(styles.Error("No Space Manifest is present. Please add a Space Manifest before pushing code."))
+		logger.Println(styles.Errorf("%s No Space Manifest is present. Please add a Space Manifest before pushing code.", emoji.ErrorExclamation))
+		return nil
 	}
 
 	// parse manifest and validate
@@ -112,14 +113,14 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Space Manifest looks good, proceeding with your push!!\n"))
 	}
 
-	logger.Printf("%s Working on starting your build ...\n", emoji.Gear)
+	logger.Printf("%s Working on starting your build ...\n", emoji.Package)
 	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
 	if err != nil {
 		return err
 	}
 	logger.Printf("%s Successfully started your build!\n", emoji.Check)
 
-	logger.Printf("%s Pushing your Space Manifest...\n", emoji.Gear)
+	logger.Printf("%s Pushing your Space Manifest...\n", emoji.Package)
 	raw, err := manifest.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
@@ -132,7 +133,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	logger.Printf("%s Successfully pushed your Space Manifest!\n", emoji.Check)
 
-	logger.Printf("%s Pushing your code ...\n", emoji.Gear)
+	logger.Printf("%s Pushing your code ...\n", emoji.Package)
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err

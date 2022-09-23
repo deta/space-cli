@@ -110,7 +110,7 @@ func validate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger.Printf("%s Validating Space Manifest file ...\n\n", emoji.Gear)
+	logger.Printf("%s Validating Space Manifest file ...\n\n", emoji.Package)
 
 	m, err := manifest.Open(validateDir)
 	if err != nil {

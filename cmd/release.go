@@ -104,6 +104,12 @@ func release(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
+		if len(r.Revisions) == 0 {
+			logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("deta push")))
+			return nil
+		}
+
 		latestRevision := r.Revisions[0]
 
 		useLatestRevision, err := confirm.Run(&confirm.Input{
@@ -125,7 +131,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	logger.Printf("%s Creating a Release ...\n\n", emoji.Gear)
+	logger.Printf("%s Creating a Release ...\n\n", emoji.Package)
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:  revisionID,
 		AppID:       releaseProjectID,
