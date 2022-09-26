@@ -91,7 +91,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 		releaseProjectID = projectMeta.ID
 	} else if isFlagEmpty(releaseProjectID) {
-		logger.Printf("%s No project was found locally. You can still create a Release by providing a valid Project ID.\n\n", styles.Info)
+		logger.Printf("No project was found locally. You can still create a Release by providing a valid Project ID.\n\n")
 
 		releaseProjectID, err = selectProjectID()
 		if err != nil {

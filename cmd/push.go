@@ -67,7 +67,7 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		pushProjectID = projectMeta.ID
 	} else if isFlagEmpty(pushProjectID) {
-		logger.Printf("%s No project was found in the current directory.\n\n", styles.Info)
+		logger.Printf("No project was found in the current directory.\n\n")
 		logger.Printf("You can still push by providing a valid Project ID.\n\n")
 
 		pushProjectID, err = selectPushProjectID()
@@ -151,7 +151,7 @@ func push(cmd *cobra.Command, args []string) error {
 		line := scanner.Text()
 		fmt.Println(line)
 		if strings.Contains(line, "error:") {
-			return nil	
+			return nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
