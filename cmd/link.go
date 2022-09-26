@@ -34,7 +34,7 @@ func init() {
 
 func selectLinkProjectID() (string, error) {
 	promptInput := text.Input{
-		Prompt:      "What is your Project ID of the project that you want to link to?",
+		Prompt:      "Project ID",
 		Placeholder: "",
 		Validator:   projectIDValidator,
 	}
@@ -45,13 +45,6 @@ func selectLinkProjectID() (string, error) {
 func link(cmd *cobra.Command, args []string) error {
 	logger.Println()
 	var err error
-
-	if isFlagEmpty(linkProjectID) {
-		linkProjectID, err = selectLinkProjectID()
-		if err != nil {
-			return err
-		}
-	}
 
 	linkProjectDir = filepath.Clean(linkProjectDir)
 
@@ -73,6 +66,15 @@ func link(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s This directory is already linked to a project named \"%s\".\n", emoji.Cowboy, existingProjectMeta.Name)
 		logger.Println(projectNotes(existingProjectMeta.Name, existingProjectMeta.ID))
 		return nil
+	}
+
+	if isFlagEmpty(linkProjectID) {
+		logger.Printf("You can link your local src code to a Space project!\n\n")
+		logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
+		linkProjectID, err = selectLinkProjectID()
+		if err != nil {
+			return err
+		}
 	}
 
 	isSpacefilePresent, err := spacefile.IsSpacefilePresent(linkProjectDir)
