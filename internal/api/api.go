@@ -270,19 +270,19 @@ func (c *DetaClient) CreateBuild(r *CreateBuildRequest) (*CreateBuildResponse, e
 	return &resp, nil
 }
 
-// PushManifestRequest push manifest request
-type PushManifestRequest struct {
+// PushSpacefileRequest push spacefile request
+type PushSpacefileRequest struct {
 	BuildID  string `json:"build_id"`
 	Manifest []byte `json:"manifest"`
 }
 
-// PushManifestResponse push manifest response
-type PushManifestResponse struct {
+// PushSpacefileResponse push spacefile response
+type PushSpacefileResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushManifest pushes raw manifest file content with an uploadID
-func (c *DetaClient) PushManifest(r *PushManifestRequest) (*PushManifestResponse, error) {
+// PushSpacefile pushes raw spacefile file content with an uploadID
+func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,
 		Path:        fmt.Sprintf("/%s/builds/%s/manifest", version, r.BuildID),
@@ -299,30 +299,30 @@ func (c *DetaClient) PushManifest(r *PushManifestRequest) (*PushManifestResponse
 	}
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push manifest file, %v", msg)
+		return nil, fmt.Errorf("failed to push spacefile file, %v", msg)
 	}
 
-	var resp PushManifestResponse
+	var resp PushSpacefileResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push manifest file %w", err)
+		return nil, fmt.Errorf("failed to push spacefile file %w", err)
 	}
 
 	return &resp, nil
 }
 
-// PushCodeRequest push manifest request
+// PushCodeRequest push spacefile request
 type PushCodeRequest struct {
 	BuildID    string `json:"build_id"`
 	ZippedCode []byte `json:"zipped_code"`
 }
 
-// PushManifestResponse push manifest response
+// PushSpacefileResponse push spacefile response
 type PushCodeResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushCode pushes raw manifest file content with an uploadID
+// PushCode pushes raw spacefile file content with an uploadID
 func (c *DetaClient) PushCode(r *PushCodeRequest) (*PushCodeResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,

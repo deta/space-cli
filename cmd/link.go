@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
@@ -75,14 +75,14 @@ func link(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	isManifestPresent, err := manifest.IsManifestPresent(linkProjectDir)
+	isSpacefilePresent, err := spacefile.IsSpacefilePresent(linkProjectDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to scan manifest in dir %s, %v", linkProjectDir, err)
+		return fmt.Errorf("problem while trying to scan spacefile in dir %s, %v", linkProjectDir, err)
 	}
 
-	// yes yaml
-	if isManifestPresent {
-		logger.Printf("%s Space Manifest found, linking project with id \"%s\" to Space ...\n", emoji.Package, linkProjectID)
+	// Spacefile exists
+	if isSpacefilePresent {
+		logger.Printf("%s Spacefile found, linking project with id \"%s\" to Space ...\n", emoji.Package, linkProjectID)
 
 		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 		if err != nil {
@@ -107,8 +107,8 @@ func link(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// no yaml present, auto-detect micros
-	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Package)
+	// no Spacefile present, auto-detect micros
+	logger.Printf("%s No Spacefile found, trying to auto-detect configuration ...\n", emoji.Package)
 	autoDetectedMicros, err := scanner.Scan(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks, %v", err)
@@ -116,7 +116,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to link project with detected configuration
-		logger.Printf("%s Deta detected the following configuration:\n\n", emoji.PointDown)
+		logger.Printf("%s Space detected the following configuration:\n\n", emoji.PointDown)
 		logDetectedMicros(autoDetectedMicros)
 
 		link, err := confirm.Run(&confirm.Input{
@@ -139,7 +139,7 @@ func link(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			_, err = manifest.CreateManifestWithMicros(linkProjectDir, autoDetectedMicros)
+			_, err = spacefile.CreateSpacefileWithMicros(linkProjectDir, autoDetectedMicros)
 			if err != nil {
 				return fmt.Errorf("failed to link project with detected micros, %w", err)
 			}
@@ -172,12 +172,11 @@ func link(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = manifest.CreateBlankManifest(linkProjectDir)
+	_, err = spacefile.CreateBlankSpacefile(linkProjectDir)
 	if err != nil {
 		return fmt.Errorf("failed to create blank project, %w", err)
 	}
 
-	// TODO: verify project id through request
 	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
 	if err != nil {
 		return fmt.Errorf("failed to link project, %w", err)

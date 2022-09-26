@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/deta/pc-cli/internal/manifest"
+	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/scanner"
@@ -16,7 +16,7 @@ var (
 	validateDir string
 	validateCmd = &cobra.Command{
 		Use:   "validate [flags]",
-		Short: "validate manifest in dir",
+		Short: "validate spacefile in dir",
 		RunE:  validate,
 	}
 )
@@ -26,15 +26,15 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 }
 
-// logValidationErrors logs manifest validation errors
-func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
+// logValidationErrors logs spacefile validation errors
+func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 
 	// micro specfic errors
 	microErrors := map[string][]error{}
 
 	var isIconValid bool = true
 
-	for _, err := range manifestErrors {
+	for _, err := range spacefileErrors {
 		if microError, ok := err.(*scanner.MicroError); ok {
 			// filter micro specific errors
 			micro := microError.Micro
@@ -43,7 +43,7 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 			// general errors
 			switch {
 			case errors.Is(scanner.ErrExceedsMaxMicroLimit, err):
-				logger.Println(styles.Errorf("%s Validation Error: Manifest exceeds max micro limit. Please make sure to use a max of 5 micros.\n", emoji.X))
+				logger.Println(styles.Errorf("%s Validation Error: Spacefile exceeds max micro limit. Please make sure to use a max of 5 micros.\n", emoji.X))
 			case errors.Is(scanner.ErrDuplicateMicros, err):
 				logger.Println(styles.Errorf("%s Validation Error: Duplicate micro names. Please make sure to use unique names for micros.\n", emoji.X))
 			case errors.Is(scanner.ErrNoPrimaryMicro, err):
@@ -61,7 +61,7 @@ func logValidationErrors(m *manifest.Manifest, manifestErrors []error) {
 		logger.Printf("%s Icon", emoji.Check)
 	}
 
-	for _, micro := range m.Micros {
+	for _, micro := range s.Micros {
 		microErrors := microErrors[micro.Name]
 		if len(microErrors) == 0 {
 			logger.Printf("%s Micro \"%s\"\n", emoji.Check, micro.Name)
@@ -104,31 +104,31 @@ func validate(cmd *cobra.Command, args []string) error {
 	logger.Println()
 	validateDir = filepath.Clean(validateDir)
 
-	isManifestPresent, err := manifest.IsManifestPresent(validateDir)
+	isSpacefilePresent, err := spacefile.IsSpacefilePresent(validateDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to scan manifest in the dir %s, %w", validateDir, err)
+		return fmt.Errorf("problem while trying to scan spacefile in the dir %s, %w", validateDir, err)
 	}
 
-	if !isManifestPresent {
-		logger.Println(styles.Errorf("%s No Space Manifest found in your directory.", emoji.ErrorExclamation))
+	if !isSpacefilePresent {
+		logger.Println(styles.Errorf("%s No Spacefile found in your directory.", emoji.ErrorExclamation))
 		return nil
 	}
 
-	logger.Printf("%s Validating Space Manifest file ...\n\n", emoji.Package)
+	logger.Printf("%s Validating Spacefile file ...\n\n", emoji.Package)
 
-	m, err := manifest.Open(validateDir)
+	s, err := spacefile.Open(validateDir)
 	if err != nil {
-		return fmt.Errorf("problem while opening manifest in dir %s, %w", validateDir, err)
+		return fmt.Errorf("problem while opening spacefile in dir %s, %w", validateDir, err)
 	}
 
-	manifestErrors := scanner.ValidateManifest(m)
+	spacefileErrors := scanner.ValidateSpacefile(s)
 
-	logValidationErrors(m, manifestErrors)
+	logValidationErrors(s, spacefileErrors)
 
-	if len(manifestErrors) == 0 {
-		logger.Println(styles.Greenf("\n%s Manifest looks good!", emoji.Sparkles))
+	if len(spacefileErrors) == 0 {
+		logger.Println(styles.Greenf("\n%s Spacefile looks good!", emoji.Sparkles))
 	} else {
-		logger.Println(styles.Errorf("\n%s Detected some issues with your Space Manifest. Please fix them before pushing your code.", emoji.ErrorExclamation))
+		logger.Println(styles.Errorf("\n%s Detected some issues with your Spacefile. Please fix them before pushing your code.", emoji.ErrorExclamation))
 	}
 	return nil
 }
