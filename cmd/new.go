@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
@@ -66,28 +66,6 @@ func selectProjectName(placeholder string) (string, error) {
 
 	return text.Run(&promptInput)
 }
-
-/*
-	func selectProjectDir() (string, error) {
-		promptInput := text.Input{
-			Prompt:      "Where do you want to create your project?",
-			Placeholder: "./",
-		}
-
-		return text.Run(&promptInput)
-	}
-
-	func selectTemplate() (string, error) {
-		promptInput := choose.Input{
-			Prompt:  "What type of micro do you want to create?",
-			Choices: templates,
-		}
-
-		m, err := choose.Run(&promptInput)
-		return templates[m.Cursor], err
-
-	}
-*/
 
 func createProject(name string, runtimeManager *runtime.Manager) error {
 	res, err := client.CreateProject(&api.CreateProjectRequest{
@@ -153,10 +131,10 @@ func new(cmd *cobra.Command, args []string) error {
 	// create blank project if blank flag provided or if project folder is empty
 	if blank || isEmpty {
 
-		logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...\n", emoji.Package)
+		logger.Printf("%s No Spacefile found, trying to auto-detect configuration ...\n", emoji.Package)
 		logger.Printf("%s Empty directory detected, creating %s from scratch ...\n", emoji.Package, styles.Pink(projectName))
 
-		_, err = manifest.CreateBlankManifest(projectDir)
+		_, err = spacefile.CreateBlankSpacefile(projectDir)
 		if err != nil {
 			return fmt.Errorf("failed to create blank project, %w", err)
 		}
@@ -184,36 +162,36 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 	*/
 
-	isManifestPresent, err := manifest.IsManifestPresent(projectDir)
+	isSpacefilePresent, err := spacefile.IsSpacefilePresent(projectDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to check for manifest file in dir %s, %w", projectDir, err)
+		return fmt.Errorf("problem while trying to check for spacefile file in dir %s, %w", projectDir, err)
 	}
 
-	// yes yaml
-	if isManifestPresent {
-		logger.Printf("%s Space Manifest found locally, validating Space Manifest ...\n\n", emoji.Package)
-		logger.Printf("Validating Space Manifest ...\n\n")
+	// Spacefile exists
+	if isSpacefilePresent {
+		logger.Printf("%s Spacefile found locally, validating Spacefile ...\n\n", emoji.Package)
+		logger.Printf("Validating Spacefile ...\n\n")
 
-		m, err := manifest.Open(projectDir)
+		s, err := spacefile.Open(projectDir)
 		if err != nil {
 			logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 			return nil
 		}
 
-		// validate manifest before creating new project with the existing manifest
-		manifestErrors := scanner.ValidateManifest(m)
+		// validate spacefile before creating new project with the existing spacefile
+		spacefileErrors := scanner.ValidateSpacefile(s)
 
-		if len(manifestErrors) > 0 {
-			logValidationErrors(m, manifestErrors)
-			logger.Println(styles.Errorf("Please fix the issues with your Space Manifest before creating %s.\n", styles.Pink(projectName)))
-			logger.Printf("%s The Space Manifest documentation is here: %s", styles.Info, styles.Bold("https://alpha.deta.space/docs/en/reference/manifest"))
+		if len(spacefileErrors) > 0 {
+			logValidationErrors(s, spacefileErrors)
+			logger.Println(styles.Errorf("Please fix the issues with your Spacefile before creating %s.\n", styles.Pink(projectName)))
+			logger.Printf("%s The Spacefile documentation is here: %s", styles.Info, styles.Bold("https://alpha.deta.space/docs/en/reference/spacefile"))
 
 			return nil
 		} else {
-			logger.Printf("%s Nice, your Space Manifest looks good!\n", emoji.PointDown)
+			logger.Printf("%s Nice, your Spacefile looks good!\n", emoji.PointDown)
 		}
 
-		logger.Printf("%s Creating project %s with your Space Manifest ...\n", emoji.Package, styles.Pink(projectName))
+		logger.Printf("%s Creating project %s with your Spacefile ...\n", emoji.Package, styles.Pink(projectName))
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
@@ -229,8 +207,8 @@ func new(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// no yaml present, auto-detect micros
-	logger.Printf("%s No Space Manifest found, trying to auto-detect configuration ...", emoji.Package)
+	// no Spacefile present, auto-detect micros
+	logger.Printf("%s No Spacefile found, trying to auto-detect configuration ...", emoji.Package)
 
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
@@ -239,7 +217,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	if len(autoDetectedMicros) > 0 {
 		// prompt user for confirmation to create project with detected configuration
-		logger.Printf("%s Deta detected the following configuration:\n\n", emoji.PointDown)
+		logger.Printf("%s Space detected the following configuration:\n\n", emoji.PointDown)
 		logDetectedMicros(autoDetectedMicros)
 
 		create, err := confirm.Run(&confirm.Input{
@@ -253,7 +231,7 @@ func new(cmd *cobra.Command, args []string) error {
 		if create {
 			logger.Printf("%s Bootstrapping %s ...\n", emoji.Package, styles.Pink(projectName))
 
-			_, err = manifest.CreateManifestWithMicros(projectDir, autoDetectedMicros)
+			_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
 				return fmt.Errorf("failed to create project with detected micros, %w", err)
 			}
@@ -276,7 +254,7 @@ func new(cmd *cobra.Command, args []string) error {
 	// don't create project with detected config, create blank project, point to docs
 	logger.Printf("%s Creating %s from scratch ...\n", emoji.Package, styles.Pink(projectName))
 
-	_, err = manifest.CreateBlankManifest(projectDir)
+	_, err = spacefile.CreateBlankSpacefile(projectDir)
 	if err != nil {
 		return fmt.Errorf("failed to create blank project, %w", err)
 	}
