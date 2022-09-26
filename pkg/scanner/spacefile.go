@@ -7,7 +7,6 @@ import (
 
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/shared"
-	"golang.org/x/exp/slices"
 )
 
 var (
@@ -110,7 +109,7 @@ func ValidateMicro(micro *shared.Micro) []error {
 		errors = append(errors, ErrEmptyMicroName)
 	}
 
-	if !slices.Contains(shared.SupportedEngines, micro.Engine) {
+	if _, ok := shared.EngineAliases[micro.Engine]; !ok {
 		if micro.Engine == "" {
 			errors = append(errors, ErrEmptyMicroEngine)
 		} else {

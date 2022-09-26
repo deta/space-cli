@@ -16,8 +16,8 @@ type RequestResponse struct {
 }
 
 type Stop struct {
-	FinishMsg string
-	RequestResponse  RequestResponse
+	FinishMsg       string
+	RequestResponse RequestResponse
 }
 
 type errMsg error
@@ -86,11 +86,8 @@ func (m Model) View() string {
 	}
 
 	str := fmt.Sprintf("%s %s\n", m.Spinner.View(), m.LoadingMsg)
-	if m.FinishMsg != "" {
+	if m.FinishMsg != "" && m.RequestResponse.Err == nil {
 		str = fmt.Sprintf("%s\n", m.FinishMsg)
-	}
-	if m.Quitting {
-		return str + "\n"
 	}
 	return str
 }

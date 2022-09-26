@@ -31,11 +31,8 @@ var (
 		"python3.8":  Python38,
 		"nodejs14.x": Node14x,
 		"nodejs14":   Node14x,
-		"node14":     Node14x,
-		"node":       Node16x,
 		"nodejs16.x": Node16x,
 		"nodejs16":   Node16x,
-		"node16":     Node16x,
 		"custom":     Custom,
 	}
 

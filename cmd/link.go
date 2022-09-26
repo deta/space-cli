@@ -147,7 +147,7 @@ func link(cmd *cobra.Command, args []string) error {
 			}
 
 			// TODO: verify project id through request
-			err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
+			err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID, Name: project.Name, Alias: project.Alias})
 			if err != nil {
 				return fmt.Errorf("failed to link project, %w", err)
 			}
@@ -179,7 +179,7 @@ func link(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create blank project, %w", err)
 	}
 
-	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID})
+	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID, Name: project.Name, Alias: project.Alias})
 	if err != nil {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
