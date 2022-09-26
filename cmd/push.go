@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/manifest"
 	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
@@ -38,15 +39,6 @@ func selectPushProjectID() (string, error) {
 		Prompt:      "What is your Project ID?",
 		Placeholder: "",
 		Validator:   projectIDValidator,
-	}
-
-	return text.Run(&promptInput)
-}
-
-func selectPushTag() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "Provide a Tag for this push (or leave it empty to auto-generate)",
-		Placeholder: "",
 	}
 
 	return text.Run(&promptInput)
@@ -84,33 +76,33 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	isManifestPrsent, err := manifest.IsManifestPresent(pushProjectDir)
+	isSpacefilePrsent, err := spacefile.IsSpacefilePresent(pushProjectDir)
 	if err != nil {
 		return err
 	}
 
-	if !isManifestPrsent {
-		logger.Println(styles.Errorf("%s No Space Manifest is present. Please add a Space Manifest before pushing code.", emoji.ErrorExclamation))
+	if !isSpacefilePrsent {
+		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile before pushing code.", emoji.ErrorExclamation))
 		return nil
 	}
 
-	// parse manifest and validate
-	logger.Printf("Validating Space Manifest...\n\n")
+	// parse spacefile and validate
+	logger.Printf("Validating Spacefile...\n\n")
 
-	m, err := manifest.Open(projectDir)
+	s, err := spacefile.Open(projectDir)
 	if err != nil {
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
-	manifestErrors := scanner.ValidateManifest(m)
+	spacefileErrors := scanner.ValidateSpacefile(s)
 
-	if len(manifestErrors) > 0 {
-		logValidationErrors(m, manifestErrors)
-		logger.Println(styles.Error("\nPlease try to fix the issues with your Space Manifest before pushing code."))
+	if len(spacefileErrors) > 0 {
+		logValidationErrors(s, spacefileErrors)
+		logger.Println(styles.Error("\nPlease try to fix the issues with your Spacefile before pushing code."))
 		return nil
 	} else {
-		logValidationErrors(m, manifestErrors)
-		logger.Printf(styles.Green("\nYour Space Manifest looks good, proceeding with your push!!\n"))
+		logValidationErrors(s, spacefileErrors)
+		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
 	logger.Printf("%s Working on starting your build ...\n", emoji.Package)
@@ -120,18 +112,18 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	logger.Printf("%s Successfully started your build!\n", emoji.Check)
 
-	logger.Printf("%s Pushing your Space Manifest...\n", emoji.Package)
-	raw, err := manifest.OpenRaw(pushProjectDir)
+	logger.Printf("%s Pushing your Spacefile...\n", emoji.Package)
+	raw, err := spacefile.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
 	}
-	if _, err = client.PushManifest(&api.PushManifestRequest{
+	if _, err = client.PushSpacefile(&api.PushSpacefileRequest{
 		Manifest: raw,
 		BuildID:  br.ID,
 	}); err != nil {
 		return err
 	}
-	logger.Printf("%s Successfully pushed your Space Manifest!\n", emoji.Check)
+	logger.Printf("%s Successfully pushed your Spacefile!\n", emoji.Check)
 
 	logger.Printf("%s Pushing your code ...\n", emoji.Package)
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
@@ -156,13 +148,17 @@ func push(cmd *cobra.Command, args []string) error {
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+		line := scanner.Text()
+		fmt.Println(line)
+		if strings.Contains(line, "error:") {
+			return nil	
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
 	logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!\n", emoji.PartyPopper))
-	logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("deta release"))
+	logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
 	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/deta/pc-cli/internal/manifest"
+	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/shared"
 	"golang.org/x/exp/slices"
 )
@@ -33,7 +33,7 @@ var (
 	ErrDuplicateMicros = errors.New("micro names have to be unique")
 
 	// ErrExceedsMaxMicroLimit
-	ErrExceedsMaxMicroLimit = errors.New("manifest exceeds max micro limit of 5 micros")
+	ErrExceedsMaxMicroLimit = errors.New("spacefile exceeds max micro limit of 5 micros")
 
 	// ErrNoPrimaryMicro
 	ErrNoPrimaryMicro = errors.New("no primary micro present")
@@ -48,8 +48,8 @@ func (me *MicroError) Error() string {
 	return me.Err.Error()
 }
 
-// ValidateManifest checks for general errors such as duplicate micros and max micro limit
-func ValidateManifest(m *manifest.Manifest) []error {
+// ValidateSpacefile checks for general errors such as duplicate micros and max micro limit
+func ValidateSpacefile(s *spacefile.Spacefile) []error {
 
 	var primarySpecified bool
 
@@ -58,16 +58,16 @@ func ValidateManifest(m *manifest.Manifest) []error {
 
 	errors := []error{}
 
-	err := ValidateManifestIcon(m.Icon)
+	err := ValidateSpacefileIcon(s.Icon)
 	if err != nil {
 		errors = append(errors, err)
 	}
 
-	if len(m.Micros) > 5 {
+	if len(s.Micros) > 5 {
 		errors = append(errors, ErrExceedsMaxMicroLimit)
 	}
 
-	for _, micro := range m.Micros {
+	for _, micro := range s.Micros {
 		if _, ok := microNames[micro.Name]; ok {
 			errors = append(errors, ErrDuplicateMicros)
 		}
@@ -83,14 +83,14 @@ func ValidateManifest(m *manifest.Manifest) []error {
 		}
 	}
 
-	if !primarySpecified && len(m.Micros) > 1 {
+	if !primarySpecified && len(s.Micros) > 1 {
 		errors = append(errors, ErrNoPrimaryMicro)
 	}
 
 	return errors
 }
 
-func ValidateManifestIcon(icon string) error {
+func ValidateSpacefileIcon(icon string) error {
 	if icon == "" {
 		return nil
 	}
