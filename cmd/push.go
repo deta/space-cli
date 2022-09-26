@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
+	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
@@ -105,27 +107,50 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
-	logger.Printf("%s Working on starting your build ...\n", emoji.Package)
-	br, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
+	buildSpinnerInput := spinner.Input{
+		LoadingMsg: "Working on starting your build...",
+		Request:    func ()  tea.Msg {
+			r, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
+
+			return spinner.Stop{
+				RequestResponse: spinner.RequestResponse{Response: r, Err: err},
+				FinishMsg:       fmt.Sprintf("%s Successfully started your build!", emoji.Check),
+			}
+		},
+	}
+	r, err := spinner.Run(&buildSpinnerInput)
 	if err != nil {
 		return err
 	}
-	logger.Printf("%s Successfully started your build!\n", emoji.Check)
+	var br *api.CreateBuildResponse
+	var ok bool
+	if br, ok = r.(*api.CreateBuildResponse); !ok {
+		return fmt.Errorf("failed to parse create build response")
+	}
 
-	logger.Printf("%s Pushing your Spacefile...\n", emoji.Package)
 	raw, err := spacefile.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
 	}
-	if _, err = client.PushSpacefile(&api.PushSpacefileRequest{
-		Manifest: raw,
-		BuildID:  br.ID,
-	}); err != nil {
+	pushSpacefileInput := spinner.Input{
+		LoadingMsg: "Pushing your spacefile...",
+		Request: func () tea.Msg {
+			pr, err := client.PushSpacefile(&api.PushSpacefileRequest{
+				Manifest: raw,
+				BuildID:  br.ID,
+			})
+			return spinner.Stop{
+				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
+				FinishMsg: fmt.Sprintf("%s Successfully pushed your Spacefile!\n", emoji.Check),
+			}
+		},
+	}
+	_, err = spinner.Run(&pushSpacefileInput)
+	if err != nil {
 		return err
 	}
-	logger.Printf("%s Successfully pushed your Spacefile!\n", emoji.Check)
 
-	logger.Printf("%s Pushing your code ...\n", emoji.Package)
+	logger.Printf("%s Pushing your code & starting build process...\n", emoji.Package)
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -135,8 +160,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
-
-	logger.Printf("%s Starting your build...", emoji.Check)
+	
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: br.ID,
 	})
