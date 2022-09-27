@@ -145,6 +145,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r = spinner.Run(&pushSpacefileInput)
 	if r.Err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to push Spacefile.\n", emoji.ErrorExclamation))
 		return err
 	}
 
