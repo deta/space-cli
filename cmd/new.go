@@ -184,7 +184,7 @@ func new(cmd *cobra.Command, args []string) error {
 		if len(spacefileErrors) > 0 {
 			logValidationErrors(s, spacefileErrors)
 			logger.Println(styles.Errorf("Please fix the issues with your Spacefile before creating %s.\n", styles.Pink(projectName)))
-			logger.Printf("%s The Spacefile documentation is here: %s", styles.Info, styles.Bold("https://alpha.deta.space/docs/en/reference/spacefile"))
+			logger.Printf("The Spacefile documentation is here: %s", styles.Bold("https://alpha.deta.space/docs/en/reference/spacefile"))
 
 			return nil
 		} else {

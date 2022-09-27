@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/runtime"
@@ -55,12 +54,15 @@ func selectProjectID() (string, error) {
 
 func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
 	tags := []string{}
+	if len(revisions) > 5 {
+		revisions = revisions[:5]
+	}
 	for _, revision := range revisions {
 		tags = append(tags, revision.Tag)
 	}
 
 	m, err := choose.Run(&choose.Input{
-		Prompt:  "Choose a revision",
+		Prompt:  fmt.Sprintf("Choose a revision %s:", styles.Subtle("(most recent revisions)")),
 		Choices: tags,
 	})
 	if err != nil {
@@ -91,7 +93,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 		releaseProjectID = projectMeta.ID
 	} else if isFlagEmpty(releaseProjectID) {
-		logger.Printf("%s No project was found locally. You can still create a Release by providing a valid Project ID.\n\n", styles.Info)
+		logger.Printf("No project was found locally. You can still create a Release by providing a valid Project ID.\n\n")
 
 		releaseProjectID, err = selectProjectID()
 		if err != nil {
@@ -119,14 +121,15 @@ func release(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
 		}
 
+		revisionID = latestRevision.ID
+
 		if !useLatestRevision {
-			latestRevision, err = selectRevision(r.Revisions)
+			selectedRevision, err := selectRevision(r.Revisions)
 			if err != nil {
 				return fmt.Errorf("problem while trying to get latest revision from prompt, %w", err)
 			}
+			revisionID = selectedRevision.ID
 		}
-
-		revisionID = latestRevision.ID
 	}
 
 	// TODO: start promotion
@@ -155,17 +158,26 @@ func release(cmd *cobra.Command, args []string) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Println(line)
-		if strings.Contains(line, "error:") {
-			return nil
-		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
-	logger.Println()
-	logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
-	logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
-	logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
+
+	r, err := client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to check if release succeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("https://alpha.deta.space/builder/%s/develop", releaseProjectID)))
+		return nil
+	}
+
+	if r.Status == api.Complete {
+		logger.Println()
+		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
+		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
+		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
+	} else {
+		logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
+	}
+
 	return nil
 }

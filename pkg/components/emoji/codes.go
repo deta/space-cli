@@ -1,5 +1,9 @@
 package emoji
 
+import (
+	"github.com/deta/pc-cli/pkg/components/styles"
+)
+
 var (
 	Cowboy           = Emoji{Emoji: "🤠 ", Fallback: ""}
 	Gear             = Emoji{Emoji: "⚙️ ", Fallback: ""}
@@ -7,7 +11,7 @@ var (
 	Link             = Emoji{Emoji: "🔗 ", Fallback: ""}
 	ErrorExclamation = Emoji{Emoji: "❗", Fallback: ""}
 	ThumbsUp         = Emoji{Emoji: "👍 ", Fallback: ""}
-	Check            = Emoji{Emoji: "✅ ", Fallback: ""}
+	Check            = Emoji{Emoji: styles.CheckMark, Fallback: ""}
 	PartyPopper      = Emoji{Emoji: "🎉 ", Fallback: ""}
 	Rocket           = Emoji{Emoji: "🚀 ", Fallback: ""}
 	Earth            = Emoji{Emoji: "🌍 ", Fallback: ""}

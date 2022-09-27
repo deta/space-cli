@@ -40,6 +40,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Confirm = false
 			return m, tea.Quit
 		case "enter":
+			m.Confirm = true
 			return m, tea.Quit
 		case "ctrl+c":
 			os.Exit(1)

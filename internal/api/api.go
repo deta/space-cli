@@ -15,6 +15,9 @@ const (
 var (
 	// ErrProjectNotFound project not found error
 	ErrProjectNotFound = fmt.Errorf("project not found")
+
+	// Status
+	Complete = "complete"
 )
 
 type GetProjectRequest struct {
@@ -198,7 +201,7 @@ type GetRevisionsResponse struct {
 func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/apps/%s/revisions?limit=20", version, r.ID),
+		Path:      fmt.Sprintf("/%s/apps/%s/revisions?limit=5", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
 		Body:      r,
@@ -294,6 +297,7 @@ func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileRespo
 	}
 
 	o, err := c.request(i)
+
 	if err != nil {
 		return nil, err
 	}
@@ -378,4 +382,76 @@ func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest) (io.ReadCloser, error)
 		return nil, fmt.Errorf("failed to get build logs: %v", msg)
 	}
 	return o.BodyReadCloser, nil
+}
+
+type GetBuildRequest struct {
+	BuildID string `json:"build_id"`
+}
+
+type GetBuildResponse struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+}
+
+func (c *DetaClient) GetBuild(r *GetBuildLogsRequest) (*GetBuildResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/builds/%s", version, r.BuildID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to get build status, %v", msg)
+	}
+
+	var resp GetBuildResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get build status, %w", err)
+	}
+
+	return &resp, nil
+}
+
+type GetReleasePromotionRequest struct {
+	PromotionID string `json:"promotion_id"`
+}
+
+type GetReleasePromotionResponse struct {
+	ID     string `json:"id" db:"id"`
+	Status string `json:"status" db:"status"`
+}
+
+func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetReleasePromotionResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/promotions/%s", version, r.PromotionID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to get build status, %v", msg)
+	}
+
+	var resp GetReleasePromotionResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get build status, %w", err)
+	}
+
+	return &resp, nil
 }
