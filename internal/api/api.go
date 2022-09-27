@@ -389,8 +389,8 @@ type GetBuildRequest struct {
 }
 
 type GetBuildResponse struct {
-	ID     string `json:"id" db:"id"`
-	Status string `json:"status" db:"status"`
+	ID     string `json:"id"`
+	Status string `json:"status"`
 }
 
 func (c *DetaClient) GetBuild(r *GetBuildLogsRequest) (*GetBuildResponse, error) {
