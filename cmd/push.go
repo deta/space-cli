@@ -117,13 +117,13 @@ func push(cmd *cobra.Command, args []string) error {
 			}
 		},
 	}
-	r, err := spinner.Run(&buildSpinnerInput)
-	if err != nil {
+	r := spinner.Run(&buildSpinnerInput)
+	if r.Err != nil {
 		return err
 	}
 	var br *api.CreateBuildResponse
 	var ok bool
-	if br, ok = r.(*api.CreateBuildResponse); !ok {
+	if br, ok = r.Response.(*api.CreateBuildResponse); !ok {
 		return fmt.Errorf("failed to parse create build response")
 	}
 	raw, err := spacefile.OpenRaw(pushProjectDir)
@@ -143,8 +143,8 @@ func push(cmd *cobra.Command, args []string) error {
 			}
 		},
 	}
-	_, err = spinner.Run(&pushSpacefileInput)
-	if err != nil {
+	r = spinner.Run(&pushSpacefileInput)
+	if r.Err != nil {
 		return err
 	}
 

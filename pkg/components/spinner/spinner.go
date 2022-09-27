@@ -92,17 +92,17 @@ func (m Model) View() string {
 	return str
 }
 
-func Run(i *Input) (interface{}, error) {
+func Run(i *Input) *RequestResponse {
 	program := tea.NewProgram(initialModel(i))
 
 	m, err := program.StartReturningModel()
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	if m, ok := m.(Model); ok {
-		return m.RequestResponse.Response, m.RequestResponse.Err
+		return m.RequestResponse
 	}
 
-	return nil, err
+	return nil
 }
