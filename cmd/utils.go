@@ -39,7 +39,7 @@ func projectNotes(projectName string, projectId string) string {
 %s
 
 %s Find your project in Builder: %s
-%s Use %s the file to configure your app: %s
+%s Use the %s to configure your app: %s
 %s Push your code to Space with %s
 %s Launch your app to the world with %s`, styles.Bold("Next steps:"), emoji.Eyes,
 		styles.Bold(fmt.Sprintf("https://alpha.deta.space/builder/%s", projectId)),
