@@ -31,6 +31,7 @@ func selectAccessToken() (string, error) {
 
 func login(cmd *cobra.Command, args []string) error {
 	logger.Println()
+	logger.Printf("To authenticate the Space CLI with your Space account, generate a new %s in your Space settings and paste it below:\n\n", styles.Code("access token"))
 	accessToken, err := selectAccessToken()
 	if err != nil {
 		return err
