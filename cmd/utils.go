@@ -44,7 +44,7 @@ func projectNotes(projectName string, projectId string) string {
 %s Launch your app to the world with %s`, styles.Bold("Next steps:"), emoji.Eyes,
 		styles.Bold(fmt.Sprintf("https://alpha.deta.space/builder/%s", projectId)),
 		emoji.Package,
-		styles.Code("Spacefile"), styles.Bold("https://alpha.deta.space/docs/en/reference/spacefile"),
+		styles.Code("Spacefile"), styles.Bold("https://go.deta.dev/docs/spacefile/v0"),
 		emoji.Swirl,
 		styles.Code("space push"),
 		emoji.Rocket,
