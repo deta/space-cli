@@ -170,8 +170,6 @@ func new(cmd *cobra.Command, args []string) error {
 	// Spacefile exists
 	if isSpacefilePresent {
 		logger.Printf("%s Spacefile found locally, validating Spacefile ...\n\n", emoji.Package)
-		logger.Printf("Validating Spacefile ...\n\n")
-
 		s, err := spacefile.Open(projectDir)
 		if err != nil {
 			logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
@@ -184,7 +182,7 @@ func new(cmd *cobra.Command, args []string) error {
 		if len(spacefileErrors) > 0 {
 			logValidationErrors(s, spacefileErrors)
 			logger.Println(styles.Errorf("Please fix the issues with your Spacefile before creating %s.\n", styles.Pink(projectName)))
-			logger.Printf("The Spacefile documentation is here: %s", styles.Bold("https://go.deta.dev/docs/spacefile/v0"))
+			logger.Printf("The Spacefile documentation is here: %s", styles.Bold(spacefileDocsUrl))
 
 			return nil
 		} else {
