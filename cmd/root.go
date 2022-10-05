@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -12,8 +13,8 @@ var (
 	rootCmd = &cobra.Command{
 		Use:   "space",
 		Short: "Deta Space CLI for mananging Deta Space projects",
-		Long: `Deta Space command line interface for managing Deta Space projects. 
-Complete documentation available at https://alpha.deta.space/docs`,
+		Long: fmt.Sprintf(`Deta Space command line interface for managing Deta Space projects. 
+Complete documentation available at %s`, docsUrl),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Usage()
 		},

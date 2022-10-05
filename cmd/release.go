@@ -166,7 +166,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	r, err := client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if release succeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("https://alpha.deta.space/builder/%s/develop", releaseProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if release succeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
 

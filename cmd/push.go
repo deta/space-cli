@@ -181,7 +181,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	b, err := client.GetBuild(&api.GetBuildLogsRequest{BuildID: br.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("https://alpha.deta.space/builder/%s/develop", pushProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 		return nil
 	}
 
