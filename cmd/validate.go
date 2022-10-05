@@ -58,7 +58,11 @@ func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 	}
 
 	if isIconValid {
-		logger.Printf("%s Icon", emoji.Check)
+		if s.Icon == "" {
+			logger.Println(styles.Boldf("%s Missing Icon", styles.Info))
+		} else {
+			logger.Printf("%s Icon", emoji.Check)
+		}
 	}
 
 	for _, micro := range s.Micros {
