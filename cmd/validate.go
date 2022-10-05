@@ -59,7 +59,7 @@ func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 
 	if isIconValid {
 		if s.Icon == "" {
-			logger.Println(styles.Boldf("%s Missing Icon", styles.Info))
+			logger.Println(styles.Boldf("%s No app icon specified", styles.Info))
 		} else {
 			logger.Printf("%s Icon", emoji.Check)
 		}
