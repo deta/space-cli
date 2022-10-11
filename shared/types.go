@@ -84,7 +84,7 @@ type Micro struct {
 	Engine       string              `yaml:"engine"`
 	Path         *string             `yaml:"path,omitempty"`
 	Presets      *Presets            `yaml:"presets,omitempty"`
-	PublicRoutes map[string][]string `yaml:"public_routes,omitempty"`
+	PublicRoutes []string 			 `yaml:"public_routes,omitempty"`
 	Primary      bool                `yaml:"primary"`
 	Runtime      string              `yaml:"runtime,omitempty"`
 	Commands     []string            `yaml:"commands,omitempty"`

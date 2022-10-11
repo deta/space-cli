@@ -73,7 +73,7 @@ func OpenRaw(sourceDir string) ([]byte, error) {
 
 func (s *Spacefile) Save(sourceDir string) error {
 
-	spacefileDocsUrl := "# Spacefile Docs: https://alpha.deta.space/docs/en/reference/spacefile \n"
+	spacefileDocsUrl := "# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0\n"
 	// marshall spacefile object
 	rawSpacefile, err := yaml.Marshal(s)
 	if err != nil {
