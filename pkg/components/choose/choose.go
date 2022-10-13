@@ -5,6 +5,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/deta/pc-cli/pkg/components/styles"
 )
 
 type Model struct {
@@ -38,7 +39,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyEsc:
+		case tea.KeyEnter:
 			m.Chosen = true
 			m.Quitting = true
 			return m, tea.Quit
@@ -81,7 +82,7 @@ func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 func choicesView(m Model) string {
 	c := m.Cursor
 
-	tpl := fmt.Sprintf("? %s\n", m.Prompt)
+	tpl := fmt.Sprintf("%s %s  \n\n", styles.Question, styles.Bold(m.Prompt))
 
 	tpl += "%s\n"
 	choices := ""
@@ -94,14 +95,14 @@ func choicesView(m Model) string {
 	}
 
 	if m.Quitting && m.Chosen {
-		tpl += fmt.Sprintf("\n> selected %s\n\n", m.Choices[m.Cursor])
+		tpl += fmt.Sprintf("\n%s Selected %s\n\n", styles.SelectTag, styles.Pink(m.Choices[m.Cursor]))
 	}
 	return fmt.Sprintf(tpl, choices)
 }
 
 func RenderChoice(choice string, chosen bool) string {
 	if chosen {
-		return fmt.Sprintf("- %s", choice)
+		return fmt.Sprintf("%s %s", styles.SelectTag, choice)
 	}
 	return fmt.Sprintf("  %s", choice)
 }
