@@ -9,7 +9,7 @@ import (
 
 func pythonScanner(dir string) (*shared.Micro, error) {
 	// if any of the following files exist detect as python app
-	exists, err := fs.CheckIfAnyFileExists(dir, "requirements.txt", "Pipfile", "setup.py")
+	exists, err := fs.CheckIfAnyFileExists(dir, "requirements.txt", "Pipfile", "setup.py", "main.py")
 	if err != nil {
 		return nil, err
 	}
