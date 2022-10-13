@@ -108,7 +108,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 
 		if len(r.Revisions) == 0 {
-			logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("deta push")))
+			logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
 			return nil
 		}
 
