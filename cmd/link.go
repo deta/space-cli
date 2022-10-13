@@ -135,7 +135,7 @@ func link(cmd *cobra.Command, args []string) error {
 			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 			if err != nil {
 				if errors.Is(err, api.ErrProjectNotFound) {
-					logger.Println(styles.Error(fmt.Sprintf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)))
+					logger.Println(styles.Error(fmt.Sprintf("\n%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)))
 					return nil
 				}
 				return err

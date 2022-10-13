@@ -119,7 +119,8 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r := spinner.Run(&buildSpinnerInput)
 	if r.Err != nil {
-		return err
+		logger.Println(styles.Errorf("\n%s Failed to push project: %s", emoji.ErrorExclamation, r.Err))
+		return nil
 	}
 	var br *api.CreateBuildResponse
 	var ok bool
