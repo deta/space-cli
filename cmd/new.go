@@ -102,7 +102,7 @@ func new(cmd *cobra.Command, args []string) error {
 
 	if isProjectInitialized {
 		logger.Println(styles.Error("A project already exists in this directory. You can use"),
-			styles.Code("deta push"), styles.Error("to create a Revision."))
+			styles.Code("space push"), styles.Error("to create a Revision."))
 		return nil
 	}
 
