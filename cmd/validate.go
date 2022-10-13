@@ -106,6 +106,12 @@ func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 
 func validate(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	validateDir = filepath.Clean(validateDir)
 
 	isSpacefilePresent, err := spacefile.IsSpacefilePresent(validateDir)
@@ -133,6 +139,11 @@ func validate(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Greenf("\n%s Spacefile looks good!", emoji.Sparkles))
 	} else {
 		logger.Println(styles.Errorf("\n%s Detected some issues with your Spacefile. Please fix them before pushing your code.", emoji.ErrorExclamation))
+	}
+
+	cm := <-c
+	if cm.err == nil && cm.isLower {
+		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 	}
 	return nil
 }

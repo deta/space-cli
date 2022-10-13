@@ -24,4 +24,5 @@ var (
 	Package          = Emoji{Emoji: "📦 ", Fallback: ""}
 	Eyes             = Emoji{Emoji: "👀 ", Fallback: ""}
 	Lightning        = Emoji{Emoji: "⚡ ", Fallback: ""}
+	Pistol           = Emoji{Emoji: "🔫", Fallback: ""}
 )

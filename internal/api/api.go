@@ -455,3 +455,59 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 
 	return &resp, nil
 }
+
+type GetLatestCLIVersionResponse struct {
+	Tag        string `json:"tag_name"`
+	Prerelease bool   `json:"prerelease"`
+}
+
+func (c *DetaClient) GetLatestCLIVersion() (*GetLatestCLIVersionResponse, error) {
+	i := &requestInput{
+		Root:      "https://get.deta.dev/",
+		Path:      "space-cli/latest-version",
+		Method:    "GET",
+		NeedsAuth: false,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to get latest cli version, %s", msg)
+	}
+
+	var resp GetLatestCLIVersionResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest cli version, %w", err)
+	}
+
+	return &resp, nil
+}
+
+func (c *DetaClient) CheckCLIVersionTag(tag string) (bool, error) {
+	i := &requestInput{
+		Root:      "https://get.deta.dev/",
+		Path:      fmt.Sprintf("space-cli/releases/tags/%s", tag),
+		Method:    "GET",
+		NeedsAuth: false,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return false, err
+	}
+
+	if o.Status == 200 {
+		return true, nil
+	}
+	if o.Status == 404 {
+		return false, nil
+	}
+
+	msg := o.Error.Detail
+	return false, fmt.Errorf("failed to check if version exists, %s", msg)
+}

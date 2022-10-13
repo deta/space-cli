@@ -47,6 +47,12 @@ func selectPushProjectID() (string, error) {
 
 func push(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	var err error
 
 	pushProjectDir = filepath.Clean(pushProjectDir)
@@ -188,6 +194,11 @@ func push(cmd *cobra.Command, args []string) error {
 	if b.Status == api.Complete {
 		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!\n", emoji.PartyPopper))
 		logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 		return nil
 	} else {
 		logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
