@@ -357,6 +357,46 @@ func (c *DetaClient) PushIcon(r *PushIconRequest) (*PushIconResponse, error) {
 	return &resp, nil
 }
 
+// PushDiscoveryFileRequest xx
+type PushDiscoveryFileRequest struct {
+	DiscoveryFile []byte `json:"discovery_file"`
+	BuildID       string `json:"build_id"`
+}
+
+// PushDiscoveryFileResponse xx
+type PushDiscoveryFileResponse struct {
+	ID string `json:"build_id"`
+}
+
+func (c *DetaClient) PushDiscoveryFile(r *PushDiscoveryFileRequest) (*PushDiscoveryFileResponse, error) {
+	i := &requestInput{
+		Root:        spaceRoot,
+		Path:        fmt.Sprintf("/%s/builds/%s/discovery", version, r.BuildID),
+		Method:      "POST",
+		Headers:     make(map[string]string),
+		Body:        r.DiscoveryFile,
+		NeedsAuth:   true,
+		ContentType: "text/plain",
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 200) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to push discovery file, %v", msg)
+	}
+
+	var resp PushDiscoveryFileResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to push discovery file, %w", err)
+	}
+	return &resp, nil
+}
+
 // PushCodeRequest push spacefile request
 type PushCodeRequest struct {
 	BuildID    string `json:"build_id"`

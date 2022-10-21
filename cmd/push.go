@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
@@ -150,15 +151,15 @@ func push(cmd *cobra.Command, args []string) error {
 	r = spinner.Run(&pushSpacefileInput)
 	if r.Err != nil {
 		logger.Println(styles.Errorf("\n%s Failed to push Spacefile.\n", emoji.ErrorExclamation))
-		return err
+		return r.Err
 	}
 
+	// push spacefile icon
 	icon, err := s.GetIcon()
 	if err != nil {
 		logger.Println(styles.Errorf("\n%s Failed to get icon.\n", emoji.ErrorExclamation))
 		return err
 	}
-	// push spacefile icon
 	pushSpacefileIcon := spinner.Input{
 		LoadingMsg: "Pushing your icon...",
 		Request: func() tea.Msg {
@@ -174,8 +175,33 @@ func push(cmd *cobra.Command, args []string) error {
 		},
 	}
 	r = spinner.Run(&pushSpacefileIcon)
-	if err != nil {
+	if r.Err != nil {
 		logger.Println(styles.Errorf("\n%s Failed to push icon\n", emoji.ErrorExclamation))
+		return r.Err
+	}
+
+	// push discovery file
+	df, err := discovery.Open(pushProjectDir)
+	if err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to read Discovery file.\n", emoji.ErrorExclamation))
+		return err
+	}
+	pushDiscoveryFile := spinner.Input{
+		LoadingMsg: "Pushing your Discovery file...",
+		Request: func() tea.Msg {
+			pr, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
+				DiscoveryFile: df,
+				BuildID:       br.ID,
+			})
+			return spinner.Stop{
+				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
+				FinishMsg:       fmt.Sprintf("%s Successfully pushed your Discovery file!", emoji.Check),
+			}
+		},
+	}
+	r = spinner.Run(&pushDiscoveryFile)
+	if r.Err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to push Discovery file.\n", emoji.ErrorExclamation))
 		return err
 	}
 
