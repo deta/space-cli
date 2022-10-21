@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	docsUrl = "https://go.deta.dev/docs/space/alpha"
+	docsUrl          = "https://go.deta.dev/docs/space/alpha"
 	spacefileDocsUrl = "https://go.deta.dev/docs/spacefile/v0"
-	builderUrl = "https://alpha.deta.space/builder"
+	builderUrl       = "https://alpha.deta.space/builder"
 )
 
 func isFlagEmpty(flag string) bool {

@@ -13,7 +13,6 @@ import (
 	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
-	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -61,6 +60,7 @@ func push(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// check if project is initialized
 	if isProjectInitialized {
 		projectMeta, err := runtimeManager.GetProjectMeta()
 		if err != nil {
@@ -77,11 +77,11 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// check if spacefile is present
 	isSpacefilePrsent, err := spacefile.IsSpacefilePresent(pushProjectDir)
 	if err != nil {
 		return err
 	}
-
 	if !isSpacefilePrsent {
 		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile before pushing code.", emoji.ErrorExclamation))
 		return nil
@@ -95,7 +95,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
-	spacefileErrors := scanner.ValidateSpacefile(s)
+	spacefileErrors := spacefile.ValidateSpacefile(s)
 
 	if len(spacefileErrors) > 0 {
 		logValidationErrors(s, spacefileErrors)
@@ -106,6 +106,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
+	// start push & build process
 	buildSpinnerInput := spinner.Input{
 		LoadingMsg: "Working on starting your build...",
 		Request: func() tea.Msg {
@@ -127,6 +128,8 @@ func push(cmd *cobra.Command, args []string) error {
 	if br, ok = r.Response.(*api.CreateBuildResponse); !ok {
 		return fmt.Errorf("failed to parse create build response")
 	}
+
+	// push spacefile
 	raw, err := spacefile.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
@@ -150,6 +153,33 @@ func push(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	icon, err := s.GetIcon()
+	if err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to get icon.\n", emoji.ErrorExclamation))
+		return err
+	}
+	// push spacefile icon
+	pushSpacefileIcon := spinner.Input{
+		LoadingMsg: "Pushing your icon...",
+		Request: func() tea.Msg {
+			pr, err := client.PushIcon(&api.PushIconRequest{
+				Icon:        icon.Raw,
+				ContentType: icon.IconMeta.ContentType,
+				BuildID:     br.ID,
+			})
+			return spinner.Stop{
+				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
+				FinishMsg:       fmt.Sprintf("%s Successfully pushed your icon!", emoji.Check),
+			}
+		},
+	}
+	r = spinner.Run(&pushSpacefileIcon)
+	if err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to push icon\n", emoji.ErrorExclamation))
+		return err
+	}
+
+	// push code & run build steps
 	logger.Printf("%s Pushing your code & running build process...\n", emoji.Package)
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
@@ -160,7 +190,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
-
+	// get build logs
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: br.ID,
 	})
@@ -168,8 +198,8 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
-
 	defer readCloser.Close()
+	// stream build logs
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -179,7 +209,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
-
+	// check build status
 	b, err := client.GetBuild(&api.GetBuildLogsRequest{BuildID: br.ID})
 	if err != nil {
 		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))

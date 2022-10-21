@@ -101,6 +101,21 @@ func (s *Spacefile) AddMicros(newMicros []*shared.Micro) error {
 	return nil
 }
 
+func (s *Spacefile) GetIcon() (*Icon, error) {
+
+	iconMeta, err := getIconMeta(s.Icon)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := ioutil.ReadFile(filepath.Join(s.Icon))
+	if err != nil {
+		return nil, fmt.Errorf("cannot read image, %w", err)
+	}
+
+	return &Icon{Raw: raw, IconMeta: iconMeta}, nil
+}
+
 func (s *Spacefile) AddMicro(newMicro *shared.Micro) error {
 	// mark new micro as primary if it is the only one
 	if len(s.Micros) == 0 {

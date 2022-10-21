@@ -24,7 +24,6 @@ var (
 	revisionID       string
 	releaseProjectID string
 	releaseVersion   string
-	releaseDesc      string
 
 	releaseCmd = &cobra.Command{
 		Use:   "release [flags]",
@@ -38,7 +37,6 @@ func init() {
 	releaseCmd.Flags().StringVarP(&releaseProjectID, "id", "i", "", "project id of an existing project")
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
-	releaseCmd.Flags().StringVarP(&releaseDesc, "short-desc", "s", "", "ashort description for the release")
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -139,7 +137,6 @@ func release(cmd *cobra.Command, args []string) error {
 		RevisionID:  revisionID,
 		AppID:       releaseProjectID,
 		Version:     releaseVersion,
-		Description: releaseDesc,
 		Channel:     ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {

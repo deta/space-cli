@@ -284,7 +284,7 @@ type PushSpacefileResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushSpacefile pushes raw spacefile file content with an uploadID
+// PushSpacefile pushes raw spacefile file content
 func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,
@@ -312,6 +312,48 @@ func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileRespo
 		return nil, fmt.Errorf("failed to push spacefile file %w", err)
 	}
 
+	return &resp, nil
+}
+
+// PushIconRequest xx
+type PushIconRequest struct {
+	BuildID     string `json:"build_id"`
+	Icon        []byte `json:"icon"`
+	ContentType string `json:"content_type"`
+}
+
+// PushIconResponse xx
+type PushIconResponse struct {
+	ID string `json:"build_id"`
+}
+
+// PushIcon pushes icon with an uploadID
+func (c *DetaClient) PushIcon(r *PushIconRequest) (*PushIconResponse, error) {
+	i := &requestInput{
+		Root:        spaceRoot,
+		Path:        fmt.Sprintf("/%s/builds/%s/icon", version, r.BuildID),
+		Method:      "POST",
+		Headers:     make(map[string]string),
+		Body:        r.Icon,
+		NeedsAuth:   true,
+		ContentType: r.ContentType,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 200) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to push icon, %v", msg)
+	}
+
+	var resp PushIconResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to push icon, %w", err)
+	}
 	return &resp, nil
 }
 
