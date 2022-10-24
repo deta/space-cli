@@ -72,6 +72,12 @@ func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
 
 func release(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	releaseDir = filepath.Clean(releaseDir)
 
 	runtimeManager, err := runtime.NewManager(&releaseDir, true)
@@ -172,6 +178,11 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
 		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
 		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 	} else {
 		logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
 	}

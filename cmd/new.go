@@ -86,6 +86,12 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 
 func new(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	var err error
 
 	projectDir = filepath.Clean(projectDir)
@@ -150,6 +156,11 @@ func new(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to retrieve project info")
 		}
 		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 		return nil
 	}
 
@@ -202,6 +213,11 @@ func new(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to retrieve project info")
 		}
 		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 		return nil
 	}
 
@@ -245,6 +261,11 @@ func new(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to retrieve project info")
 			}
 			logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+
+			cm := <-c
+			if cm.err == nil && cm.isLower {
+				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			}
 			return nil
 		}
 	}
@@ -268,6 +289,9 @@ func new(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to retrieve project info")
 	}
 	logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-
+	cm := <-c
+	if cm.err == nil && cm.isLower {
+		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
 	return nil
 }
