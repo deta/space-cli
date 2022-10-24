@@ -76,16 +76,13 @@ func (s *Spacefile) Save(sourceDir string) error {
 	spacefileDocsUrl := "# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0\n"
 
 	// marshall spacefile object
-	var rawSpacefile bytes.Buffer
-	yamlEncoder := yaml.NewEncoder(&rawSpacefile)
-	yamlEncoder.SetIndent(2)
-	err := yamlEncoder.Encode(&s)
+	rawSpacefile, err := yaml.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("failed to marshall spacefile object: %w", err)
 	}
 
 	c := []byte(spacefileDocsUrl)
-	c = append(c, rawSpacefile.Bytes()...)
+	c = append(c, rawSpacefile...)
 
 	// write spacefile object to file
 	err = ioutil.WriteFile(filepath.Join(sourceDir, SpacefileName), c, 0644)
@@ -106,7 +103,9 @@ func (s *Spacefile) AddMicros(newMicros []*shared.Micro) error {
 }
 
 func (s *Spacefile) GetIcon() (*Icon, error) {
-
+	if s.Icon == "" {
+		return nil, ErrInvalidIconPath
+	}
 	iconMeta, err := getIconMeta(s.Icon)
 	if err != nil {
 		return nil, err

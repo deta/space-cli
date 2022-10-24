@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -74,7 +75,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 		pushProjectID, err = selectPushProjectID()
 		if err != nil {
-			return fmt.Errorf("problem while trying to get project id to push from prompt, %w", err)
+			return fmt.Errorf("problem while trying to get project id to push from prompt, %v", err)
 		}
 	}
 
@@ -150,15 +151,17 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r = spinner.Run(&pushSpacefileInput)
 	if r.Err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to push Spacefile.\n", emoji.ErrorExclamation))
-		return r.Err
+		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, r.Err))
+		return nil
 	}
 
 	// push spacefile icon
 	icon, err := s.GetIcon()
 	if err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to get icon.\n", emoji.ErrorExclamation))
-		return err
+		if !errors.Is(err, spacefile.ErrInvalidIconPath) {
+			logger.Println(styles.Errorf("\n%s Failed to get icon, %v", emoji.ErrorExclamation, err))
+			return nil
+		}
 	}
 	pushSpacefileIcon := spinner.Input{
 		LoadingMsg: "Pushing your icon...",
@@ -174,17 +177,21 @@ func push(cmd *cobra.Command, args []string) error {
 			}
 		},
 	}
-	r = spinner.Run(&pushSpacefileIcon)
-	if r.Err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to push icon\n", emoji.ErrorExclamation))
-		return r.Err
+	if !errors.Is(err, spacefile.ErrInvalidIconPath) {
+		r = spinner.Run(&pushSpacefileIcon)
+		if r.Err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, r.Err))
+			return nil
+		}
 	}
 
 	// push discovery file
 	df, err := discovery.Open(pushProjectDir)
 	if err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to read Discovery file.\n", emoji.ErrorExclamation))
-		return err
+		if !(errors.Is(err, discovery.ErrDiscoveryFileNotFound)) {
+			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+			return nil
+		}
 	}
 	pushDiscoveryFile := spinner.Input{
 		LoadingMsg: "Pushing your Discovery file...",
@@ -199,10 +206,12 @@ func push(cmd *cobra.Command, args []string) error {
 			}
 		},
 	}
-	r = spinner.Run(&pushDiscoveryFile)
-	if r.Err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to push Discovery file.\n", emoji.ErrorExclamation))
-		return err
+	if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
+		r = spinner.Run(&pushDiscoveryFile)
+		if r.Err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, r.Err))
+			return nil
+		}
 	}
 
 	// push code & run build steps

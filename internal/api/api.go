@@ -397,18 +397,18 @@ func (c *DetaClient) PushDiscoveryFile(r *PushDiscoveryFileRequest) (*PushDiscov
 	return &resp, nil
 }
 
-// PushCodeRequest push spacefile request
+// PushCodeRequest push code request
 type PushCodeRequest struct {
 	BuildID    string `json:"build_id"`
 	ZippedCode []byte `json:"zipped_code"`
 }
 
-// PushSpacefileResponse push spacefile response
+// PushCodeResponse push code response
 type PushCodeResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushCode pushes raw spacefile file content with an uploadID
+// PushCode pushes raw code
 func (c *DetaClient) PushCode(r *PushCodeRequest) (*PushCodeResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,

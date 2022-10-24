@@ -49,7 +49,7 @@ func projectNotes(projectName string, projectId string) string {
 %s Push your code to Space with %s
 %s Launch your app to the world with %s`, styles.Bold("Next steps:"), emoji.Eyes,
 		styles.Bold(fmt.Sprintf("%s/%s", builderUrl, projectId)),
-		emoji.Package,
+		emoji.Files,
 		styles.Code("Spacefile"), styles.Bold(spacefileDocsUrl),
 		emoji.Swirl,
 		styles.Code("space push"),

@@ -84,8 +84,10 @@ func Highlight(str string) string {
 }
 
 var (
-	Question  = BoldStyle.Render(Pink("?"))
-	SelectTag = BoldStyle.Render(Pink(">"))
-	CheckMark = BoldStyle.Render(Green("✓"))
-	Info      = BoldStyle.Render(Blue("i"))
+	Question         = BoldStyle.Render(Pink("?"))
+	SelectTag        = BoldStyle.Render(Pink(">"))
+	CheckMark        = BoldStyle.Render(Green("✓"))
+	X                = BoldStyle.Render(ErrorStyle.Render("x"))
+	ErrorExclamation = BoldStyle.Render(ErrorStyle.Render("!"))
+	Info             = BoldStyle.Render(Blue("i"))
 )
