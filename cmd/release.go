@@ -24,6 +24,7 @@ var (
 	revisionID       string
 	releaseProjectID string
 	releaseVersion   string
+	listedRelease    bool
 
 	releaseCmd = &cobra.Command{
 		Use:   "release [flags]",
@@ -37,6 +38,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&releaseProjectID, "id", "i", "", "project id of an existing project")
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
+	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "", false, "listed on discovery")
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -140,10 +142,11 @@ func release(cmd *cobra.Command, args []string) error {
 	// TODO: promotion logs
 	logger.Printf("%s Creating a Release ...\n\n", emoji.Package)
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
-		RevisionID: revisionID,
-		AppID:      releaseProjectID,
-		Version:    releaseVersion,
-		Channel:    ReleaseChannelExp, // always experimental release for now
+		RevisionID:    revisionID,
+		AppID:         releaseProjectID,
+		Version:       releaseVersion,
+		DiscoveryList: listedRelease,
+		Channel:       ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {
 		return err

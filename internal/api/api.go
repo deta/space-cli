@@ -110,6 +110,7 @@ type CreateReleaseRequest struct {
 	Version     string `json:"version"`
 	Description string `json:"description"`
 	Channel     string `json:"channel"`
+	DiscoveryList bool `json:"discovery_list"`
 }
 
 type CreateReleaseResponse struct {
