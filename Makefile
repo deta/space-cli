@@ -1,8 +1,11 @@
+SPACE_VERSION = DEV
 LINUX_PLATFORM = x86_64-linux
 LINUX_ARM_PLATFORM= arm64-linux
 MAC_PLATFORM = x86_64-darwin
 MAC_ARM_PLATFORM = arm64-darwin
 WINDOWS_PLATFORM = x86_64-windows
+
+LDFLAGS := -X github.com/deta/pc-cli/cmd.spaceVersion=$(SPACE_VERSION) $(LDFLAGS)
 
 .PHONY: build clean
 
