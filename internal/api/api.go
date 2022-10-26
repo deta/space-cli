@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	spaceRoot = "https://alpha.deta.space/api" // "https://alpha.deta.space"
+	spaceRoot = "https://alpha.deta.space/api"
 	//spaceRoot = "http://localhost:9900/api"
 	version = "v0"
 )
@@ -345,7 +345,7 @@ func (c *DetaClient) PushIcon(r *PushIconRequest) (*PushIconResponse, error) {
 		return nil, err
 	}
 
-	if !(o.Status >= 200 && o.Status <= 200) {
+	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
 		return nil, fmt.Errorf("failed to push icon, %v", msg)
 	}
@@ -385,7 +385,7 @@ func (c *DetaClient) PushDiscoveryFile(r *PushDiscoveryFileRequest) (*PushDiscov
 		return nil, err
 	}
 
-	if !(o.Status >= 200 && o.Status <= 200) {
+	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
 		return nil, fmt.Errorf("failed to push discovery file, %v", msg)
 	}
