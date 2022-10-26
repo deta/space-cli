@@ -105,12 +105,13 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 }
 
 type CreateReleaseRequest struct {
-	RevisionID  string `json:"revision_id"`
-	AppID       string `json:"app_id"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
-	Channel     string `json:"channel"`
-	DiscoveryList bool `json:"discovery_list"`
+	Name          string `json:"name"`
+	RevisionID    string `json:"revision_id"`
+	AppID         string `json:"app_id"`
+	Version       string `json:"version"`
+	Description   string `json:"description"`
+	Channel       string `json:"channel"`
+	DiscoveryList bool   `json:"discovery_list"`
 }
 
 type CreateReleaseResponse struct {
