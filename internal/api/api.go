@@ -105,7 +105,6 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 }
 
 type CreateReleaseRequest struct {
-	Name          string `json:"name"`
 	RevisionID    string `json:"revision_id"`
 	AppID         string `json:"app_id"`
 	Version       string `json:"version"`
