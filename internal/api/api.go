@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	spaceRoot = "https://alpha.deta.space/api" // "https://alpha.deta.space"
+	spaceRoot = "https://alpha.deta.space/api"
 	//spaceRoot = "http://localhost:9900/api"
 	version = "v0"
 )
@@ -105,11 +105,13 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 }
 
 type CreateReleaseRequest struct {
-	RevisionID  string `json:"revision_id"`
-	AppID       string `json:"app_id"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
-	Channel     string `json:"channel"`
+	Name          string `json:"name"`
+	RevisionID    string `json:"revision_id"`
+	AppID         string `json:"app_id"`
+	Version       string `json:"version"`
+	Description   string `json:"description"`
+	Channel       string `json:"channel"`
+	DiscoveryList bool   `json:"discovery_list"`
 }
 
 type CreateReleaseResponse struct {
@@ -284,7 +286,7 @@ type PushSpacefileResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushSpacefile pushes raw spacefile file content with an uploadID
+// PushSpacefile pushes raw spacefile file content
 func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,
@@ -315,18 +317,100 @@ func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileRespo
 	return &resp, nil
 }
 
-// PushCodeRequest push spacefile request
+// PushIconRequest xx
+type PushIconRequest struct {
+	BuildID     string `json:"build_id"`
+	Icon        []byte `json:"icon"`
+	ContentType string `json:"content_type"`
+}
+
+// PushIconResponse xx
+type PushIconResponse struct {
+	ID string `json:"build_id"`
+}
+
+// PushIcon pushes icon with an uploadID
+func (c *DetaClient) PushIcon(r *PushIconRequest) (*PushIconResponse, error) {
+	i := &requestInput{
+		Root:        spaceRoot,
+		Path:        fmt.Sprintf("/%s/builds/%s/icon", version, r.BuildID),
+		Method:      "POST",
+		Headers:     make(map[string]string),
+		Body:        r.Icon,
+		NeedsAuth:   true,
+		ContentType: r.ContentType,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to push icon, %v", msg)
+	}
+
+	var resp PushIconResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to push icon, %w", err)
+	}
+	return &resp, nil
+}
+
+// PushDiscoveryFileRequest xx
+type PushDiscoveryFileRequest struct {
+	DiscoveryFile []byte `json:"discovery_file"`
+	BuildID       string `json:"build_id"`
+}
+
+// PushDiscoveryFileResponse xx
+type PushDiscoveryFileResponse struct {
+	ID string `json:"build_id"`
+}
+
+func (c *DetaClient) PushDiscoveryFile(r *PushDiscoveryFileRequest) (*PushDiscoveryFileResponse, error) {
+	i := &requestInput{
+		Root:        spaceRoot,
+		Path:        fmt.Sprintf("/%s/builds/%s/discovery", version, r.BuildID),
+		Method:      "POST",
+		Headers:     make(map[string]string),
+		Body:        r.DiscoveryFile,
+		NeedsAuth:   true,
+		ContentType: "text/plain",
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to push discovery file, %v", msg)
+	}
+
+	var resp PushDiscoveryFileResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to push discovery file, %w", err)
+	}
+	return &resp, nil
+}
+
+// PushCodeRequest push code request
 type PushCodeRequest struct {
 	BuildID    string `json:"build_id"`
 	ZippedCode []byte `json:"zipped_code"`
 }
 
-// PushSpacefileResponse push spacefile response
+// PushCodeResponse push code response
 type PushCodeResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushCode pushes raw spacefile file content with an uploadID
+// PushCode pushes raw code
 func (c *DetaClient) PushCode(r *PushCodeRequest) (*PushCodeResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,
@@ -454,4 +538,60 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 	}
 
 	return &resp, nil
+}
+
+type GetLatestCLIVersionResponse struct {
+	Tag        string `json:"tag_name"`
+	Prerelease bool   `json:"prerelease"`
+}
+
+func (c *DetaClient) GetLatestCLIVersion() (*GetLatestCLIVersionResponse, error) {
+	i := &requestInput{
+		Root:      "https://get.deta.dev/",
+		Path:      "space-cli/latest-version",
+		Method:    "GET",
+		NeedsAuth: false,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to get latest cli version, %s", msg)
+	}
+
+	var resp GetLatestCLIVersionResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest cli version, %w", err)
+	}
+
+	return &resp, nil
+}
+
+func (c *DetaClient) CheckCLIVersionTag(tag string) (bool, error) {
+	i := &requestInput{
+		Root:      "https://get.deta.dev/",
+		Path:      fmt.Sprintf("space-cli/releases/tags/%s", tag),
+		Method:    "GET",
+		NeedsAuth: false,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return false, err
+	}
+
+	if o.Status == 200 {
+		return true, nil
+	}
+	if o.Status == 404 {
+		return false, nil
+	}
+
+	msg := o.Error.Detail
+	return false, fmt.Errorf("failed to check if version exists, %s", msg)
 }

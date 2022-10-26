@@ -154,7 +154,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	}
 	err = json.Unmarshal(b, &er)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshall error msg, request status code: %v", res.StatusCode)
 	}
 	o.Error = &er
 	return o, nil
