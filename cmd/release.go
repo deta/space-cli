@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"github.com/deta/pc-cli/internal/spacefile"
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/api"
@@ -108,22 +107,6 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	s, err := spacefile.Open(projectDir)
-	if err != nil {
-		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
-		return nil
-	}
-	spacefileErrors := spacefile.ValidateSpacefile(s)
-
-	if len(spacefileErrors) > 0 {
-		logValidationErrors(s, spacefileErrors)
-		logger.Println(styles.Error("\nPlease try to fix the issues with your Spacefile before pushing code."))
-		return nil
-	} else {
-		logValidationErrors(s, spacefileErrors)
-		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
-	}
-
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
@@ -159,7 +142,6 @@ func release(cmd *cobra.Command, args []string) error {
 	// TODO: promotion logs
 	logger.Printf("%s Creating a Release ...\n\n", emoji.Package)
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
-		Name:          s.Name,
 		RevisionID:    revisionID,
 		AppID:         releaseProjectID,
 		Version:       releaseVersion,
