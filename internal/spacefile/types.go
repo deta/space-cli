@@ -13,10 +13,10 @@ var (
 
 // Spacefile xx
 type Spacefile struct {
-	V      int             `yaml:"v"`
-	Icon   string          `yaml:"icon,omitempty"`
-	Name   string          `yaml:"name,omitempty"`
-	Micros []*shared.Micro `yaml:"micros,omitempty"`
+	V       int             `yaml:"v"`
+	Icon    string          `yaml:"icon,omitempty"`
+	AppName string          `yaml:"app_name,omitempty"`
+	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
 // IconMeta xx

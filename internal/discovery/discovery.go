@@ -11,7 +11,7 @@ import (
 
 const (
 	// DiscoveryFilename discovery filename
-	DiscoveryFilename = "discovery.md"
+	DiscoveryFilename = "Discovery.md"
 )
 
 var (
