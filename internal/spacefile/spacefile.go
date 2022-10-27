@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/deta/pc-cli/pkg/util/fs"
 	"github.com/deta/pc-cli/shared"
@@ -15,6 +16,22 @@ const (
 	// SpacefileName spacefile file name
 	SpacefileName = "Spacefile"
 )
+
+func checkSpacefileCase(sourceDir string) (string, bool, error) {
+	files, err := ioutil.ReadDir(sourceDir)
+	if err != nil {
+		return "", false, err
+	}
+	for _, f := range files {
+		if strings.ToLower(f.Name()) == strings.ToLower(SpacefileName) {
+			if f.Name() != SpacefileName {
+				return f.Name(), false, nil
+			}
+			return f.Name(), true, nil
+		}
+	}
+	return "", false, ErrSpacefileNotFound
+}
 
 func Open(sourceDir string) (*Spacefile, error) {
 	var exists bool
@@ -27,6 +44,14 @@ func Open(sourceDir string) (*Spacefile, error) {
 
 	if !exists {
 		return nil, ErrSpacefileNotFound
+	}
+
+	existingSpacefileName, correctCase, err := checkSpacefileCase(sourceDir)
+	if err != nil {
+		return nil, err
+	}
+	if !correctCase {
+		return nil, fmt.Errorf("'%s' must be called exactly %s", existingSpacefileName, SpacefileName)
 	}
 
 	// read raw contents from spacefile file
@@ -185,9 +210,16 @@ func IsSpacefilePresent(sourceDir string) (bool, error) {
 		return false, err
 	}
 
-	if exists {
-		return true, nil
+	if !exists {
+		return false, nil
 	}
 
-	return false, nil
+	existingSpacefileName, correctCase, err := checkSpacefileCase(sourceDir)
+	if err != nil {
+		return false, err
+	}
+	if !correctCase {
+		return false, fmt.Errorf("'%s' must be called exactly %s: %w", existingSpacefileName, SpacefileName, ErrSpacefileWrongCase)
+	}
+	return true, nil
 }
