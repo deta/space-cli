@@ -44,6 +44,12 @@ func selectLinkProjectID() (string, error) {
 
 func link(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	var err error
 
 	linkProjectDir = filepath.Clean(linkProjectDir)
@@ -65,6 +71,10 @@ func link(cmd *cobra.Command, args []string) error {
 		}
 		logger.Printf("%s This directory is already linked to a project named \"%s\".\n", emoji.Cowboy, existingProjectMeta.Name)
 		logger.Println(projectNotes(existingProjectMeta.Name, existingProjectMeta.ID))
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 		return nil
 	}
 
@@ -106,6 +116,10 @@ func link(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to retrieve project info")
 		}
 		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 		return nil
 	}
 
@@ -135,7 +149,7 @@ func link(cmd *cobra.Command, args []string) error {
 			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 			if err != nil {
 				if errors.Is(err, api.ErrProjectNotFound) {
-					logger.Println(styles.Error(fmt.Sprintf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)))
+					logger.Println(styles.Error(fmt.Sprintf("\n%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)))
 					return nil
 				}
 				return err
@@ -158,6 +172,10 @@ func link(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to retrieve project info")
 			}
 			logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+			cm := <-c
+			if cm.err == nil && cm.isLower {
+				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			}
 			return nil
 		}
 	}
@@ -190,5 +208,9 @@ func link(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to retrieve project info")
 	}
 	logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+	cm := <-c
+	if cm.err == nil && cm.isLower {
+		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
 	return nil
 }

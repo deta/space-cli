@@ -1,11 +1,18 @@
-package scanner
+package spacefile
 
 import (
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"mime"
+
 	"os"
 
-	"github.com/deta/pc-cli/internal/spacefile"
+	_ "golang.org/x/image/webp"
+
 	"github.com/deta/pc-cli/shared"
 )
 
@@ -25,8 +32,14 @@ var (
 	// ErrInvalidMicroEngine
 	ErrInvalidMicroEngine = errors.New("invalid micro engine")
 
-	// ErrInvalidIcon cannot find icon path
-	ErrInvalidIcon = errors.New("invalid icon path")
+	// ErrInvalidIconPath cannot find icon path
+	ErrInvalidIconPath = errors.New("invalid icon path")
+
+	// ErrInvalidIconType
+	ErrInvalidIconType = errors.New("invalid icon type")
+
+	// ErrInvalidIconSize
+	ErrInvalidIconSize = errors.New("invalid icon size")
 
 	// ErrDuplicateMicros
 	ErrDuplicateMicros = errors.New("micro names have to be unique")
@@ -36,19 +49,22 @@ var (
 
 	// ErrNoPrimaryMicro
 	ErrNoPrimaryMicro = errors.New("no primary micro present")
+
+	// ErrNameMaxLengthExceeded
+	ErrNameMaxLengthExceeded = errors.New("name is too long, max length is 12 characters")
+
+	// MaxIconWidth
+	MaxIconWidth = 512
+
+	// MaxIconHeight
+	MaxIconHeight = 512
+
+	// MaxIconSize
+	MaxIconSize = MaxIconHeight * MaxIconWidth
 )
 
-type MicroError struct {
-	Err   error
-	Micro *shared.Micro
-}
-
-func (me *MicroError) Error() string {
-	return me.Err.Error()
-}
-
 // ValidateSpacefile checks for general errors such as duplicate micros and max micro limit
-func ValidateSpacefile(s *spacefile.Spacefile) []error {
+func ValidateSpacefile(s *Spacefile) []error {
 
 	var primarySpecified bool
 
@@ -66,6 +82,9 @@ func ValidateSpacefile(s *spacefile.Spacefile) []error {
 		errors = append(errors, ErrExceedsMaxMicroLimit)
 	}
 
+	if len(s.Name) >= 12 {
+		errors = append(errors, ErrNameMaxLengthExceeded)
+	}
 	for _, micro := range s.Micros {
 		if _, ok := microNames[micro.Name]; ok {
 			errors = append(errors, ErrDuplicateMicros)
@@ -89,19 +108,34 @@ func ValidateSpacefile(s *spacefile.Spacefile) []error {
 	return errors
 }
 
-func ValidateSpacefileIcon(icon string) error {
-	if icon == "" {
+// ValidateSpacefileIcon validate spacefile icon
+func ValidateSpacefileIcon(iconPath string) error {
+	if iconPath == "" {
 		return nil
 	}
 
-	_, err := os.Stat(icon)
+	_, err := os.Stat(iconPath)
 	if os.IsNotExist(err) {
-		return ErrInvalidIcon
+		return ErrInvalidIconPath
+	}
+
+	iconMeta, err := getIconMeta(iconPath)
+	if err != nil {
+		return err
+	}
+
+	if iconMeta.ContentType != "image/png" && iconMeta.ContentType != "image/webp" {
+		return ErrInvalidIconType
+	}
+
+	if iconMeta.Height != MaxIconHeight && iconMeta.Width != MaxIconWidth {
+		return ErrInvalidIconSize
 	}
 
 	return nil
 }
 
+// ValidateMicro validate micro
 func ValidateMicro(micro *shared.Micro) []error {
 	errors := []error{}
 
@@ -143,4 +177,32 @@ func ValidateMicro(micro *shared.Micro) []error {
 	}
 
 	return errors
+}
+
+func getIconMeta(iconPath string) (*IconMeta, error) {
+
+	_, err := os.Stat(iconPath)
+	if os.IsNotExist(err) {
+		return nil, ErrInvalidIconPath
+	}
+
+	imgFile, err := os.Open(iconPath)
+	if err != nil {
+		return nil, ErrInvalidIconPath
+	}
+	defer imgFile.Close()
+
+	imgMeta, imgType, err := image.DecodeConfig(imgFile)
+	if err != nil {
+		if errors.Is(image.ErrFormat, err) {
+			return nil, ErrInvalidIconType
+		}
+		return nil, ErrInvalidIconPath
+	}
+
+	return &IconMeta{
+		Width:       imgMeta.Width,
+		Height:      imgMeta.Height,
+		ContentType: mime.TypeByExtension("." + imgType),
+	}, nil
 }

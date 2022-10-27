@@ -2,18 +2,19 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
-	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -47,6 +48,12 @@ func selectPushProjectID() (string, error) {
 
 func push(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	var err error
 
 	pushProjectDir = filepath.Clean(pushProjectDir)
@@ -61,6 +68,7 @@ func push(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// check if project is initialized
 	if isProjectInitialized {
 		projectMeta, err := runtimeManager.GetProjectMeta()
 		if err != nil {
@@ -73,15 +81,15 @@ func push(cmd *cobra.Command, args []string) error {
 
 		pushProjectID, err = selectPushProjectID()
 		if err != nil {
-			return fmt.Errorf("problem while trying to get project id to push from prompt, %w", err)
+			return fmt.Errorf("problem while trying to get project id to push from prompt, %v", err)
 		}
 	}
 
+	// check if spacefile is present
 	isSpacefilePrsent, err := spacefile.IsSpacefilePresent(pushProjectDir)
 	if err != nil {
 		return err
 	}
-
 	if !isSpacefilePrsent {
 		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile before pushing code.", emoji.ErrorExclamation))
 		return nil
@@ -95,7 +103,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
-	spacefileErrors := scanner.ValidateSpacefile(s)
+	spacefileErrors := spacefile.ValidateSpacefile(s)
 
 	if len(spacefileErrors) > 0 {
 		logValidationErrors(s, spacefileErrors)
@@ -106,6 +114,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
+	// start push & build process
 	buildSpinnerInput := spinner.Input{
 		LoadingMsg: "Working on starting your build...",
 		Request: func() tea.Msg {
@@ -119,13 +128,16 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r := spinner.Run(&buildSpinnerInput)
 	if r.Err != nil {
-		return err
+		logger.Println(styles.Errorf("\n%s Failed to push project: %s", emoji.ErrorExclamation, r.Err))
+		return nil
 	}
 	var br *api.CreateBuildResponse
 	var ok bool
 	if br, ok = r.Response.(*api.CreateBuildResponse); !ok {
 		return fmt.Errorf("failed to parse create build response")
 	}
+
+	// push spacefile
 	raw, err := spacefile.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
@@ -145,10 +157,70 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r = spinner.Run(&pushSpacefileInput)
 	if r.Err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to push Spacefile.\n", emoji.ErrorExclamation))
-		return err
+		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, r.Err))
+		return nil
 	}
 
+	// push spacefile icon
+	icon, err := s.GetIcon()
+	if err != nil {
+		if !errors.Is(err, spacefile.ErrInvalidIconPath) {
+			logger.Println(styles.Errorf("\n%s Failed to get icon, %v", emoji.ErrorExclamation, err))
+			return nil
+		}
+	}
+	pushSpacefileIcon := spinner.Input{
+		LoadingMsg: "Pushing your icon...",
+		Request: func() tea.Msg {
+			pr, err := client.PushIcon(&api.PushIconRequest{
+				Icon:        icon.Raw,
+				ContentType: icon.IconMeta.ContentType,
+				BuildID:     br.ID,
+			})
+			return spinner.Stop{
+				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
+				FinishMsg:       fmt.Sprintf("%s Successfully pushed your icon!", emoji.Check),
+			}
+		},
+	}
+	if !errors.Is(err, spacefile.ErrInvalidIconPath) {
+		r = spinner.Run(&pushSpacefileIcon)
+		if r.Err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, r.Err))
+			return nil
+		}
+	}
+
+	// push discovery file
+	df, err := discovery.Open(pushProjectDir)
+	if err != nil {
+		if !(errors.Is(err, discovery.ErrDiscoveryFileNotFound)) {
+			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+			return nil
+		}
+	}
+	pushDiscoveryFile := spinner.Input{
+		LoadingMsg: "Pushing your Discovery file...",
+		Request: func() tea.Msg {
+			pr, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
+				DiscoveryFile: df,
+				BuildID:       br.ID,
+			})
+			return spinner.Stop{
+				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
+				FinishMsg:       fmt.Sprintf("%s Successfully pushed your Discovery file!", emoji.Check),
+			}
+		},
+	}
+	if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
+		r = spinner.Run(&pushDiscoveryFile)
+		if r.Err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, r.Err))
+			return nil
+		}
+	}
+
+	// push code & run build steps
 	logger.Printf("%s Pushing your code & running build process...\n", emoji.Package)
 	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
@@ -159,7 +231,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
-
+	// get build logs
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: br.ID,
 	})
@@ -167,8 +239,8 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
-
 	defer readCloser.Close()
+	// stream build logs
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -178,7 +250,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
-
+	// check build status
 	b, err := client.GetBuild(&api.GetBuildLogsRequest{BuildID: br.ID})
 	if err != nil {
 		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
@@ -188,6 +260,11 @@ func push(cmd *cobra.Command, args []string) error {
 	if b.Status == api.Complete {
 		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!\n", emoji.PartyPopper))
 		logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 		return nil
 	} else {
 		logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))

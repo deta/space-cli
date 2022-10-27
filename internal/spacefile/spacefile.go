@@ -74,6 +74,7 @@ func OpenRaw(sourceDir string) ([]byte, error) {
 func (s *Spacefile) Save(sourceDir string) error {
 
 	spacefileDocsUrl := "# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0\n"
+
 	// marshall spacefile object
 	rawSpacefile, err := yaml.Marshal(s)
 	if err != nil {
@@ -99,6 +100,23 @@ func (s *Spacefile) AddMicros(newMicros []*shared.Micro) error {
 		}
 	}
 	return nil
+}
+
+func (s *Spacefile) GetIcon() (*Icon, error) {
+	if s.Icon == "" {
+		return nil, ErrInvalidIconPath
+	}
+	iconMeta, err := getIconMeta(s.Icon)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := ioutil.ReadFile(filepath.Join(s.Icon))
+	if err != nil {
+		return nil, fmt.Errorf("cannot read image, %w", err)
+	}
+
+	return &Icon{Raw: raw, IconMeta: iconMeta}, nil
 }
 
 func (s *Spacefile) AddMicro(newMicro *shared.Micro) error {

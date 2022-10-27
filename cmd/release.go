@@ -24,7 +24,7 @@ var (
 	revisionID       string
 	releaseProjectID string
 	releaseVersion   string
-	releaseDesc      string
+	listedRelease    bool
 
 	releaseCmd = &cobra.Command{
 		Use:   "release [flags]",
@@ -38,7 +38,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&releaseProjectID, "id", "i", "", "project id of an existing project")
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
-	releaseCmd.Flags().StringVarP(&releaseDesc, "short-desc", "s", "", "ashort description for the release")
+	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "", false, "listed on discovery")
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -74,6 +74,12 @@ func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
 
 func release(cmd *cobra.Command, args []string) error {
 	logger.Println()
+
+	// check space version
+	c := make(chan *checkVersionMsg, 1)
+	defer close(c)
+	go checkVersion(c)
+
 	releaseDir = filepath.Clean(releaseDir)
 
 	runtimeManager, err := runtime.NewManager(&releaseDir, true)
@@ -108,7 +114,7 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 
 		if len(r.Revisions) == 0 {
-			logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("deta push")))
+			logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
 			return nil
 		}
 
@@ -136,11 +142,11 @@ func release(cmd *cobra.Command, args []string) error {
 	// TODO: promotion logs
 	logger.Printf("%s Creating a Release ...\n\n", emoji.Package)
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
-		RevisionID:  revisionID,
-		AppID:       releaseProjectID,
-		Version:     releaseVersion,
-		Description: releaseDesc,
-		Channel:     ReleaseChannelExp, // always experimental release for now
+		RevisionID:    revisionID,
+		AppID:         releaseProjectID,
+		Version:       releaseVersion,
+		DiscoveryList: listedRelease,
+		Channel:       ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {
 		return err
@@ -175,6 +181,11 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
 		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
 		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
 	} else {
 		logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
 	}
