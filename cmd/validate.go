@@ -41,6 +41,8 @@ func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 		} else {
 			// general errors
 			switch {
+			case errors.Is(spacefile.ErrSpacefileWrongCase, err):
+				logger.Println(styles.Errorf("%s Validation Error: Spacefile must be called exactly 'Spacefile.\n'", emoji.X))
 			case errors.Is(spacefile.ErrExceedsMaxMicroLimit, err):
 				logger.Println(styles.Errorf("%s Validation Error: Spacefile exceeds max micro limit. Please make sure to use a max of 5 micros.\n", emoji.X))
 			case errors.Is(spacefile.ErrDuplicateMicros, err):
@@ -135,6 +137,9 @@ func validate(cmd *cobra.Command, args []string) error {
 
 	s, err := spacefile.Open(validateDir)
 	if err != nil {
+		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
+			return fmt.Errorf("%s The Spacefile must be called exactly 'Spacefile'.", emoji.ErrorExclamation)
+		}
 		return fmt.Errorf("problem while opening spacefile in dir %s, %w", validateDir, err)
 	}
 

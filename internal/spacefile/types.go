@@ -9,6 +9,8 @@ import (
 var (
 	// ErrSpacefileNotFound spacefile file not found
 	ErrSpacefileNotFound = errors.New("spacefile file not found")
+	// ErrWrongCase spacefile has wrong case
+	ErrSpacefileWrongCase = errors.New("spacefile has wrong case")
 )
 
 // Spacefile xx

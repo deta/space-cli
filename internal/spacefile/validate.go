@@ -82,7 +82,7 @@ func ValidateSpacefile(s *Spacefile) []error {
 		errors = append(errors, ErrExceedsMaxMicroLimit)
 	}
 
-	if len(s.Name) >= 12 {
+	if len(s.AppName) >= 12 {
 		errors = append(errors, ErrNameMaxLengthExceeded)
 	}
 	for _, micro := range s.Micros {
