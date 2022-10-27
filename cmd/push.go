@@ -88,6 +88,10 @@ func push(cmd *cobra.Command, args []string) error {
 	// check if spacefile is present
 	isSpacefilePrsent, err := spacefile.IsSpacefilePresent(pushProjectDir)
 	if err != nil {
+		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
+			logger.Printf("%s The Spacefile must be called exactly 'Spacefile'.\n", emoji.ErrorExclamation)
+			return nil
+		}
 		return err
 	}
 	if !isSpacefilePrsent {
@@ -195,6 +199,10 @@ func push(cmd *cobra.Command, args []string) error {
 	df, err := discovery.Open(pushProjectDir)
 	if err != nil {
 		if !(errors.Is(err, discovery.ErrDiscoveryFileNotFound)) {
+			if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
+				logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
+				return nil
+			}
 			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
 			return nil
 		}

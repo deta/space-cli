@@ -38,7 +38,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&releaseProjectID, "id", "i", "", "project id of an existing project")
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
-	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "", false, "listed on discovery")
+	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
 	rootCmd.AddCommand(releaseCmd)
 }
 

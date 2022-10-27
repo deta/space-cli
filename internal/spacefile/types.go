@@ -9,14 +9,16 @@ import (
 var (
 	// ErrSpacefileNotFound spacefile file not found
 	ErrSpacefileNotFound = errors.New("spacefile file not found")
+	// ErrWrongCase spacefile has wrong case
+	ErrSpacefileWrongCase = errors.New("spacefile has wrong case")
 )
 
 // Spacefile xx
 type Spacefile struct {
-	V      int             `yaml:"v"`
-	Icon   string          `yaml:"icon,omitempty"`
-	Name   string          `yaml:"name,omitempty"`
-	Micros []*shared.Micro `yaml:"micros,omitempty"`
+	V       int             `yaml:"v"`
+	Icon    string          `yaml:"icon,omitempty"`
+	AppName string          `yaml:"app_name,omitempty"`
+	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
 // IconMeta xx
