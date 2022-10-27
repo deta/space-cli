@@ -81,6 +81,11 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 		return fmt.Errorf("failed to write project id to .space/meta, %w", err)
 	}
 
+	err = runtimeManager.AddSpaceToGitignore()
+	if err != nil {
+		logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+	}
+
 	return nil
 }
 

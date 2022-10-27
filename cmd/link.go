@@ -110,6 +110,11 @@ func link(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to link project, %w", err)
 		}
 
+		err = runtimeManager.AddSpaceToGitignore()
+		if err != nil {
+			logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+		}
+
 		logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 		projectInfo, err := runtimeManager.GetProjectMeta()
 		if err != nil {
@@ -166,6 +171,11 @@ func link(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to link project, %w", err)
 			}
 
+			err = runtimeManager.AddSpaceToGitignore()
+			if err != nil {
+				logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+			}
+
 			logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 			projectInfo, err := runtimeManager.GetProjectMeta()
 			if err != nil {
@@ -200,6 +210,11 @@ func link(cmd *cobra.Command, args []string) error {
 	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID, Name: project.Name, Alias: project.Alias})
 	if err != nil {
 		return fmt.Errorf("failed to link project, %w", err)
+	}
+
+	err = runtimeManager.AddSpaceToGitignore()
+	if err != nil {
+		logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
 	}
 
 	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))

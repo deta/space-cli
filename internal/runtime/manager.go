@@ -3,6 +3,7 @@ package runtime
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -104,4 +105,35 @@ func (m *Manager) IsProjectInitialized() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// AddSpaceToGitignore add .space to .gitignore
+func (m *Manager) AddSpaceToGitignore() error {
+	gitignorePath := filepath.Join(m.rootDir, ".gitignore")
+	_, err := os.Stat(gitignorePath)
+	gitignoreExists := true
+	if err != nil {
+		if os.IsNotExist(err) {
+			gitignoreExists = false
+		}
+	}
+
+	if gitignoreExists {
+		contents, err := m.readFile(gitignorePath)
+		if err != nil {
+			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
+		}
+		contents = append(contents, []byte("\n.space")...)
+		err = ioutil.WriteFile(gitignorePath, contents, filePermMode)
+		if err != nil {
+			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
+		}
+		return nil
+	}
+
+	err = ioutil.WriteFile(gitignorePath, []byte(".space"), filePermMode)
+	if err != nil {
+		return fmt.Errorf("failed to write .space to .gitignore: %w", err)
+	}
+	return nil
 }
