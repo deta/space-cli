@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 const (
@@ -110,8 +111,9 @@ func (m *Manager) IsProjectInitialized() (bool, error) {
 // AddSpaceToGitignore add .space to .gitignore
 func (m *Manager) AddSpaceToGitignore() error {
 	gitignorePath := filepath.Join(m.rootDir, ".gitignore")
-	_, err := os.Stat(gitignorePath)
 	gitignoreExists := true
+
+	_, err := os.Stat(gitignorePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			gitignoreExists = false
@@ -123,6 +125,14 @@ func (m *Manager) AddSpaceToGitignore() error {
 		if err != nil {
 			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
 		}
+
+		// check if .space already exists
+		pass, err := regexp.MatchString(`(?m)^(\.space)\b`, string(contents))
+		if pass {
+			
+			return nil
+		}
+
 		contents = append(contents, []byte("\n.space")...)
 		err = ioutil.WriteFile(gitignorePath, contents, filePermMode)
 		if err != nil {
