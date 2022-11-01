@@ -56,3 +56,7 @@ func projectNotes(projectName string, projectId string) string {
 		emoji.Rocket,
 		styles.Code("space release"))
 }
+
+func SpaceGitignoreInfo() string {
+	return styles.Errorf("%s Make sure to not commit %s %s %s", emoji.ErrorExclamation, styles.Codef(".space"), styles.Error("to git as it may contain security-sensitive data. Make sure to add it to your"), styles.Codef(".gitignore"))
+}

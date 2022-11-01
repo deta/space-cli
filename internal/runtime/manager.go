@@ -3,9 +3,11 @@ package runtime
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 const (
@@ -74,6 +76,10 @@ func (m *Manager) StoreProjectMeta(p *ProjectMeta) error {
 	if err != nil {
 		return err
 	}
+
+	spaceReadmeNotes := "Don't commit this folder (.space) to git as it may contain security-sensitive data."
+	ioutil.WriteFile(filepath.Join(m.spacePath, "README"), []byte(spaceReadmeNotes), filePermMode)
+
 	return ioutil.WriteFile(m.projectMetaPath, marshalled, filePermMode)
 }
 
@@ -104,4 +110,43 @@ func (m *Manager) IsProjectInitialized() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// AddSpaceToGitignore add .space to .gitignore
+func (m *Manager) AddSpaceToGitignore() error {
+	gitignorePath := filepath.Join(m.rootDir, ".gitignore")
+	gitignoreExists := true
+
+	_, err := os.Stat(gitignorePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			gitignoreExists = false
+		}
+	}
+
+	if gitignoreExists {
+		contents, err := m.readFile(gitignorePath)
+		if err != nil {
+			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
+		}
+
+		// check if .space already exists
+		pass, _ := regexp.MatchString(`(?m)^(\.space)\b`, string(contents))
+		if pass {
+			return nil
+		}
+
+		contents = append(contents, []byte("\n.space")...)
+		err = ioutil.WriteFile(gitignorePath, contents, filePermMode)
+		if err != nil {
+			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
+		}
+		return nil
+	}
+
+	err = ioutil.WriteFile(gitignorePath, []byte(".space"), filePermMode)
+	if err != nil {
+		return fmt.Errorf("failed to write .space to .gitignore: %w", err)
+	}
+	return nil
 }
