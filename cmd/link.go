@@ -112,7 +112,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 		err = runtimeManager.AddSpaceToGitignore()
 		if err != nil {
-			logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+			logger.Println(SpaceGitignoreInfo())
 		}
 
 		logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
@@ -173,7 +173,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 			err = runtimeManager.AddSpaceToGitignore()
 			if err != nil {
-				logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+				logger.Println(SpaceGitignoreInfo())
 			}
 
 			logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
@@ -214,7 +214,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 	err = runtimeManager.AddSpaceToGitignore()
 	if err != nil {
-		logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+		logger.Println(SpaceGitignoreInfo())
 	}
 
 	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))

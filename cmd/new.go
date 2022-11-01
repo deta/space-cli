@@ -83,7 +83,7 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 
 	err = runtimeManager.AddSpaceToGitignore()
 	if err != nil {
-		logger.Println(styles.Boldf("%s Failed to add %s to %s", styles.Errorf(emoji.ErrorExclamation.Emoji), styles.Code(".space"), styles.Codef(".gitignore")))
+		logger.Println(SpaceGitignoreInfo())
 	}
 
 	return nil
