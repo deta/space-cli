@@ -49,8 +49,8 @@ func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 				logger.Println(styles.Errorf("%s Validation Error: Duplicate micro names. Please make sure to use unique names for micros.\n", emoji.X))
 			case errors.Is(spacefile.ErrNoPrimaryMicro, err):
 				logger.Println(styles.Errorf("%s Validation Error: No primary micro specified. Please mark one of the micros as primary.\n", emoji.X))
-			case errors.Is(spacefile.ErrNameMaxLengthExceeded, err):
-				logger.Println(styles.Errorf("%s \"Name\": Exceeds max length of 12 characters."))
+			case errors.Is(spacefile.ErrAppNameMaxLengthExceeded, err):
+				logger.Println(styles.Errorf("%s \"app_name\": must be at most 16 characters long.\n", emoji.X))
 			case errors.Is(spacefile.ErrInvalidIconType, err):
 				isIconValid = false
 				logger.Println(styles.Errorf("%s \"icon\": Invalid icon type. Please use a 512x512 sized PNG or WebP icon\n", emoji.X))
