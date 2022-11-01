@@ -129,7 +129,7 @@ func (m *Manager) AddSpaceToGitignore() error {
 		// check if .space already exists
 		pass, err := regexp.MatchString(`(?m)^(\.space)\b`, string(contents))
 		if pass {
-			
+
 			return nil
 		}
 

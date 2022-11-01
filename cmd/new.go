@@ -81,11 +81,6 @@ func createProject(name string, runtimeManager *runtime.Manager) error {
 		return fmt.Errorf("failed to write project id to .space/meta, %w", err)
 	}
 
-	err = runtimeManager.AddSpaceToGitignore()
-	if err != nil {
-		logger.Println(SpaceGitignoreInfo())
-	}
-
 	return nil
 }
 
@@ -161,10 +156,13 @@ func new(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to retrieve project info")
 		}
 		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
+		err = runtimeManager.AddSpaceToGitignore()
+		if err != nil {
+			logger.Println(SpaceGitignoreInfo())
 		}
 		return nil
 	}
@@ -223,6 +221,10 @@ func new(cmd *cobra.Command, args []string) error {
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 		}
+		err = runtimeManager.AddSpaceToGitignore()
+		if err != nil {
+			logger.Println(SpaceGitignoreInfo())
+		}
 		return nil
 	}
 
@@ -271,6 +273,10 @@ func new(cmd *cobra.Command, args []string) error {
 			if cm.err == nil && cm.isLower {
 				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 			}
+			err = runtimeManager.AddSpaceToGitignore()
+			if err != nil {
+				logger.Println(SpaceGitignoreInfo())
+			}
 			return nil
 		}
 	}
@@ -297,6 +303,10 @@ func new(cmd *cobra.Command, args []string) error {
 	cm := <-c
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
+	err = runtimeManager.AddSpaceToGitignore()
+	if err != nil {
+		logger.Println(SpaceGitignoreInfo())
 	}
 	return nil
 }

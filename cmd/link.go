@@ -110,11 +110,6 @@ func link(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to link project, %w", err)
 		}
 
-		err = runtimeManager.AddSpaceToGitignore()
-		if err != nil {
-			logger.Println(SpaceGitignoreInfo())
-		}
-
 		logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 		projectInfo, err := runtimeManager.GetProjectMeta()
 		if err != nil {
@@ -124,6 +119,10 @@ func link(cmd *cobra.Command, args []string) error {
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
+		err = runtimeManager.AddSpaceToGitignore()
+		if err != nil {
+			logger.Println(SpaceGitignoreInfo())
 		}
 		return nil
 	}
@@ -171,11 +170,6 @@ func link(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to link project, %w", err)
 			}
 
-			err = runtimeManager.AddSpaceToGitignore()
-			if err != nil {
-				logger.Println(SpaceGitignoreInfo())
-			}
-
 			logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 			projectInfo, err := runtimeManager.GetProjectMeta()
 			if err != nil {
@@ -185,6 +179,10 @@ func link(cmd *cobra.Command, args []string) error {
 			cm := <-c
 			if cm.err == nil && cm.isLower {
 				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			}
+			err = runtimeManager.AddSpaceToGitignore()
+			if err != nil {
+				logger.Println(SpaceGitignoreInfo())
 			}
 			return nil
 		}
@@ -212,11 +210,6 @@ func link(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
 
-	err = runtimeManager.AddSpaceToGitignore()
-	if err != nil {
-		logger.Println(SpaceGitignoreInfo())
-	}
-
 	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
 	projectInfo, err := runtimeManager.GetProjectMeta()
 	if err != nil {
@@ -226,6 +219,10 @@ func link(cmd *cobra.Command, args []string) error {
 	cm := <-c
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
+	err = runtimeManager.AddSpaceToGitignore()
+	if err != nil {
+		logger.Println(SpaceGitignoreInfo())
 	}
 	return nil
 }
