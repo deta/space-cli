@@ -266,7 +266,8 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	if b.Status == api.Complete {
-		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!\n", emoji.PartyPopper))
+		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!", emoji.PartyPopper))
+		logger.Printf("%s Updating your development instance with the latest Revision, it will be available on your Canvas shortly.\n\n", emoji.Tools)
 		logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
 
 		cm := <-c
