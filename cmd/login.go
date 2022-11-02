@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"errors"
+
+	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
@@ -42,6 +45,18 @@ func login(cmd *cobra.Command, args []string) error {
 	accessToken, err := selectAccessToken()
 	if err != nil {
 		return err
+	}
+
+	_, err = client.GetSpace(&api.GetSpaceRequest{
+		AccessToken: accessToken,
+	})
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidAccessToken) {
+			logger.Printf(styles.Errorf("%s Invalid access token. Please generate a valid token from your Space settings.", emoji.ErrorExclamation))
+			return nil
+		}
+		logger.Printf(styles.Errorf("%s Failed to validate access token: %v", emoji.ErrorExclamation, err))
+		return nil
 	}
 
 	err = auth.StoreAccessToken(accessToken)

@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	detaAccessTokenEnv = "DETA_ACCESS_TOKEN"
-	detaSignVersion    = "v0"
-	detaDir            = ".deta"
-	spaceAuthTokenPath = ".deta/space_tokens"
+	spaceAccessTokenEnv = "SPACE_ACCESS_TOKEN"
+	spaceSignVersion    = "v0"
+	spaceDir            = ".space"
+	spaceAuthTokenPath  = ".space/space_tokens"
 )
 
 var (
@@ -59,10 +59,10 @@ func GetAccessToken() (string, error) {
 	}
 
 	// not found in file, check the env
-	detaAccessToken := os.Getenv(detaAccessTokenEnv)
+	spaceAccessToken := os.Getenv(spaceAccessTokenEnv)
 
-	if detaAccessToken != "" {
-		return detaAccessToken, nil
+	if spaceAccessToken != "" {
+		return spaceAccessToken, nil
 	}
 
 	return "", ErrNoAccessTokenFound
@@ -74,8 +74,8 @@ func StoreAccessToken(accessToken string) error {
 		return err
 	}
 
-	detaDirPath := filepath.Join(home, detaDir)
-	err = os.MkdirAll(detaDirPath, 0760)
+	spaceDirPath := filepath.Join(home, spaceDir)
+	err = os.MkdirAll(spaceDirPath, 0760)
 	if err != nil {
 		return err
 	}
@@ -130,5 +130,5 @@ func CalcSignature(i *CalcSignatureInput) (string, error) {
 	signature := mac.Sum(nil)
 	hexSign := hex.EncodeToString(signature)
 
-	return fmt.Sprintf("%s=%s:%s", detaSignVersion, accessKeyID, hexSign), nil
+	return fmt.Sprintf("%s=%s:%s", spaceSignVersion, accessKeyID, hexSign), nil
 }

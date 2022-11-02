@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -41,6 +42,10 @@ func selectLinkProjectID() (string, error) {
 
 	return text.Run(&promptInput)
 }
+
+var (
+	NoProjectFoundMsg = styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)
+)
 
 func link(cmd *cobra.Command, args []string) error {
 	logger.Println()
@@ -98,8 +103,12 @@ func link(cmd *cobra.Command, args []string) error {
 
 		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			if errors.Is(err, api.ErrProjectNotFound) {
-				logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
+				logger.Println(NoProjectFoundMsg)
 				return nil
 			}
 			return err
@@ -152,8 +161,12 @@ func link(cmd *cobra.Command, args []string) error {
 
 			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 			if err != nil {
+				if errors.Is(auth.ErrNoAccessTokenFound, err) {
+					logger.Println(LoginInfo())
+					return nil
+				}
 				if errors.Is(err, api.ErrProjectNotFound) {
-					logger.Println(styles.Error(fmt.Sprintf("\n%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)))
+					logger.Println(NoProjectFoundMsg)
 					return nil
 				}
 				return err
@@ -193,8 +206,12 @@ func link(cmd *cobra.Command, args []string) error {
 
 	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		if errors.Is(err, api.ErrProjectNotFound) {
-			logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
+			logger.Println(NoProjectFoundMsg)
 			return nil
 		}
 		return err

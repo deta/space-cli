@@ -40,6 +40,7 @@ type requestInput struct {
 	NeedsAuth        bool
 	ContentType      string
 	ReturnReadCloser bool
+	AccessToken      string
 }
 
 // requestOutput ouput of Request function
@@ -85,14 +86,18 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	req.URL.RawQuery = q.Encode()
 
 	if i.NeedsAuth {
-		accessToken, err := auth.GetAccessToken()
-		if err != nil {
-			if errors.Is(err, auth.ErrNoAccessTokenFound) {
-				return nil, fmt.Errorf("no access token found, provide access token")
+		var accessToken string
+		if i.AccessToken != "" {
+			accessToken = i.AccessToken
+		} else {
+			accessToken, err = auth.GetAccessToken()
+			if err != nil {
+				if errors.Is(err, auth.ErrNoAccessTokenFound) {
+					return nil, auth.ErrNoAccessTokenFound
+				}
+				return nil, fmt.Errorf("failed to authorize")
 			}
-			return nil, fmt.Errorf("failed to authorize")
 		}
-
 		//  request timestamp
 		now := time.Now().UTC().Unix()
 		timestamp := strconv.FormatInt(now, 10)
