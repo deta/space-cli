@@ -25,6 +25,7 @@ var (
 	releaseProjectID string
 	releaseVersion   string
 	listedRelease    bool
+	useLatestRevision bool
 
 	releaseCmd = &cobra.Command{
 		Use:   "release [flags]",
@@ -39,6 +40,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
 	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
+	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "y", false, "release latest revision")
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -120,11 +122,13 @@ func release(cmd *cobra.Command, args []string) error {
 
 		latestRevision := r.Revisions[0]
 
-		useLatestRevision, err := confirm.Run(&confirm.Input{
-			Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
-		})
-		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
+		if !useLatestRevision {
+			useLatestRevision, err = confirm.Run(&confirm.Input{
+				Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
+			})
+			if err != nil {
+				return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
+			}
 		}
 
 		revisionID = latestRevision.ID
