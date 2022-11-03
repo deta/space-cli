@@ -17,6 +17,7 @@ import (
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/deta/pc-cli/pkg/util/fs"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -186,6 +187,10 @@ func new(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Spacefile found locally, validating Spacefile ...\n\n", emoji.Package)
 		s, err := spacefile.Open(projectDir)
 		if err != nil {
+			if te, ok := err.(*yaml.TypeError); ok {
+				logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
+				return nil
+			}
 			logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 			return nil
 		}

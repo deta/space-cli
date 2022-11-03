@@ -16,6 +16,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -104,6 +105,10 @@ func push(cmd *cobra.Command, args []string) error {
 
 	s, err := spacefile.Open(projectDir)
 	if err != nil {
+		if te, ok := err.(*yaml.TypeError); ok {
+			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
+			return nil
+		}
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}

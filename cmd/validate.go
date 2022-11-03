@@ -9,6 +9,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -139,6 +140,10 @@ func validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
 			return fmt.Errorf("%s The Spacefile must be called exactly 'Spacefile'.", emoji.ErrorExclamation)
+		}
+		if te, ok := err.(*yaml.TypeError); ok {
+			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
+			return nil
 		}
 		return fmt.Errorf("problem while opening spacefile in dir %s, %w", validateDir, err)
 	}
