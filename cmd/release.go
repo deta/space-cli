@@ -144,7 +144,11 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	logger.Printf("%s Creating a Release ...\n\n", emoji.Package)
+	if useLatestRevision {
+		logger.Printf("%s Creating a Release with the latest Revision ...\n\n", emoji.Package)
+	} else {
+		logger.Printf("%s Creating a Release ...", emoji.Package)
+	}
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         releaseProjectID,
