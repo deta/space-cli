@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/runtime"
@@ -39,11 +37,6 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 }
 
-func getDefaultAlias(projectName string) string {
-	aliasRegexp := regexp.MustCompile(`([^\w])`)
-	return strings.ToLower(aliasRegexp.ReplaceAllString(projectName, ""))
-}
-
 func projectNameValidator(projectName string) error {
 
 	if len(projectName) < 4 {
@@ -70,8 +63,7 @@ func selectProjectName(placeholder string) (string, error) {
 
 func createProject(name string, runtimeManager *runtime.Manager) error {
 	res, err := client.CreateProject(&api.CreateProjectRequest{
-		Name:  name,
-		Alias: getDefaultAlias(name),
+		Name: name,
 	})
 	if err != nil {
 		return err
