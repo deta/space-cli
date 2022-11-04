@@ -25,9 +25,10 @@ func init() {
 
 func selectAccessToken() (string, error) {
 	promptInput := text.Input{
-		Prompt:      "Enter access token",
-		Placeholder: "",
-		Validator:   emptyPromptValidator,
+		Prompt:       "Enter access token",
+		Placeholder:  "",
+		Validator:    emptyPromptValidator,
+		PasswordMode: true,
 	}
 
 	return text.Run(&promptInput)
