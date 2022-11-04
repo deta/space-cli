@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
@@ -137,6 +138,10 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r := spinner.Run(&buildSpinnerInput)
 	if r.Err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		logger.Println(styles.Errorf("\n%s Failed to push project: %s", emoji.ErrorExclamation, r.Err))
 		return nil
 	}
@@ -166,6 +171,10 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r = spinner.Run(&pushSpacefileInput)
 	if r.Err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, r.Err))
 		return nil
 	}
@@ -195,6 +204,10 @@ func push(cmd *cobra.Command, args []string) error {
 	if !errors.Is(err, spacefile.ErrInvalidIconPath) {
 		r = spinner.Run(&pushSpacefileIcon)
 		if r.Err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, r.Err))
 			return nil
 		}
@@ -228,6 +241,10 @@ func push(cmd *cobra.Command, args []string) error {
 	if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
 		r = spinner.Run(&pushDiscoveryFile)
 		if r.Err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, r.Err))
 			return nil
 		}
@@ -242,6 +259,10 @@ func push(cmd *cobra.Command, args []string) error {
 	if _, err = client.PushCode(&api.PushCodeRequest{
 		BuildID: br.ID, ZippedCode: zippedCode,
 	}); err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		return err
 	}
 	// get build logs

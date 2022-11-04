@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -140,6 +142,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			return err
 		}
 
@@ -204,6 +210,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			return err
 		}
 
@@ -256,6 +266,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 			err = createProject(projectName, runtimeManager)
 			if err != nil {
+				if errors.Is(auth.ErrNoAccessTokenFound, err) {
+					logger.Println(LoginInfo())
+					return nil
+				}
 				return err
 			}
 
@@ -288,6 +302,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 	err = createProject(projectName, runtimeManager)
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		return err
 	}
 

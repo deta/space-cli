@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -112,6 +114,10 @@ func release(cmd *cobra.Command, args []string) error {
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			return err
 		}
 
@@ -157,12 +163,20 @@ func release(cmd *cobra.Command, args []string) error {
 		Channel:       ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		return err
 	}
 	readCloser, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
 		ID: cr.ID,
 	})
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return nil
 	}
@@ -180,6 +194,10 @@ func release(cmd *cobra.Command, args []string) error {
 
 	r, err := client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		logger.Printf(styles.Errorf("\n%s Failed to check if release succeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
