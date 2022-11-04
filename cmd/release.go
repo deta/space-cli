@@ -40,7 +40,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
 	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
-	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "y", false, "release latest revision")
+	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "c", false, "release latest revision")
 	rootCmd.AddCommand(releaseCmd)
 }
 
