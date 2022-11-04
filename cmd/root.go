@@ -19,7 +19,7 @@ Complete documentation available at %s`, docsUrl),
 			cmd.Usage()
 		},
 		// no usage shown on errors
-		SilenceUsage: true,
+		SilenceUsage: false,
 	}
 
 	client = api.NewDetaClient()
