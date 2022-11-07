@@ -25,5 +25,6 @@ var (
 	Eyes             = Emoji{Emoji: "👀 ", Fallback: ""}
 	Lightning        = Emoji{Emoji: "⚡ ", Fallback: ""}
 	Pistol           = Emoji{Emoji: "🔫 ", Fallback: ""}
-	Tools 			 = Emoji{Emoji: "💻 ", Fallback: styles.Info}
+	Tools            = Emoji{Emoji: "💻 ", Fallback: styles.Info}
+	CrystalBall      = Emoji{Emoji: "🔮 ", Fallback: ""}
 )
