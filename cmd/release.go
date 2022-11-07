@@ -22,11 +22,11 @@ const (
 )
 
 var (
-	releaseDir       string
-	revisionID       string
-	releaseProjectID string
-	releaseVersion   string
-	listedRelease    bool
+	releaseDir        string
+	revisionID        string
+	releaseProjectID  string
+	releaseVersion    string
+	listedRelease     bool
 	useLatestRevision bool
 
 	releaseCmd = &cobra.Command{
@@ -150,11 +150,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	if useLatestRevision {
-		logger.Printf("%s Creating a Release with the latest Revision ...\n\n", emoji.Package)
-	} else {
-		logger.Printf("%s Creating a Release ...", emoji.Package)
-	}
+	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         releaseProjectID,
@@ -173,10 +169,6 @@ func release(cmd *cobra.Command, args []string) error {
 		ID: cr.ID,
 	})
 	if err != nil {
-		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			logger.Println(LoginInfo())
-			return nil
-		}
 		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return nil
 	}
@@ -194,10 +186,6 @@ func release(cmd *cobra.Command, args []string) error {
 
 	r, err := client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			logger.Println(LoginInfo())
-			return nil
-		}
 		logger.Printf(styles.Errorf("\n%s Failed to check if release succeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
@@ -207,7 +195,9 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
 		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
 		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
-
+		if listedRelease {
+			logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
+		}
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
@@ -217,4 +207,16 @@ func release(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func getCreatingReleaseMsg(listed bool, latest bool) string {
+	var listedInfo string
+	var latestInfo string
+	if listed {
+		listedInfo = " listed"
+	}
+	if latest {
+		latestInfo = " with the latest Revision"
+	}
+	return fmt.Sprintf("%s Creating a%s Release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
 }
