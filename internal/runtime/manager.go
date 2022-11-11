@@ -67,7 +67,7 @@ func NewManager(root *string, initDirs bool) (*Manager, error) {
 		ignorePath:      filepath.Join(rootDir, ignoreFile),
 	}
 
-	// not handling error as we don't want cli to crash if .detaignore is not found
+	// not handling error as we don't want cli to crash if .spaceignore is not found
 	manager.handleIgnoreFile()
 
 	return manager, nil

@@ -16,6 +16,11 @@ func (m *Manager) shouldSkip(path string) (bool, error) {
 		return false, nil
 	}
 
+	// do not skip if skipPaths is empty
+	if m.skipPaths == nil {
+		return false, nil
+	}
+
 	return m.skipPaths.MatchesPath(path), nil
 }
 
