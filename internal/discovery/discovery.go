@@ -29,7 +29,7 @@ func checkDiscoveryFileCase(sourceDir string) (string, bool, error) {
 	}
 	for _, f := range files {
 		if strings.ToLower(f.Name()) == strings.ToLower(DiscoveryFilename) {
-			if f.Name() != DiscoveryFilename{
+			if f.Name() != DiscoveryFilename {
 				return f.Name(), false, nil
 			}
 			return f.Name(), true, nil

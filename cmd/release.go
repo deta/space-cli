@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -20,11 +22,12 @@ const (
 )
 
 var (
-	releaseDir       string
-	revisionID       string
-	releaseProjectID string
-	releaseVersion   string
-	listedRelease    bool
+	releaseDir        string
+	revisionID        string
+	releaseProjectID  string
+	releaseVersion    string
+	listedRelease     bool
+	useLatestRevision bool
 
 	releaseCmd = &cobra.Command{
 		Use:   "release [flags]",
@@ -39,6 +42,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
 	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
+	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "c", false, "release latest revision")
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -110,6 +114,10 @@ func release(cmd *cobra.Command, args []string) error {
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			return err
 		}
 
@@ -120,11 +128,13 @@ func release(cmd *cobra.Command, args []string) error {
 
 		latestRevision := r.Revisions[0]
 
-		useLatestRevision, err := confirm.Run(&confirm.Input{
-			Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
-		})
-		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
+		if !useLatestRevision {
+			useLatestRevision, err = confirm.Run(&confirm.Input{
+				Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
+			})
+			if err != nil {
+				return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
+			}
 		}
 
 		revisionID = latestRevision.ID
@@ -140,7 +150,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// TODO: start promotion
 	// TODO: promotion logs
-	logger.Printf("%s Creating a Release ...\n\n", emoji.Package)
+	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         releaseProjectID,
@@ -149,6 +159,10 @@ func release(cmd *cobra.Command, args []string) error {
 		Channel:       ReleaseChannelExp, // always experimental release for now
 	})
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		return err
 	}
 	readCloser, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
@@ -181,7 +195,9 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
 		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
 		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
-
+		if listedRelease {
+			logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
+		}
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
@@ -191,4 +207,16 @@ func release(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func getCreatingReleaseMsg(listed bool, latest bool) string {
+	var listedInfo string
+	var latestInfo string
+	if listed {
+		listedInfo = " listed"
+	}
+	if latest {
+		latestInfo = " with the latest Revision"
+	}
+	return fmt.Sprintf("%s Creating a%s Release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
 }

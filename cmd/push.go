@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
@@ -16,6 +17,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -104,6 +106,10 @@ func push(cmd *cobra.Command, args []string) error {
 
 	s, err := spacefile.Open(projectDir)
 	if err != nil {
+		if te, ok := err.(*yaml.TypeError); ok {
+			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
+			return nil
+		}
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
@@ -132,6 +138,10 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r := spinner.Run(&buildSpinnerInput)
 	if r.Err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		logger.Println(styles.Errorf("\n%s Failed to push project: %s", emoji.ErrorExclamation, r.Err))
 		return nil
 	}
@@ -161,6 +171,10 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	r = spinner.Run(&pushSpacefileInput)
 	if r.Err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, r.Err))
 		return nil
 	}
@@ -190,6 +204,10 @@ func push(cmd *cobra.Command, args []string) error {
 	if !errors.Is(err, spacefile.ErrInvalidIconPath) {
 		r = spinner.Run(&pushSpacefileIcon)
 		if r.Err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, r.Err))
 			return nil
 		}
@@ -223,6 +241,10 @@ func push(cmd *cobra.Command, args []string) error {
 	if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
 		r = spinner.Run(&pushDiscoveryFile)
 		if r.Err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, r.Err))
 			return nil
 		}
@@ -230,13 +252,17 @@ func push(cmd *cobra.Command, args []string) error {
 
 	// push code & run build steps
 	logger.Printf("%s Pushing your code & running build process...\n", emoji.Package)
-	zippedCode, err := runtime.ZipDir(pushProjectDir)
+	zippedCode, err := runtimeManager.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
 	}
 	if _, err = client.PushCode(&api.PushCodeRequest{
 		BuildID: br.ID, ZippedCode: zippedCode,
 	}); err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		return err
 	}
 	// get build logs
@@ -266,7 +292,8 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	if b.Status == api.Complete {
-		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!\n", emoji.PartyPopper))
+		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!", emoji.PartyPopper))
+		logger.Printf("%s Updating your development instance with the latest Revision, it will be available on your Canvas shortly.\n\n", emoji.Tools)
 		logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
 
 		cm := <-c

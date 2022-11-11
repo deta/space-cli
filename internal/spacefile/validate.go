@@ -50,8 +50,8 @@ var (
 	// ErrNoPrimaryMicro
 	ErrNoPrimaryMicro = errors.New("no primary micro present")
 
-	// ErrNameMaxLengthExceeded
-	ErrNameMaxLengthExceeded = errors.New("name is too long, max length is 12 characters")
+	// ErrAppNameMaxLengthExceeded
+	ErrAppNameMaxLengthExceeded = errors.New("app_name is too long, max length is 16 characters")
 
 	// MaxIconWidth
 	MaxIconWidth = 512
@@ -82,8 +82,8 @@ func ValidateSpacefile(s *Spacefile) []error {
 		errors = append(errors, ErrExceedsMaxMicroLimit)
 	}
 
-	if len(s.AppName) >= 12 {
-		errors = append(errors, ErrNameMaxLengthExceeded)
+	if len(s.AppName) > 16 {
+		errors = append(errors, ErrAppNameMaxLengthExceeded)
 	}
 	for _, micro := range s.Micros {
 		if _, ok := microNames[micro.Name]; ok {

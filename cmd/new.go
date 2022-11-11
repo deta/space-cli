@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -17,6 +17,7 @@ import (
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/deta/pc-cli/pkg/util/fs"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -36,11 +37,6 @@ func init() {
 	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "src of project to release")
 	newCmd.Flags().BoolVarP(&blank, "blank", "b", false, "create blank project")
 	rootCmd.AddCommand(newCmd)
-}
-
-func getDefaultAlias(projectName string) string {
-	aliasRegexp := regexp.MustCompile(`([^\w])`)
-	return strings.ToLower(aliasRegexp.ReplaceAllString(projectName, ""))
 }
 
 func projectNameValidator(projectName string) error {
@@ -69,8 +65,7 @@ func selectProjectName(placeholder string) (string, error) {
 
 func createProject(name string, runtimeManager *runtime.Manager) error {
 	res, err := client.CreateProject(&api.CreateProjectRequest{
-		Name:  name,
-		Alias: getDefaultAlias(name),
+		Name: name,
 	})
 	if err != nil {
 		return err
@@ -147,6 +142,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			return err
 		}
 
@@ -156,10 +155,13 @@ func new(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to retrieve project info")
 		}
 		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
+		err = runtimeManager.AddSpaceToGitignore()
+		if err != nil {
+			logger.Println(SpaceGitignoreInfo())
 		}
 		return nil
 	}
@@ -183,6 +185,10 @@ func new(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Spacefile found locally, validating Spacefile ...\n\n", emoji.Package)
 		s, err := spacefile.Open(projectDir)
 		if err != nil {
+			if te, ok := err.(*yaml.TypeError); ok {
+				logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
+				return nil
+			}
 			logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 			return nil
 		}
@@ -204,6 +210,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 		err = createProject(projectName, runtimeManager)
 		if err != nil {
+			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+				logger.Println(LoginInfo())
+				return nil
+			}
 			return err
 		}
 
@@ -217,6 +227,10 @@ func new(cmd *cobra.Command, args []string) error {
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
+		err = runtimeManager.AddSpaceToGitignore()
+		if err != nil {
+			logger.Println(SpaceGitignoreInfo())
 		}
 		return nil
 	}
@@ -252,6 +266,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 			err = createProject(projectName, runtimeManager)
 			if err != nil {
+				if errors.Is(auth.ErrNoAccessTokenFound, err) {
+					logger.Println(LoginInfo())
+					return nil
+				}
 				return err
 			}
 
@@ -265,6 +283,10 @@ func new(cmd *cobra.Command, args []string) error {
 			cm := <-c
 			if cm.err == nil && cm.isLower {
 				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			}
+			err = runtimeManager.AddSpaceToGitignore()
+			if err != nil {
+				logger.Println(SpaceGitignoreInfo())
 			}
 			return nil
 		}
@@ -280,6 +302,10 @@ func new(cmd *cobra.Command, args []string) error {
 
 	err = createProject(projectName, runtimeManager)
 	if err != nil {
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			logger.Println(LoginInfo())
+			return nil
+		}
 		return err
 	}
 
@@ -292,6 +318,10 @@ func new(cmd *cobra.Command, args []string) error {
 	cm := <-c
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
+	err = runtimeManager.AddSpaceToGitignore()
+	if err != nil {
+		logger.Println(SpaceGitignoreInfo())
 	}
 	return nil
 }

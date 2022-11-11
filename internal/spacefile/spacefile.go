@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/deta/pc-cli/pkg/components/emoji"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/util/fs"
 	"github.com/deta/pc-cli/shared"
 	"gopkg.in/yaml.v3"
@@ -67,7 +70,7 @@ func Open(sourceDir string) (*Spacefile, error) {
 
 	err = dec.Decode(&s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to do parse spacefile file, please check for correct syntax: %w", err)
+		return nil, err
 	}
 
 	return &s, nil
@@ -222,4 +225,17 @@ func IsSpacefilePresent(sourceDir string) (bool, error) {
 		return false, fmt.Errorf("'%s' must be called exactly %s: %w", existingSpacefileName, SpacefileName, ErrSpacefileWrongCase)
 	}
 	return true, nil
+}
+
+func ParseSpacefileUnmarshallTypeError(err *yaml.TypeError) string {
+	errMsg := styles.Errorf("%sError: failed to parse your Spacefile, please make sure you use the correct syntax:", emoji.ErrorExclamation)
+	for _, err := range err.Errors {
+		fieldNotValidMatches := regexp.MustCompile(`(?m)(line \d:) field\s(\w+)\snot found in type.*`).FindStringSubmatch(err)
+		if len(fieldNotValidMatches) > 0 {
+			errMsg += fmt.Sprintf("\n  L %v \"%v\" is not a valid field\n", fieldNotValidMatches[1], fieldNotValidMatches[2])
+		} else {
+			errMsg += styles.Boldf("\n  L %v\n", err)
+		}
+	}
+	return errMsg
 }

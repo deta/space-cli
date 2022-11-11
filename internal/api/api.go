@@ -2,8 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+
+	"github.com/deta/pc-cli/internal/auth"
 )
 
 const (
@@ -14,7 +17,7 @@ const (
 
 var (
 	// ErrProjectNotFound project not found error
-	ErrProjectNotFound = fmt.Errorf("project not found")
+	ErrProjectNotFound = errors.New("project not found")
 
 	// Status
 	Complete = "complete"
@@ -525,6 +528,10 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 		return nil, err
 	}
 
+	if errors.Is(auth.ErrNoAccessTokenFound, err) {
+		return nil, fmt.Errorf("no access token found, please login via space login")
+	}
+
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
 		return nil, fmt.Errorf("failed to get build status, %v", msg)
@@ -536,6 +543,49 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 		return nil, fmt.Errorf("failed to get build status, %w", err)
 	}
 
+	return &resp, nil
+}
+
+type GetSpaceRequest struct {
+	AccessToken string `json:"access_token,omitempty"`
+}
+
+type GetSpaceResponse struct {
+	Name string `json:"name"`
+}
+
+func (c *DetaClient) GetSpace(r *GetSpaceRequest) (*GetSpaceResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/space", version),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	if r.AccessToken != "" {
+		i.AccessToken = r.AccessToken
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	// unauthorized
+	if o.Status == 401 {
+		return nil, fmt.Errorf("failed to get space: %w", auth.ErrInvalidAccessToken)
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to get space, %s", msg)
+	}
+
+	var resp GetSpaceResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get space, %w", err)
+	}
 	return &resp, nil
 }
 
