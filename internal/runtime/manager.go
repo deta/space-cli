@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+
+	ignore "github.com/deta/pc-cli/pkg/ignore"
 )
 
 const (
@@ -18,15 +20,22 @@ const (
 )
 
 var (
+	PythonSkipPattern = `__pycache__`
+
+	NodeSkipPattern = `node_modules`
+
+	ignoreFile      = ".spaceignore"
 	spaceDir        = ".space"
 	projectMetaFile = "meta"
 )
 
 // Manager runtime manager handles files management and other services
 type Manager struct {
-	rootDir         string // working directory of the project
-	spacePath       string // dir for storing project meta
-	projectMetaPath string // path to info file about the project
+	rootDir         string            // working directory of the project
+	spacePath       string            // dir for storing project meta
+	projectMetaPath string            // path to info file about the project
+	skipPaths       *ignore.GitIgnore // skip patterns that need to be ignored for space push
+	ignorePath      string            // .spaceignore path
 }
 
 // NewManager returns a new manager for the root dir of the project
@@ -55,19 +64,32 @@ func NewManager(root *string, initDirs bool) (*Manager, error) {
 		rootDir:         rootDir,
 		spacePath:       spacePath,
 		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
+		ignorePath:      filepath.Join(rootDir, ignoreFile),
 	}
+
+	// not handling error as we don't want cli to crash if .detaignore is not found
+	manager.handleIgnoreFile()
 
 	return manager, nil
 }
 
-// reads the contents of a file, returns contents
-func (m *Manager) readFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
+// handleIgnoreFile build a slice of patterns to skip from .spaceignore file if it exists
+func (m *Manager) handleIgnoreFile() error {
+	contents, err := m.readFile(m.ignorePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer f.Close()
-	return ioutil.ReadAll(f)
+
+	lines, err := readLines(contents)
+	if err != nil {
+		return err
+	}
+
+	var defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
+
+	m.skipPaths = ignore.CompileIgnoreLines(append(defaultSkipPatterns, lines...)...)
+
+	return nil
 }
 
 // StoreProjectMeta stores project meta to disk
