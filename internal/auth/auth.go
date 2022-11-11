@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	spaceAccessTokenEnv = "SPACE_ACCESS_TOKEN"
-	spaceSignVersion    = "v0"
-	spaceDir            = ".space"
-	spaceAuthTokenPath  = ".space/space_tokens"
+	spaceAccessTokenEnv   = "SPACE_ACCESS_TOKEN"
+	spaceSignVersion      = "v0"
+	spaceDir              = ".detaspace"
+	spaceAuthTokenPath    = ".detaspace/space_tokens"
+	oldSpaceAuthTokenPath = ".deta/space_tokens"
 )
 
 var (
@@ -56,6 +57,19 @@ func GetAccessToken() (string, error) {
 	// first priority to access token
 	if tokens.AccessToken != "" {
 		return tokens.AccessToken, nil
+	}
+
+	// check old token file path and move to new token file path
+	// ignore errors here because this is old token file path
+	oldTokensFilePath := filepath.Join(home, oldSpaceAuthTokenPath)
+	of, _ := os.Open(oldTokensFilePath)
+	defer of.Close()
+	var oldTokens Token
+	contents, _ = ioutil.ReadAll(of)
+	json.Unmarshal(contents, &oldTokens)
+	if oldTokens.AccessToken != "" {
+		StoreAccessToken(oldTokens.AccessToken)
+		return oldTokens.AccessToken, nil
 	}
 
 	// not found in file, check the env
