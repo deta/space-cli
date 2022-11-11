@@ -92,7 +92,6 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 	w := zip.NewWriter(buf)
 
 	for name, content := range files {
-		fmt.Println(name)
 		f, err := w.Create(name)
 		if err != nil {
 			return nil, fmt.Errorf("cannot compress file %s of dir %s, %w", name, sourceDir, err)
