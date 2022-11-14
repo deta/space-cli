@@ -16,6 +16,11 @@ func (m *Manager) shouldSkip(path string) (bool, error) {
 		return false, nil
 	}
 
+	// do not skip if skipPaths is empty
+	if m.skipPaths == nil {
+		return false, nil
+	}
+
 	return m.skipPaths.MatchesPath(path), nil
 }
 
@@ -92,7 +97,6 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 	w := zip.NewWriter(buf)
 
 	for name, content := range files {
-		fmt.Println(name)
 		f, err := w.Create(name)
 		if err != nil {
 			return nil, fmt.Errorf("cannot compress file %s of dir %s, %w", name, sourceDir, err)
