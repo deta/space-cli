@@ -14,6 +14,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/deta/pc-cli/pkg/components/textarea"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,7 @@ var (
 	revisionID        string
 	releaseProjectID  string
 	releaseVersion    string
+	releaseNotes      string
 	listedRelease     bool
 	useLatestRevision bool
 
@@ -43,6 +45,8 @@ func init() {
 	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
 	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
 	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "c", false, "release latest revision")
+	releaseCmd.Flags().StringVarP(&releaseNotes, "notes", "n", "", "release notes")
+	releaseCmd.Flags().Lookup("notes").NoOptDefVal = "<RELEASE_NOTES>" //use this line
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -74,6 +78,14 @@ func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
 	}
 
 	return revisions[m.Cursor], nil
+}
+
+func selectReleaseNotes() (string, error) {
+	notes, err := textarea.Run(&textarea.Input{
+		Placeholder: "start typing...",
+		Prompt:      "Enter your Release notes.",
+	})
+	return notes, err
 }
 
 func release(cmd *cobra.Command, args []string) error {
@@ -117,8 +129,10 @@ func release(cmd *cobra.Command, args []string) error {
 			if errors.Is(auth.ErrNoAccessTokenFound, err) {
 				logger.Println(LoginInfo())
 				return nil
+			} else {
+				logger.Println(styles.Errorf("%s Invalid project ID: %v", emoji.ErrorExclamation, err))
+				return nil
 			}
-			return err
 		}
 
 		if len(r.Revisions) == 0 {
@@ -148,13 +162,19 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// TODO: start promotion
-	// TODO: promotion logs
+	if releaseNotes == "<RELEASE_NOTES>" {
+		releaseNotes, err = selectReleaseNotes()
+		if err != nil {
+			return fmt.Errorf("problem while trying to get release notes from text area, %w", err)
+		}
+	}
+
 	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         releaseProjectID,
 		Version:       releaseVersion,
+		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
 		Channel:       ReleaseChannelExp, // always experimental release for now
 	})
