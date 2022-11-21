@@ -167,6 +167,8 @@ func release(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("problem while trying to get release notes from text area, %w", err)
 		}
+	} else if !isFlagEmpty(releaseNotes) {
+		logger.Printf("Using notes provided via arguments.\n\n")
 	}
 
 	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
