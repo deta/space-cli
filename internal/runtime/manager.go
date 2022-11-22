@@ -27,6 +27,8 @@ var (
 	ignoreFile      = ".spaceignore"
 	spaceDir        = ".space"
 	projectMetaFile = "meta"
+
+	defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
 )
 
 // Manager runtime manager handles files management and other services
@@ -65,6 +67,7 @@ func NewManager(root *string, initDirs bool) (*Manager, error) {
 		spacePath:       spacePath,
 		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
 		ignorePath:      filepath.Join(rootDir, ignoreFile),
+		skipPaths:       ignore.CompileIgnoreLines(defaultSkipPatterns...),
 	}
 
 	// not handling error as we don't want cli to crash if .spaceignore is not found
@@ -84,8 +87,6 @@ func (m *Manager) handleIgnoreFile() error {
 	if err != nil {
 		return err
 	}
-
-	var defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
 
 	m.skipPaths = ignore.CompileIgnoreLines(append(defaultSkipPatterns, lines...)...)
 
