@@ -1,4 +1,4 @@
-SPACE_VERSION = v0.0.5
+SPACE_VERSION = v0.0.6
 LINUX_PLATFORM = x86_64-linux
 LINUX_ARM_PLATFORM = arm64-linux
 MAC_PLATFORM = x86_64-darwin
@@ -38,4 +38,5 @@ notarize-mac-arm: build-mac-arm
 	gon ./.arm64.hcl
 
 clean:
-	rm -rf build/space build/space.exe build/*.zip
+	rm -rf out build/space build/space.exe build/*.zip
+
