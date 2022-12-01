@@ -74,7 +74,8 @@ type Environment struct {
 
 // Presets xx
 type Presets struct {
-	Env []*Environment `yaml:"env"`
+	Env     []*Environment `yaml:"env"`
+	APIKeys bool           `yaml:"api_keys"`
 }
 
 // Micro xx
