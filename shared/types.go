@@ -92,6 +92,7 @@ type Micro struct {
 	Include      []string `yaml:"include,omitempty"`
 	Serve        string   `yaml:"serve,omitempty"`
 	Run          string   `yaml:"run,omitempty"`
+	Dev          string   `yaml:"dev,omitempty"`
 }
 
 func IsFrontendEngine(engine string) bool {
