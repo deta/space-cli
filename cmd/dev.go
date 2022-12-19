@@ -20,6 +20,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/deta/pc-cli/shared"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -33,6 +34,17 @@ var (
 		Use:   "dev",
 		Short: "run your app locally in dev mode",
 		RunE:  dev,
+	}
+)
+
+var (
+	enginesToDevCommand = map[string]string{
+		shared.React:     "npm run start",
+		shared.Vue:       "npm run dev",
+		shared.Svelte:    "npm run dev",
+		shared.Next:      "npm run dev",
+		shared.Nuxt:      "npm run dev",
+		shared.SvelteKit: "npm run dev",
 	}
 )
 
@@ -123,6 +135,24 @@ func generatePath(pathString *string, name string, primary bool) string {
 	}
 
 	return normalizePath(*pathString)
+}
+
+func getDevCommand(micro *shared.Micro) (string, error) {
+	if micro.Dev != "" {
+		return micro.Dev, nil
+	}
+
+	engine, ok := shared.EngineAliases[micro.Engine]
+	if !ok {
+		return "", fmt.Errorf("unsupported engine for %s", micro.Name)
+	}
+
+	command, ok := enginesToDevCommand[engine]
+	if !ok {
+		return "", fmt.Errorf("no dev command specified for %s", micro.Name)
+	}
+
+	return command, nil
 }
 
 func cleanup() {
@@ -273,7 +303,10 @@ func dev(cmd *cobra.Command, args []string) error {
 			port += 1
 
 			// Parse the micro's config
-			command := micro.Dev
+			command, err := getDevCommand(micro)
+			if err != nil {
+				return err
+			}
 			path := generatePath(micro.Path, micro.Name, micro.Primary)
 			src := micro.Src
 			var microType string
