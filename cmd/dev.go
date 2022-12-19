@@ -27,17 +27,19 @@ import (
 var (
 	devProjectID  string
 	devProjectDir string
+	devCommand    string
 
 	devCmd = &cobra.Command{
 		Use:   "dev",
-		Short: "run your app in dev mode",
+		Short: "run your app locally in dev mode",
 		RunE:  dev,
 	}
 )
 
 func init() {
-	devCmd.Flags().StringVarP(&devProjectID, "id", "i", "", "project id of project dev")
-	devCmd.Flags().StringVarP(&devProjectDir, "dir", "d", "./", "src of project to push")
+	devCmd.Flags().StringVarP(&devProjectID, "id", "i", "", "project id")
+	devCmd.Flags().StringVarP(&devProjectDir, "dir", "d", "./", "root directory of the project")
+	devCmd.Flags().StringVarP(&devCommand, "command", "c", "", "development command to run")
 	rootCmd.AddCommand(devCmd)
 }
 
@@ -88,22 +90,20 @@ func (c customOutput) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func formatEnvVars(key string, port int) []string {
-	type Envs struct {
-		DETA_PROJECT_KEY string
-		PORT             int
-	}
+func formatEnvVars(key string, port string, name string, microType string, hostname string) []string {
+	hostnameEnv := fmt.Sprintf("DETA_SPACE_APP_HOSTNAME=%s", hostname)
+	microNameEnv := fmt.Sprintf("DETA_SPACE_APP_MICRO_NAME=%s", name)
+	microTypeEnv := fmt.Sprintf("DETA_SPACE_APP_MICRO_TYPE=%s", microType)
 
-	envs := Envs{key, port}
+	keyEnv := fmt.Sprintf("DETA_PROJECT_KEY=%s", key)
+	portEnv := fmt.Sprintf("PORT=%s", port)
 
-	keyEnvString := fmt.Sprintf("DETA_PROJECT_KEY=%s", envs.DETA_PROJECT_KEY)
-	portEnvString := fmt.Sprintf("PORT=%d", envs.PORT)
-
-	envStrings := []string{portEnvString, keyEnvString}
+	envStrings := []string{hostnameEnv, microNameEnv, microTypeEnv, keyEnv, portEnv}
 
 	return envStrings
 }
 
+// Normalize the path to a subtree path
 func normalizePath(pathString string) string {
 	p := path.Join("/", pathString, "/")
 	if p == "/" {
@@ -125,6 +125,10 @@ func generatePath(pathString *string, name string, primary bool) string {
 	return normalizePath(*pathString)
 }
 
+func cleanup() {
+	logger.Println("\nCleaning up...")
+}
+
 func dev(cmd *cobra.Command, args []string) error {
 	logger.Println()
 
@@ -132,6 +136,7 @@ func dev(cmd *cobra.Command, args []string) error {
 	signal.Notify(e, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-e
+		cleanup()
 		os.Exit(1)
 	}()
 
@@ -141,6 +146,13 @@ func dev(cmd *cobra.Command, args []string) error {
 	go checkVersion(c)
 
 	var err error
+
+	// grab to port for the proxy server from the env or default to 8080
+	serverPort := os.Getenv("PORT")
+	if serverPort == "" {
+		serverPort = "8080"
+	}
+	hostname := fmt.Sprintf("http://localhost:%s", serverPort)
 
 	devProjectDir = filepath.Clean(devProjectDir)
 
@@ -171,7 +183,7 @@ func dev(cmd *cobra.Command, args []string) error {
 	}
 
 	// check if spacefile is present
-	isSpacefilePrsent, err := spacefile.IsSpacefilePresent(pushProjectDir)
+	isSpacefilePresent, err := spacefile.IsSpacefilePresent(pushProjectDir)
 	if err != nil {
 		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
 			logger.Printf("%s The Spacefile must be called exactly 'Spacefile'.\n", emoji.ErrorExclamation)
@@ -179,14 +191,14 @@ func dev(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	if !isSpacefilePrsent {
+	if !isSpacefilePresent {
 		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile.", emoji.ErrorExclamation))
 		return nil
 	}
 
-	// parse spacefile and validate
 	logger.Printf("Validating Spacefile...\n\n")
 
+	// parse spacefile and validate
 	s, err := spacefile.Open(projectDir)
 	if err != nil {
 		if te, ok := err.(*yaml.TypeError); ok {
@@ -207,13 +219,11 @@ func dev(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Spacefile looks good!\n"))
 	}
 
-	logger.Printf("Checking for project key...\n")
-
 	// check if we have already stored the project key based on the project's id
 	key, err := auth.GetProjectKey(devProjectID)
 	if err != nil {
 		if errors.Is(err, auth.ErrNoProjectKeyFound) {
-			logger.Printf("No project key found, generating new key...\n")
+			logger.Printf("%sNo project key found, generating new key...\n", emoji.Key)
 
 			hostname, err := os.Hostname()
 			if err != nil {
@@ -239,57 +249,67 @@ func dev(cmd *cobra.Command, args []string) error {
 		} else {
 			return err
 		}
+	} else {
+		logger.Printf("%sUsing existing project key", emoji.Key)
 	}
 
-	logger.Printf("Using project key: %s\n\n", key)
-	logger.Printf("Starting micro servers...\n\n")
+	// if the user has specified a dev command manually, just run it
+	if *&devCommand != "" {
+		logger.Printf("%sRunning development command...\n\n", emoji.Terminal)
 
-	mux := http.NewServeMux()
+		envVars := formatEnvVars(key, serverPort, "", "", hostname)
 
-	port := 3000
-	for _, micro := range s.Micros {
-		logger.Printf("Micro \"%s\"", micro.Name)
+		defer CmdExec(*&devCommand, ".", envVars, "dev")
+	} else {
+		logger.Printf("%sStarting micro servers...\n\n", emoji.Terminal)
 
-		// Choose a port
-		port += 1
+		mux := http.NewServeMux()
 
-		// Grab the command and path from the micro's config
-		command := micro.Dev
-		path := generatePath(micro.Path, micro.Name, micro.Primary)
-		src := micro.Src
+		port := 3000
+		for _, micro := range s.Micros {
+			logger.Printf("Micro \"%s\"", micro.Name)
 
-		// Format the env vars that will be passed to the micro
-		envVars := formatEnvVars(key, port)
-		endpoint := fmt.Sprintf("http://localhost:%d", port)
+			// Choose a port
+			port += 1
 
-		logger.Printf("L port: %d\n", port)
-		logger.Printf("L path: %s\n", path)
-		logger.Printf("L command: %s\n\n", command)
+			// Parse the micro's config
+			command := micro.Dev
+			path := generatePath(micro.Path, micro.Name, micro.Primary)
+			src := micro.Src
+			var microType string
+			if micro.Primary {
+				microType = "primary"
+			} else {
+				microType = "normal"
+			}
 
-		go CmdExec(command, src, envVars, micro.Name)
+			// Format the env vars that will be passed to the micro
+			envVars := formatEnvVars(key, fmt.Sprintf("%d", port), micro.Name, microType, hostname)
 
-		// initialize a reverse proxy and pass the micros endpoint and path that will be proxied
-		httpProxy, err := proxy.NewProxy(endpoint, path)
+			logger.Printf("L port: %d\n", port)
+			logger.Printf("L path: %s\n", path)
+			logger.Printf("L command: %s\n\n", command)
+
+			go CmdExec(command, src, envVars, micro.Name)
+
+			// initialize a reverse proxy and pass the micros endpoint and path that will be proxied
+			endpoint := fmt.Sprintf("http://localhost:%d", port)
+			httpProxy, err := proxy.NewProxy(endpoint, path)
+			if err != nil {
+				return err
+			}
+
+			// handle all requests to the micros path using the proxy
+			mux.HandleFunc(path, proxy.ProxyRequestHandler(httpProxy))
+		}
+
+		logger.Printf(styles.Green(fmt.Sprintf("Starting proxy server on port %s...\n", serverPort)))
+
+		// start the proxy server
+		err = http.ListenAndServe(":"+serverPort, mux)
 		if err != nil {
 			return err
 		}
-
-		// handle all requests to the micros path using the proxy
-		mux.HandleFunc(path, proxy.ProxyRequestHandler(httpProxy))
-	}
-
-	// grab to port for the proxy from the env or default to 8080
-	proxyPort := os.Getenv("PORT")
-	if proxyPort == "" {
-		proxyPort = "8080"
-	}
-
-	logger.Printf(styles.Green(fmt.Sprintf("Starting proxy server on port %s\n", proxyPort)))
-
-	// start the proxy server
-	err = http.ListenAndServe(":"+proxyPort, mux)
-	if err != nil {
-		return err
 	}
 
 	return nil
