@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	spaceRoot = "https://alpha.deta.space/api"
+	spaceRoot = "https://deta.space/api"
 	//spaceRoot = "http://localhost:9900/api"
 	version = "v0"
 )
