@@ -3,7 +3,7 @@ package shared
 // supported engines
 const (
 	Static    = "static"
-	React     = "create-react-app"
+	React     = "react"
 	Svelte    = "svelte"
 	Vue       = "vue"
 	Next      = "next"
