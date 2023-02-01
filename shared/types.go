@@ -84,7 +84,7 @@ type Action struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
 	Trigger     string `yaml:"trigger"`
-	Interval    string `yaml:"interval"`
+	Interval    string `yaml:"default_interval"`
 	Path        string `yaml:"path"`
 }
 
