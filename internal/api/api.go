@@ -647,8 +647,7 @@ func (c *DetaClient) CheckCLIVersionTag(tag string) (bool, error) {
 }
 
 type CreateProjectKeyRequest struct {
-	AppID string `json:"app_id"`
-	Name  string `json:"name"`
+	Name string `json:"name"`
 }
 
 type CreateProjectKeyResponse struct {
@@ -657,10 +656,10 @@ type CreateProjectKeyResponse struct {
 	Value     string `json:"value"`
 }
 
-func (c *DetaClient) CreateProjectKey(r *CreateProjectKeyRequest) (*CreateProjectKeyResponse, error) {
+func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) (*CreateProjectKeyResponse, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/apps/%s/keys", version, r.AppID),
+		Path:      fmt.Sprintf("/%s/apps/%s/keys", version, AppID),
 		Method:    "POST",
 		NeedsAuth: true,
 		Body:      r,

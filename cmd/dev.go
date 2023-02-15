@@ -261,9 +261,8 @@ func dev(cmd *cobra.Command, args []string) error {
 			}
 
 			// create a new project key using the api
-			r, err := client.CreateProjectKey(&api.CreateProjectKeyRequest{
-				AppID: devProjectID,
-				Name:  "dev " + hostname,
+			r, err := client.CreateProjectKey(devProjectID, &api.CreateProjectKeyRequest{
+				Name: "dev " + hostname,
 			})
 			if err != nil {
 				return err
