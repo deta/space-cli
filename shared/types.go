@@ -3,7 +3,7 @@ package shared
 // supported engines
 const (
 	Static    = "static"
-	React     = "create-react-app"
+	React     = "react"
 	Svelte    = "svelte"
 	Vue       = "vue"
 	Next      = "next"
@@ -78,21 +78,32 @@ type Presets struct {
 	APIKeys bool           `yaml:"api_keys"`
 }
 
+// Action xx
+type Action struct {
+	ID          string `yaml:"id"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Trigger     string `yaml:"trigger"`
+	Interval    string `yaml:"default_interval"`
+	Path        string `yaml:"path"`
+}
+
 // Micro xx
 type Micro struct {
-	Name         string   `yaml:"name"`
-	Src          string   `yaml:"src"`
-	Engine       string   `yaml:"engine"`
-	Path         *string  `yaml:"path,omitempty"`
-	Presets      *Presets `yaml:"presets,omitempty"`
-	PublicRoutes []string `yaml:"public_routes,omitempty"`
-	Primary      bool     `yaml:"primary"`
-	Runtime      string   `yaml:"runtime,omitempty"`
-	Commands     []string `yaml:"commands,omitempty"`
-	Include      []string `yaml:"include,omitempty"`
-	Serve        string   `yaml:"serve,omitempty"`
-	Run          string   `yaml:"run,omitempty"`
-	Dev          string   `yaml:"dev,omitempty"`
+	Name         string    `yaml:"name"`
+	Src          string    `yaml:"src"`
+	Engine       string    `yaml:"engine"`
+	Path         *string   `yaml:"path,omitempty"`
+	Presets      *Presets  `yaml:"presets,omitempty"`
+	PublicRoutes []string  `yaml:"public_routes,omitempty"`
+	Primary      bool      `yaml:"primary"`
+	Runtime      string    `yaml:"runtime,omitempty"`
+	Commands     []string  `yaml:"commands,omitempty"`
+	Include      []string  `yaml:"include,omitempty"`
+	Actions      []*Action `yaml:"actions,omitempty"`
+	Serve        string    `yaml:"serve,omitempty"`
+	Run          string    `yaml:"run,omitempty"`
+	Dev          string    `yaml:"dev,omitempty"`
 }
 
 func IsFrontendEngine(engine string) bool {

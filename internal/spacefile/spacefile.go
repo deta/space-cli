@@ -104,13 +104,16 @@ func (s *Spacefile) Save(sourceDir string) error {
 	spacefileDocsUrl := "# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0\n"
 
 	// marshall spacefile object
-	rawSpacefile, err := yaml.Marshal(s)
+	var rawSpacefile bytes.Buffer
+	yamlEncoder := yaml.NewEncoder(&rawSpacefile)
+	yamlEncoder.SetIndent(2)
+	err := yamlEncoder.Encode(&s)
 	if err != nil {
 		return fmt.Errorf("failed to marshall spacefile object: %w", err)
 	}
 
 	c := []byte(spacefileDocsUrl)
-	c = append(c, rawSpacefile...)
+	c = append(c, rawSpacefile.Bytes()...)
 
 	// write spacefile object to file
 	err = ioutil.WriteFile(filepath.Join(sourceDir, SpacefileName), c, 0644)
