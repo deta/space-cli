@@ -2,7 +2,6 @@ package spinner
 
 import (
 	"fmt"
-
 	"os"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -30,6 +29,7 @@ type Model struct {
 	Request         func() tea.Msg
 	Quitting        bool
 	Err             error
+	exitCode        int
 }
 
 type Input struct {
@@ -58,7 +58,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
-			os.Exit(1)
+			m.exitCode = 1
 			return m, tea.Quit
 		default:
 			return m, nil
@@ -95,12 +95,15 @@ func (m Model) View() string {
 func Run(i *Input) *RequestResponse {
 	program := tea.NewProgram(initialModel(i))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return nil
 	}
 
 	if m, ok := m.(Model); ok {
+		if m.exitCode != 0 {
+			os.Exit(m.exitCode)
+		}
 		return m.RequestResponse
 	}
 

@@ -14,6 +14,7 @@ type errMsg error
 type Model struct {
 	TextArea textarea.Model
 	Prompt   string
+	exitCode int
 	Err      error
 }
 
@@ -48,7 +49,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc:
 			return m, tea.Quit
 		case tea.KeyCtrlC:
-			os.Exit(1)
+			m.exitCode = 1
+			return m, tea.Quit
 		default:
 			if !m.TextArea.Focused() {
 				cmd = m.TextArea.Focus()
@@ -79,12 +81,15 @@ func (m Model) View() string {
 func Run(i *Input) (string, error) {
 	program := tea.NewProgram(initialModel(i))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return "", err
 	}
 
 	if m, ok := m.(Model); ok {
+		if m.exitCode != 0 {
+			os.Exit(m.exitCode)
+		}
 		return m.TextArea.Value(), nil
 	}
 

@@ -16,6 +16,7 @@ type Model struct {
 	Prompt    string
 	quitting  bool
 	Err       error
+	exitCode  int
 	Validator func(value string) error
 }
 
@@ -70,7 +71,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyCtrlC:
-			os.Exit(1)
+			m.exitCode = 1
+			return m, tea.Quit
 		}
 	case errMsg:
 		m.Err = msg
@@ -108,12 +110,15 @@ func (m Model) View() string {
 func Run(i *Input) (string, error) {
 	program := tea.NewProgram(initialModel(i))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return "", err
 	}
 
 	if m, ok := m.(Model); ok {
+		if m.exitCode != 0 {
+			os.Exit(m.exitCode)
+		}
 		if m.TextInput.Value() == "" {
 			return i.Placeholder, nil
 		}
