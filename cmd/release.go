@@ -123,6 +123,37 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	res, err := client.GetReleasesByApp(&api.GetReleasesRequest{AppID: releaseProjectID})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
+	// check there are previous releases for this project
+	if len(res.Releases) < 1 {
+		var confirmMsg string
+		if listedRelease {
+			logger.Println("Creating a listed release makes your app available on Deta Discovery for anyone to install and use.")
+			confirmMsg = fmt.Sprintf("Are you sure you want to release this app publicly on Discovery? (y/n)")
+		} else {
+			logger.Println("Releasing makes your app available via a unique link for others to install and use.")
+			confirmMsg = fmt.Sprintf("Are you sure you want to release this app to others? (y/n)")
+		}
+		logger.Printf("If you only want to use this app yourself, use your Builder instance instead.\n\n")
+
+		continueReleasing, err := confirm.Run(&confirm.Input{
+			Prompt: confirmMsg,
+		})
+		if err != nil {
+			return fmt.Errorf("problem while trying to get confirmation to continue releasing this project, %w", err)
+		}
+
+		if !continueReleasing {
+			logger.Println("Aborted releasing this app.")
+			return nil
+		}
+	}
+
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {

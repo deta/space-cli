@@ -107,6 +107,60 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 	return &resp, nil
 }
 
+type GetReleasesRequest struct {
+	AppID string `json:"app_id"`
+}
+
+type Release struct {
+	ID        string `json:"id"`
+	Tag       string `json:"tag"`
+	CreatedAt string `json:"created_at"`
+}
+
+type fetchReleasesResponse struct {
+	Releases []Release `json:"releases"`
+	Page     *Page     `json:"page"`
+}
+
+type GetReleasesResponse struct {
+	Releases []*Release `json:"releases"`
+}
+
+func (c *DetaClient) GetReleasesByApp(r *GetReleasesRequest) (*GetReleasesResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/releases?app_id=%s", version, r.AppID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch releases: %v", msg)
+	}
+
+	var fetchResp fetchReleasesResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch releases: %w", err)
+	}
+
+	var releases []*Release
+	for i := range fetchResp.Releases {
+		releases = append(releases, &fetchResp.Releases[i])
+	}
+
+	return &GetReleasesResponse{Releases: releases}, nil
+}
+
 type CreateReleaseRequest struct {
 	RevisionID    string `json:"revision_id"`
 	AppID         string `json:"app_id"`
