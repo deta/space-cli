@@ -566,8 +566,6 @@ func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetRelease
 		Body:      r,
 	}
 
-	fmt.Printf("%+v \n", i)
-
 	o, err := c.request(i)
 	if err != nil {
 		return nil, err
@@ -624,15 +622,10 @@ func (c *DetaClient) GetInstallationByRelease(r *GetInstallationByReleaseRequest
 		NeedsAuth: true,
 	}
 
-	fmt.Printf("%+v \n", i)
-
 	o, err := c.request(i)
-	fmt.Printf("%+v \n", err)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("%+v \n", o.Error)
 
 	if o.Status != 200 {
 		msg := o.Error.Detail
@@ -660,11 +653,6 @@ type GetInstallationRequest struct {
 	ID string `json:"id"`
 }
 
-type FetchInstallationResponse struct {
-	Installations []Installation `json:"installations"`
-	Page          *Page          `json:"page"`
-}
-
 func (c *DetaClient) GetInstallation(r *GetInstallationRequest) (*Installation, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
@@ -673,15 +661,10 @@ func (c *DetaClient) GetInstallation(r *GetInstallationRequest) (*Installation, 
 		NeedsAuth: true,
 	}
 
-	fmt.Printf("%+v \n", i)
-
 	o, err := c.request(i)
-	fmt.Printf("%+v \n", err)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("%+v \n", o.Error)
 
 	if o.Status != 200 {
 		msg := o.Error.Detail
@@ -691,18 +674,13 @@ func (c *DetaClient) GetInstallation(r *GetInstallationRequest) (*Installation, 
 		return nil, fmt.Errorf("failed to fetch installation: %v", msg)
 	}
 
-	var fetchResp FetchInstallationResponse
-	err = json.Unmarshal(o.Body, &fetchResp)
+	var resp Installation
+	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch installation: %w", err)
 	}
 
-	var installation *Installation
-	if len(fetchResp.Installations) > 0 {
-		installation = &fetchResp.Installations[0]
-	}
-
-	return installation, nil
+	return &resp, nil
 }
 
 type GetInstallationLogsRequest struct {

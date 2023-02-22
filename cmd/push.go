@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
@@ -16,6 +17,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -24,6 +26,7 @@ var (
 	pushProjectID  string
 	pushProjectDir string
 	pushTag        string
+	pushOpen       bool
 	pushCmd        = &cobra.Command{
 		Use:   "push [flags]",
 		Short: "push code for project",
@@ -35,6 +38,7 @@ func init() {
 	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
 	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
 	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
+	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open instance in browser after push")
 	rootCmd.AddCommand(pushCmd)
 }
 
@@ -251,7 +255,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// push code & run build steps
-	logger.Printf("%s Pushing your code & running build process...\n", emoji.Package)
+	logger.Printf("\n%s Pushing your code & running build process...\n", emoji.Package)
 	zippedCode, err := runtimeManager.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -291,20 +295,10 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 		return nil
 	}
-
 	if b.Status != api.Complete {
 		logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
 		return nil
 	}
-
-	// if true {
-	// 	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
-	// 	logger.Printf("%s Updating your development instance with the latest Revision, it will be available on your Canvas shortly.\n\n", emoji.Tools)
-	// 	logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
-	// 	return nil
-	// }
-
-	logger.Printf("%s Successfully pushed your code and created a new revision!", emoji.Check)
 
 	// get promotion via build id (build id == revision id)
 	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: br.ID})
@@ -313,8 +307,7 @@ func push(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger.Printf("%+v \n", p)
-	logger.Printf("%s Updating your Builder instance with the latest revision...\n", emoji.Package)
+	logger.Printf("\n%s Updating your Builder instance with the new revision...\n\n", emoji.Tools)
 
 	readCloserPromotion, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
 		ID: p.ID,
@@ -327,8 +320,7 @@ func push(cmd *cobra.Command, args []string) error {
 	defer readCloserPromotion.Close()
 	scannerPromotion := bufio.NewScanner(readCloserPromotion)
 	for scannerPromotion.Scan() {
-		line := scannerPromotion.Text()
-		fmt.Println(line)
+		// we don't want to print the logs to the terminal
 	}
 	if err := scannerPromotion.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
@@ -341,13 +333,10 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
-
 	if b.Status != api.Complete {
 		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
 		return nil
 	}
-
-	logger.Printf("%+v \n", p)
 
 	// get installation via promotion id (promotion id == release id)
 	i, err := client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
@@ -357,8 +346,6 @@ func push(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger.Printf("%+v \n", i)
-
 	readCloserInstallation, err := client.GetInstallationLogs(&api.GetInstallationLogsRequest{
 		ID: i.ID,
 	})
@@ -367,11 +354,17 @@ func push(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	var instanceUrl string
+
 	defer readCloserInstallation.Close()
 	scannerInstallation := bufio.NewScanner(readCloserInstallation)
 	for scannerInstallation.Scan() {
 		line := scannerInstallation.Text()
-		fmt.Println(line)
+		if strings.Contains(line, "http") {
+			instanceUrl = line
+		} else {
+			fmt.Println(line)
+		}
 	}
 	if err := scannerInstallation.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
@@ -384,15 +377,25 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
-
 	if i.Status != api.Complete {
 		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
 		return nil
 	}
 
 	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
-	logger.Printf("Run %s to create an installable release for this revision.\n", styles.Code("space release"))
-	logger.Printf("Builder instance: %s", styles.Codef("%s/%s/develop", builderUrl, pushProjectID))
+	logger.Printf("Run %s to create a release that others can install.\n\n", styles.Code("space release"))
+
+	if instanceUrl != "" {
+		logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
+
+		if pushOpen {
+			err = browser.OpenURL(instanceUrl)
+
+			if err != nil {
+				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+			}
+		}
+	}
 
 	cm := <-c
 	if cm.err == nil && cm.isLower {
