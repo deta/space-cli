@@ -284,6 +284,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
+
 	// check build status
 	b, err := client.GetBuild(&api.GetBuildLogsRequest{BuildID: br.ID})
 	if err != nil {
@@ -291,19 +292,112 @@ func push(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if b.Status == api.Complete {
-		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!", emoji.PartyPopper))
-		logger.Printf("%s Updating your development instance with the latest Revision, it will be available on your Canvas shortly.\n\n", emoji.Tools)
-		logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
-
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		return nil
-	} else {
+	if b.Status != api.Complete {
 		logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
 		return nil
 	}
+
+	// if true {
+	// 	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
+	// 	logger.Printf("%s Updating your development instance with the latest Revision, it will be available on your Canvas shortly.\n\n", emoji.Tools)
+	// 	logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
+	// 	return nil
+	// }
+
+	logger.Printf("%s Successfully pushed your code and created a new revision!", emoji.Check)
+
+	// get promotion via build id (build id == revision id)
+	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: br.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		return nil
+	}
+
+	logger.Printf("%+v \n", p)
+	logger.Printf("%s Updating your Builder instance with the latest revision...\n", emoji.Package)
+
+	readCloserPromotion, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
+		ID: p.ID,
+	})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
+	defer readCloserPromotion.Close()
+	scannerPromotion := bufio.NewScanner(readCloserPromotion)
+	for scannerPromotion.Scan() {
+		line := scannerPromotion.Text()
+		fmt.Println(line)
+	}
+	if err := scannerPromotion.Err(); err != nil {
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return nil
+	}
+
+	// check promotion status
+	p, err = client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: p.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		return nil
+	}
+
+	if b.Status != api.Complete {
+		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
+		return nil
+	}
+
+	logger.Printf("%+v \n", p)
+
+	// get installation via promotion id (promotion id == release id)
+	i, err := client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		return nil
+	}
+
+	logger.Printf("%+v \n", i)
+
+	readCloserInstallation, err := client.GetInstallationLogs(&api.GetInstallationLogsRequest{
+		ID: i.ID,
+	})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
+	defer readCloserInstallation.Close()
+	scannerInstallation := bufio.NewScanner(readCloserInstallation)
+	for scannerInstallation.Scan() {
+		line := scannerInstallation.Text()
+		fmt.Println(line)
+	}
+	if err := scannerInstallation.Err(); err != nil {
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return nil
+	}
+
+	// check installation status
+	i, err = client.GetInstallation(&api.GetInstallationRequest{ID: i.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		return nil
+	}
+
+	if i.Status != api.Complete {
+		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
+		return nil
+	}
+
+	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
+	logger.Printf("Run %s to create an installable release for this revision.\n", styles.Code("space release"))
+	logger.Printf("Builder instance: %s", styles.Codef("%s/%s/develop", builderUrl, pushProjectID))
+
+	cm := <-c
+	if cm.err == nil && cm.isLower {
+		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
+	return nil
 
 }

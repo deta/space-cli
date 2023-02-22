@@ -512,8 +512,9 @@ type GetReleasePromotionRequest struct {
 }
 
 type GetReleasePromotionResponse struct {
-	ID     string `json:"id" db:"id"`
-	Status string `json:"status" db:"status"`
+	ID      string `json:"id" db:"id"`
+	Status  string `json:"status" db:"status"`
+	Channel string `json:"channel" db:"channel"`
 }
 
 func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetReleasePromotionResponse, error) {
@@ -545,6 +546,191 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 	}
 
 	return &resp, nil
+}
+
+type GetPromotionRequest struct {
+	RevisionID string `json:"revision_id"`
+}
+
+type FetchPromotionResponse struct {
+	Promotions []GetReleasePromotionResponse `json:"promotions"`
+	Page       *Page                         `json:"page"`
+}
+
+func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetReleasePromotionResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/promotions?revision_id=%s&limit=1", version, r.RevisionID),
+		Method:    "GET",
+		NeedsAuth: true,
+		Body:      r,
+	}
+
+	fmt.Printf("%+v \n", i)
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch promotions: %v", msg)
+	}
+
+	var fetchResp FetchPromotionResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch promotions: %w", err)
+	}
+
+	var promotion *GetReleasePromotionResponse
+	if len(fetchResp.Promotions) > 0 {
+		promotion = &fetchResp.Promotions[0]
+	}
+
+	if promotion.Channel != "development" {
+		return nil, fmt.Errorf("failed to fetch promotions for revision: %s, no development promotion found", r.RevisionID)
+	}
+
+	return promotion, nil
+}
+
+type GetInstallationByReleaseRequest struct {
+	ReleaseID string `json:"release_id"`
+}
+
+type Installation struct {
+	ID         string `json:"id"`
+	InstanceID string `json:"instance_id"`
+	ReleaseID  string `json:"release_id"`
+	Status     string `json:"status"`
+	CreatedAt  string `json:"created_at"`
+}
+
+type FetchInstallationsResponse struct {
+	Installations []Installation `json:"installations"`
+	Page          *Page          `json:"page"`
+}
+
+func (c *DetaClient) GetInstallationByRelease(r *GetInstallationByReleaseRequest) (*Installation, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/installations?release_id=%s&limit=1", version, r.ReleaseID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	fmt.Printf("%+v \n", i)
+
+	o, err := c.request(i)
+	fmt.Printf("%+v \n", err)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("%+v \n", o.Error)
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch installations: %v", msg)
+	}
+
+	var fetchResp FetchInstallationsResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch installations: %w", err)
+	}
+
+	var installation *Installation
+	if len(fetchResp.Installations) > 0 {
+		installation = &fetchResp.Installations[0]
+	}
+
+	return installation, nil
+}
+
+type GetInstallationRequest struct {
+	ID string `json:"id"`
+}
+
+type FetchInstallationResponse struct {
+	Installations []Installation `json:"installations"`
+	Page          *Page          `json:"page"`
+}
+
+func (c *DetaClient) GetInstallation(r *GetInstallationRequest) (*Installation, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/installations/%s", version, r.ID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	fmt.Printf("%+v \n", i)
+
+	o, err := c.request(i)
+	fmt.Printf("%+v \n", err)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("%+v \n", o.Error)
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch installation: %v", msg)
+	}
+
+	var fetchResp FetchInstallationResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch installation: %w", err)
+	}
+
+	var installation *Installation
+	if len(fetchResp.Installations) > 0 {
+		installation = &fetchResp.Installations[0]
+	}
+
+	return installation, nil
+}
+
+type GetInstallationLogsRequest struct {
+	ID string `json:"id"`
+}
+
+func (c *DetaClient) GetInstallationLogs(r *GetInstallationLogsRequest) (io.ReadCloser, error) {
+	i := &requestInput{
+		Root:             spaceRoot,
+		Path:             fmt.Sprintf("/%s/installations/%s/logs?follow=true", version, r.ID),
+		Method:           "GET",
+		NeedsAuth:        true,
+		ReturnReadCloser: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to create release: %v", msg)
+	}
+	return o.BodyReadCloser, nil
 }
 
 type GetSpaceRequest struct {
