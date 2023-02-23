@@ -110,7 +110,7 @@ func getPatternFromLine(line string) (*regexp.Regexp, bool) {
 	}
 
 	// Handle escaping the "." char
-	line = regexp.MustCompile(`\.`).ReplaceAllString(line, `\.`)
+	line = regexp.MustCompile(`\.`).ReplaceAllString(line, `\\.`)
 
 	magicStar := "#$~"
 
