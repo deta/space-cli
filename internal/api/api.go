@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/pc-cli/shared"
 )
 
 const (
@@ -162,13 +163,14 @@ func (c *DetaClient) GetReleasesByApp(r *GetReleasesRequest) (*GetReleasesRespon
 }
 
 type CreateReleaseRequest struct {
-	RevisionID    string `json:"revision_id"`
-	AppID         string `json:"app_id"`
-	Version       string `json:"version"`
-	ReleaseNotes  string `json:"release_notes"`
-	Description   string `json:"description"`
-	Channel       string `json:"channel"`
-	DiscoveryList bool   `json:"discovery_list"`
+	RevisionID    string                      `json:"revision_id"`
+	AppID         string                      `json:"app_id"`
+	Version       string                      `json:"version"`
+	ReleaseNotes  string                      `json:"release_notes"`
+	Description   string                      `json:"description"`
+	Channel       string                      `json:"channel"`
+	DiscoveryList bool                        `json:"discovery_list"`
+	Discovery     shared.DiscoveryFrontmatter `json:"discovery"`
 }
 
 type CreateReleaseResponse struct {

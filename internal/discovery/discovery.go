@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/deta/pc-cli/pkg/util/fs"
+	"github.com/deta/pc-cli/shared"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -68,4 +71,24 @@ func Open(sourceDir string) ([]byte, error) {
 	}
 
 	return c, nil
+}
+
+func CreateDiscoveryFile(filename string, discovery shared.DiscoveryFrontmatter) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		f.Close()
+		return err
+	}
+
+	js, _ := yaml.Marshal(discovery)
+	fmt.Fprintln(f, "---")
+	fmt.Fprint(f, string(js))
+	fmt.Fprintln(f, "---")
+
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

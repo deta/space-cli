@@ -12,7 +12,12 @@ require (
 	gotest.tools/v3 v3.3.0
 )
 
-require github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
+require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/adrg/frontmatter v0.2.0 // indirect
+	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
