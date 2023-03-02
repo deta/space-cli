@@ -16,15 +16,19 @@ import (
 
 const (
 	spaceAccessTokenEnv   = "SPACE_ACCESS_TOKEN"
+	spaceProjectKeyEnv    = "SPACE_PROJECT_KEY"
 	spaceSignVersion      = "v0"
 	spaceDir              = ".detaspace"
 	spaceAuthTokenPath    = ".detaspace/space_tokens"
+	spaceProjectKeysPath  = ".detaspace/space_project_keys"
 	oldSpaceAuthTokenPath = ".deta/space_tokens"
 )
 
 var (
 	// ErrNoAccessTokenFound no access token found
 	ErrNoAccessTokenFound = errors.New("no access token was found or was empty")
+	// ErrNoProjectKeyFound no access token found
+	ErrNoProjectKeyFound = errors.New("no project key was found or was empty")
 	// ErrInvalidAccessToken invalid access token
 	ErrInvalidAccessToken = errors.New("invalid access token")
 )
@@ -102,6 +106,62 @@ func StoreAccessToken(accessToken string) error {
 
 	tokensFilePath := filepath.Join(home, spaceAuthTokenPath)
 	err = ioutil.WriteFile(tokensFilePath, marshalled, 0660)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type Keys map[string]interface{}
+
+// GetProjectKey retrieves a project key storage or env var
+func GetProjectKey(projectId string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", nil
+	}
+
+	keysFilePath := filepath.Join(home, spaceProjectKeysPath)
+	f, err := os.Open(keysFilePath)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	defer f.Close()
+
+	var keys Keys
+	contents, _ := ioutil.ReadAll(f)
+	json.Unmarshal(contents, &keys)
+
+	var key = keys[projectId]
+	if key != nil {
+		return key.(string), nil
+	}
+
+	return "", ErrNoProjectKeyFound
+}
+
+func StoreProjectKey(projectId string, projectKey string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	spaceDirPath := filepath.Join(home, spaceDir)
+	err = os.MkdirAll(spaceDirPath, 0760)
+	if err != nil {
+		return err
+	}
+
+	keys := make(map[string]interface{})
+	keys[projectId] = projectKey
+
+	marshalled, err := json.Marshal(keys)
+	if err != nil {
+		return err
+	}
+
+	keysFilePath := filepath.Join(home, spaceProjectKeysPath)
+	err = ioutil.WriteFile(keysFilePath, marshalled, 0660)
 	if err != nil {
 		return err
 	}
