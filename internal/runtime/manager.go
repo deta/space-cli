@@ -24,11 +24,13 @@ var (
 
 	NodeSkipPattern = `node_modules`
 
+	HiddenFilePattern = `.*`
+
 	ignoreFile      = ".spaceignore"
 	spaceDir        = ".space"
 	projectMetaFile = "meta"
 
-	defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
+	defaultSkipPatterns = []string{HiddenFilePattern, PythonSkipPattern, NodeSkipPattern}
 )
 
 // Manager runtime manager handles files management and other services
@@ -67,7 +69,7 @@ func NewManager(root *string, initDirs bool) (*Manager, error) {
 		spacePath:       spacePath,
 		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
 		ignorePath:      filepath.Join(rootDir, ignoreFile),
-		skipPaths:       ignore.CompileIgnoreLines(defaultSkipPatterns...),
+		skipPaths:       nil,
 	}
 
 	// not handling error as we don't want cli to crash if .spaceignore is not found
@@ -88,7 +90,7 @@ func (m *Manager) handleIgnoreFile() error {
 		return err
 	}
 
-	m.skipPaths = ignore.CompileIgnoreLines(append(defaultSkipPatterns, lines...)...)
+	m.skipPaths = ignore.CompileIgnoreLines(lines...)
 
 	return nil
 }
@@ -172,4 +174,27 @@ func (m *Manager) AddSpaceToGitignore() error {
 		return fmt.Errorf("failed to write .space to .gitignore: %w", err)
 	}
 	return nil
+}
+
+func CreateIgnoreFile(filename string, lines []string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		f.Close()
+		return err
+	}
+
+	for _, v := range lines {
+		fmt.Fprintln(f, v)
+	}
+
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Manager) CreateDefaultSpaceIgnoreFile() error {
+	return CreateIgnoreFile(ignoreFile, defaultSkipPatterns)
 }
