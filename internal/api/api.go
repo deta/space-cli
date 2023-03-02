@@ -478,9 +478,10 @@ type GetBuildRequest struct {
 type GetBuildResponse struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`
+	Tag    string `json:"tag"`
 }
 
-func (c *DetaClient) GetBuild(r *GetBuildLogsRequest) (*GetBuildResponse, error) {
+func (c *DetaClient) GetBuild(r *GetBuildRequest) (*GetBuildResponse, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/builds/%s", version, r.BuildID),

@@ -27,6 +27,7 @@ var (
 	pushProjectDir string
 	pushTag        string
 	pushOpen       bool
+	skipLogs       bool
 	pushCmd        = &cobra.Command{
 		Use:   "push [flags]",
 		Short: "push code for project",
@@ -39,6 +40,7 @@ func init() {
 	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
 	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
 	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open instance in browser after push")
+	pushCmd.Flags().BoolVarP(&skipLogs, "skip-logs", "s", false, "skip following logs after push")
 	rootCmd.AddCommand(pushCmd)
 }
 
@@ -269,6 +271,35 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+
+	if skipLogs {
+		b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
+		if err != nil {
+			logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+			return nil
+		}
+
+		var url = fmt.Sprintf("%s/%s?event=bld-%s", builderUrl, pushProjectID, b.Tag)
+
+		logger.Println(styles.Greenf("\n%s Successfully pushed your code!", emoji.PartyPopper))
+		logger.Println("\nSkipped following build process, please check build status manually:")
+		logger.Println(styles.Codef(url))
+
+		if pushOpen {
+			err = browser.OpenURL(url)
+
+			if err != nil {
+				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+			}
+		}
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
+		return nil
+	}
+
 	// get build logs
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: br.ID,
@@ -290,7 +321,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// check build status
-	b, err := client.GetBuild(&api.GetBuildLogsRequest{BuildID: br.ID})
+	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
 	if err != nil {
 		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 		return nil
