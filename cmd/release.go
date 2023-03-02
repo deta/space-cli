@@ -282,11 +282,17 @@ func release(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	var releaseUrl string
+
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		if strings.Contains(line, "http") {
+			releaseUrl = line
+		} else {
+			fmt.Println(line)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
@@ -301,12 +307,17 @@ func release(cmd *cobra.Command, args []string) error {
 
 	if r.Status == api.Complete {
 		logger.Println()
-		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
-		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
+		logger.Println(emoji.Rocket, "Lift off -- successfully created a new release!")
+		logger.Println(emoji.Earth, "Your release is available globally on 5 Deta Edges")
 		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
 		if listedRelease {
 			logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
 		}
+
+		if releaseUrl != "" {
+			logger.Printf("\nRelease: %s", styles.Code(releaseUrl))
+		}
+
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
