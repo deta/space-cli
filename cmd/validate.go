@@ -102,7 +102,7 @@ func logValidationErrors(s *spacefile.Spacefile, spacefileErrors []error) {
 			case errors.Is(spacefile.ErrInvalidMicroSrc, err):
 				logger.Println(styles.Error(fmt.Sprintf("L Cannot find src for micro \"%s\"", micro.Src)))
 			case errors.Is(spacefile.ErrInvalidMicroEngine, err):
-				logger.Println(styles.Error(fmt.Sprintf("L Invalid engine value \"%s\"", micro.Src)))
+				logger.Println(styles.Error(fmt.Sprintf("L Invalid engine value \"%s\"", micro.Engine)))
 			default:
 				logger.Println(styles.Error(fmt.Sprintf("L Error: %v", err)))
 			}
