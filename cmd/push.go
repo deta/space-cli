@@ -134,7 +134,7 @@ func push(cmd *cobra.Command, args []string) error {
 	buildSpinnerInput := spinner.Input{
 		LoadingMsg: "Working on starting your build...",
 		Request: func() tea.Msg {
-			r, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
+			r, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: pushTag})
 
 			return spinner.Stop{
 				RequestResponse: spinner.RequestResponse{Response: r, Err: err},
