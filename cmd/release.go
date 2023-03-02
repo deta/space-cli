@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"github.com/adrg/frontmatter"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/choose"
 	"github.com/deta/pc-cli/pkg/components/confirm"
@@ -15,6 +18,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/components/textarea"
+	"github.com/deta/pc-cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -123,6 +127,37 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	res, err := client.GetReleasesByApp(&api.GetReleasesRequest{AppID: releaseProjectID})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
+	// check there are previous releases for this project
+	if len(res.Releases) < 1 {
+		var confirmMsg string
+		if listedRelease {
+			logger.Println("Creating a listed release makes your app available on Deta Discovery for anyone to install and use.")
+			confirmMsg = fmt.Sprintf("Are you sure you want to release this app publicly on Discovery? (y/n)")
+		} else {
+			logger.Println("Releasing makes your app available via a unique link for others to install and use.")
+			confirmMsg = fmt.Sprintf("Are you sure you want to release this app to others? (y/n)")
+		}
+		logger.Printf("If you only want to use this app yourself, use your Builder instance instead.\n\n")
+
+		continueReleasing, err := confirm.Run(&confirm.Input{
+			Prompt: confirmMsg,
+		})
+		if err != nil {
+			return fmt.Errorf("problem while trying to get confirmation to continue releasing this project, %w", err)
+		}
+
+		if !continueReleasing {
+			logger.Println("Aborted releasing this app.")
+			return nil
+		}
+	}
+
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
@@ -171,6 +206,57 @@ func release(cmd *cobra.Command, args []string) error {
 		logger.Printf("Using notes provided via arguments.\n\n")
 	}
 
+	discoveryData := &shared.DiscoveryFrontmatter{}
+
+	// load and parse discovery file
+	df, err := discovery.Open(pushProjectDir)
+	if err != nil {
+		// if no file is found we prompt the user for the required fields
+		if errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
+			logger.Println(styles.Errorf("\n%s No Discovery file found\n", emoji.ErrorExclamation))
+			logger.Printf("Please give your app a friendly title and add a short description so others know what this app does.\n\n")
+
+			title, err := text.Run(&text.Input{
+				Prompt:      "App Title (max 45 chars)",
+				Placeholder: "",
+				Validator:   emptyPromptValidator,
+			})
+			if err != nil {
+				return fmt.Errorf("problem while trying to get title from text prompt, %w", err)
+			}
+			discoveryData.Title = title
+
+			tagline, err := text.Run(&text.Input{
+				Prompt:      "Short Description (max 69 chars)",
+				Placeholder: "",
+				Validator:   emptyPromptValidator,
+			})
+			if err != nil {
+				return fmt.Errorf("problem while trying to get tagline from text prompt, %w", err)
+			}
+			discoveryData.Tagline = tagline
+
+			discovery.CreateDiscoveryFile("Discovery.md", *discoveryData)
+		} else {
+			if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
+				logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
+				return nil
+			}
+			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+			return nil
+		}
+	} else {
+		dfstr := string(df)
+
+		rest, err := frontmatter.Parse(strings.NewReader(dfstr), &discoveryData)
+		if err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
+			return nil
+		}
+
+		discoveryData.Content = string(rest)
+	}
+
 	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
@@ -179,6 +265,7 @@ func release(cmd *cobra.Command, args []string) error {
 		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
 		Channel:       ReleaseChannelExp, // always experimental release for now
+		Discovery:     *discoveryData,
 	})
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
@@ -195,11 +282,17 @@ func release(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	var releaseUrl string
+
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		if strings.Contains(line, "http") {
+			releaseUrl = line
+		} else {
+			fmt.Println(line)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
@@ -214,12 +307,17 @@ func release(cmd *cobra.Command, args []string) error {
 
 	if r.Status == api.Complete {
 		logger.Println()
-		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
-		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
+		logger.Println(emoji.Rocket, "Lift off -- successfully created a new release!")
+		logger.Println(emoji.Earth, "Your release is available globally on 5 Deta Edges")
 		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
 		if listedRelease {
 			logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
 		}
+
+		if releaseUrl != "" {
+			logger.Printf("\nRelease: %s", styles.Code(releaseUrl))
+		}
+
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
