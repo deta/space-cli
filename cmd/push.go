@@ -306,6 +306,7 @@ func push(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		logger.Printf("\nView your project in Builder to check the build status: %s", styles.Codef("%s/%s", builderUrl, pushProjectID))
 		return nil
 	}
 	defer readCloser.Close()
@@ -317,13 +318,14 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		logger.Printf("\nView your project in Builder to check the build status: %s", styles.Codef("%s/%s", builderUrl, pushProjectID))
 		return nil
 	}
 
 	// check build status
 	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s", builderUrl, pushProjectID)))
 		return nil
 	}
 	if b.Status != api.Complete {
