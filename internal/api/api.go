@@ -547,6 +547,100 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 	return &resp, nil
 }
 
+type GetBuilderInstanceRequest struct {
+	AppID string `json:"app_id"`
+}
+
+type fetchBuilderInstanceResponse struct {
+	Instances []Instance `json:"instances"`
+	Page      *Page      `json:"page"`
+}
+
+type Instance struct {
+	ID  string `json:"id" db:"id"`
+	URL string `json:"url" db:"url"`
+}
+
+func (c *DetaClient) GetBuilderInstance(r *GetBuilderInstanceRequest) (*Instance, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/instances?channel=development&app_id=%s", version, r.AppID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if errors.Is(auth.ErrNoAccessTokenFound, err) {
+		return nil, fmt.Errorf("no access token found, please login via space login")
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to get Builder instance, %v", msg)
+	}
+
+	var fetchResp fetchBuilderInstanceResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch instance: %w", err)
+	}
+
+	var instance *Instance = &fetchResp.Instances[0]
+
+	return instance, nil
+}
+
+type GetInstanceLogsRequest struct {
+	InstanceID string `json:"id"`
+	Micro      string `json:"micro"`
+}
+
+type LogsItem struct {
+	MicroName string `json:"micro_name"`
+	EventType string `json:"event_type"`
+	Timestamp string `json:"timestamp"`
+	Message   string `json:"msg"`
+}
+
+func (c *DetaClient) GetInstanceLogs(r *GetInstanceLogsRequest) ([]LogsItem, error) {
+	fmt.Printf("micro: %s", r.Micro)
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/logger/instances/%s/micros/%s/logs", r.InstanceID, r.Micro),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if errors.Is(auth.ErrNoAccessTokenFound, err) {
+		return nil, fmt.Errorf("no access token found, please login via space login")
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch logs: %v", msg)
+	}
+
+	var logs []LogsItem
+	err = json.Unmarshal(o.Body, &logs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch logs: %w", err)
+	}
+
+	return logs, nil
+}
+
 type GetSpaceRequest struct {
 	AccessToken string `json:"access_token,omitempty"`
 }
