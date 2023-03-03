@@ -195,6 +195,28 @@ func CreateIgnoreFile(filename string, lines []string) error {
 	return nil
 }
 
-func (m *Manager) CreateDefaultSpaceIgnoreFile() error {
-	return CreateIgnoreFile(ignoreFile, defaultSkipPatterns)
+func (m *Manager) CreateDefaultSpaceIgnoreFileIfNotExists() error {
+	fileExists, err := m.HasSpaceIgnoreFile()
+	if err != nil {
+		return err
+	}
+
+	if !fileExists {
+		return CreateIgnoreFile(ignoreFile, defaultSkipPatterns)
+	}
+
+	return nil
+}
+
+func (m *Manager) HasSpaceIgnoreFile() (bool, error) {
+	_, err := os.Stat(ignoreFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }

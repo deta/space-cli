@@ -140,7 +140,7 @@ func new(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to create blank project, %w", err)
 		}
 
-		err = runtimeManager.CreateDefaultSpaceIgnoreFile()
+		err = runtimeManager.CreateDefaultSpaceIgnoreFileIfNotExists()
 		if err != nil {
 			return fmt.Errorf("failed to create default .spaceignore file, %w", err)
 		}
@@ -269,7 +269,7 @@ func new(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to create project with detected micros, %w", err)
 			}
 
-			err = runtimeManager.CreateDefaultSpaceIgnoreFile()
+			err = runtimeManager.CreateDefaultSpaceIgnoreFileIfNotExists()
 			if err != nil {
 				return fmt.Errorf("failed to create default .spaceignore file, %w", err)
 			}
@@ -310,7 +310,7 @@ func new(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create blank project, %w", err)
 	}
 
-	err = runtimeManager.CreateDefaultSpaceIgnoreFile()
+	err = runtimeManager.CreateDefaultSpaceIgnoreFileIfNotExists()
 	if err != nil {
 		return fmt.Errorf("failed to create default .spaceignore file, %w", err)
 	}

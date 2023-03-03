@@ -124,6 +124,12 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
+	// check if .spaceignore file exists and create default one if not
+	err = runtimeManager.CreateDefaultSpaceIgnoreFileIfNotExists()
+	if err != nil {
+		return fmt.Errorf("failed to create default .spaceignore file, %w", err)
+	}
+
 	// start push & build process
 	buildSpinnerInput := spinner.Input{
 		LoadingMsg: "Working on starting your build...",
