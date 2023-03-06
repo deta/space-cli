@@ -39,7 +39,7 @@ func init() {
 	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
 	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
 	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
-	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open instance in browser after push")
+	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open builder instance/project in browser after push")
 	pushCmd.Flags().BoolVarP(&skipLogs, "skip-logs", "", false, "skip following logs after push")
 	rootCmd.AddCommand(pushCmd)
 }
