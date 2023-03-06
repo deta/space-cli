@@ -364,7 +364,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
-	if b.Status != api.Complete {
+	if p.Status != api.Complete {
 		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
 		return nil
 	}
