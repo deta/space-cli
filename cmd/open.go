@@ -72,6 +72,9 @@ func open(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
 	}
-
+cm := <-c
+if cm.err == nil && cm.isLower {
+	logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+}
 	return nil
 }
