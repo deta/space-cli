@@ -707,7 +707,7 @@ func (c *DetaClient) GetInstallationLogs(r *GetInstallationLogsRequest) (io.Read
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create release: %v", msg)
+		return nil, fmt.Errorf("failed to get installation logs: %v", msg)
 	}
 	return o.BodyReadCloser, nil
 }
