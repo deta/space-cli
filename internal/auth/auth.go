@@ -3,7 +3,6 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,11 +14,13 @@ import (
 )
 
 const (
-	spaceAccessTokenEnv = "SPACE_ACCESS_TOKEN"
-	spaceTokensFile     = "space_tokens"
-	spaceSignVersion    = "v0"
-	spaceDir            = ".detaspace"
-	oldSpaceDir         = ".deta"
+	spaceAccessTokenEnv         = "SPACE_ACCESS_TOKEN"
+	spaceTokensFile             = "space_tokens"
+	spaceSignVersion            = "v0"
+	spaceDir                    = ".detaspace"
+	oldSpaceDir                 = ".deta"
+	dirModePermReadWriteExecute = 0760
+	fileModePermReadWrite       = 0660
 )
 
 var (
@@ -30,82 +31,90 @@ var (
 	ErrNoAccessTokenFound = errors.New("no access token was found or was empty")
 	// ErrInvalidAccessToken invalid access token
 	ErrInvalidAccessToken = errors.New("invalid access token")
+	// ErrBadAccessTokenFile bad access token file
+	ErrBadAccessTokenFile = errors.New("bad access token file")
 )
 
 type Token struct {
 	AccessToken string `json:"access_token"`
 }
 
-// GetAccessToken retrieves the tokens from storage or env var
-func GetAccessToken() (string, error) {
-	home, err := os.UserHomeDir()
+func getAccessTokenFromFile(filepath string) (string, error) {
+	f, err := os.Open(filepath)
 	if err != nil {
-		return "", nil
-	}
-
-	tokensFilePath := filepath.Join(home, spaceAuthTokenPath)
-	f, err := os.Open(tokensFilePath)
-	if err != nil && !os.IsNotExist(err) {
-		return "", err
+		return "", fmt.Errorf("os.Open: %w", err)
 	}
 	defer f.Close()
-
-	// ignoring errors here
-	// as we fall back to retrieving acces token from env
-	// if not found in env then will finally return an error
-	var tokens Token
-	contents, _ := ioutil.ReadAll(f)
-	json.Unmarshal(contents, &tokens)
-
-	// first priority to access token
-	if tokens.AccessToken != "" {
-		return tokens.AccessToken, nil
+	var t Token
+	if err := json.NewDecoder(f).Decode(&t); err != nil {
+		return "", fmt.Errorf("%w: %s", ErrBadAccessTokenFile, filepath)
 	}
-
-	// check old token file path and move to new token file path
-	// ignore errors here because this is old token file path
-	oldTokensFilePath := filepath.Join(home, oldSpaceAuthTokenPath)
-	of, _ := os.Open(oldTokensFilePath)
-	defer of.Close()
-	var oldTokens Token
-	contents, _ = ioutil.ReadAll(of)
-	json.Unmarshal(contents, &oldTokens)
-	if oldTokens.AccessToken != "" {
-		StoreAccessToken(oldTokens.AccessToken)
-		return oldTokens.AccessToken, nil
+	if t.AccessToken == "" {
+		return t.AccessToken, ErrNoAccessTokenFound
 	}
+	return t.AccessToken, nil
+}
 
-	// not found in file, check the env
+// GetAccessToken retrieves the tokens from storage or env var
+func GetAccessToken() (string, error) {
+	// preference to env var first
 	spaceAccessToken := os.Getenv(spaceAccessTokenEnv)
-
 	if spaceAccessToken != "" {
 		return spaceAccessToken, nil
 	}
 
-	return "", ErrNoAccessTokenFound
-}
-
-func StoreAccessToken(accessToken string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return err
-	}
-
-	spaceDirPath := filepath.Join(home, spaceDir)
-	err = os.MkdirAll(spaceDirPath, 0760)
-	if err != nil {
-		return err
-	}
-
-	var tokens = &Token{AccessToken: accessToken}
-	marshalled, err := json.Marshal(tokens)
-	if err != nil {
-		return err
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
 	}
 
 	tokensFilePath := filepath.Join(home, spaceAuthTokenPath)
-	err = ioutil.WriteFile(tokensFilePath, marshalled, 0660)
+	accessToken, err := getAccessTokenFromFile(tokensFilePath)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			return accessToken, fmt.Errorf("failed to get access token from file: %w", err)
+		}
+		// fallback to old space auth token path
+		tokensFilePath = filepath.Join(home, oldSpaceAuthTokenPath)
+		accessToken, err = getAccessTokenFromFile(tokensFilePath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return accessToken, fmt.Errorf("failed to get access token from file: %w", err)
+			}
+			return "", ErrNoAccessTokenFound
+		}
+		// store access token in new token directory if old directory
+		if err := StoreAccessToken(accessToken); err != nil {
+			return "", fmt.Errorf("failed to store access token from old token path to new path: %w", err)
+		}
+	}
+	return accessToken, nil
+}
+
+func storeAccessToken(t *Token, path string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, dirModePermReadWriteExecute); err != nil {
+		return fmt.Errorf("failed to create dir %s: %w", dir, err)
+	}
+	marshalled, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("failed to marshall token: %w", err)
+	}
+	if err := os.WriteFile(path, marshalled, fileModePermReadWrite); err != nil {
+		return fmt.Errorf("failed to write token to file %s: %w", path, err)
+	}
+	return nil
+}
+
+// StoreAccessToken in the access token directory
+func StoreAccessToken(accessToken string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+	tokensFilePath := filepath.Join(home, spaceAuthTokenPath)
+	t := &Token{AccessToken: accessToken}
+	if err := storeAccessToken(t, tokensFilePath); err != nil {
 		return err
 	}
 	return nil

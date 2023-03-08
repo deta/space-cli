@@ -713,7 +713,7 @@ func (c *DetaClient) GetInstallationLogs(r *GetInstallationLogsRequest) (io.Read
 }
 
 type GetSpaceRequest struct {
-	AccessToken string `json:"access_token,omitempty"`
+	AccessToken string `json:"access_token"`
 }
 
 type GetSpaceResponse struct {
@@ -722,14 +722,11 @@ type GetSpaceResponse struct {
 
 func (c *DetaClient) GetSpace(r *GetSpaceRequest) (*GetSpaceResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/space", version),
-		Method:    "GET",
-		NeedsAuth: true,
-	}
-
-	if r.AccessToken != "" {
-		i.AccessToken = r.AccessToken
+		Root:        spaceRoot,
+		Path:        fmt.Sprintf("/%s/space", version),
+		Method:      "GET",
+		NeedsAuth:   true,
+		AccessToken: r.AccessToken,
 	}
 
 	o, err := c.request(i)
@@ -739,7 +736,7 @@ func (c *DetaClient) GetSpace(r *GetSpaceRequest) (*GetSpaceResponse, error) {
 
 	// unauthorized
 	if o.Status == 401 {
-		return nil, fmt.Errorf("failed to get space: %w", auth.ErrInvalidAccessToken)
+		return nil, errors.New("unauthorized")
 	}
 
 	if !(o.Status >= 200 && o.Status <= 299) {
