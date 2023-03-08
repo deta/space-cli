@@ -15,14 +15,17 @@ import (
 )
 
 const (
-	spaceAccessTokenEnv   = "SPACE_ACCESS_TOKEN"
-	spaceSignVersion      = "v0"
-	spaceDir              = ".detaspace"
-	spaceAuthTokenPath    = ".detaspace/space_tokens"
-	oldSpaceAuthTokenPath = ".deta/space_tokens"
+	spaceAccessTokenEnv = "SPACE_ACCESS_TOKEN"
+	spaceTokensFile     = "space_tokens"
+	spaceSignVersion    = "v0"
+	spaceDir            = ".detaspace"
+	oldSpaceDir         = ".deta"
 )
 
 var (
+	spaceAuthTokenPath    = filepath.Join(spaceDir, spaceTokensFile)
+	oldSpaceAuthTokenPath = filepath.Join(oldSpaceDir, spaceTokensFile)
+
 	// ErrNoAccessTokenFound no access token found
 	ErrNoAccessTokenFound = errors.New("no access token was found or was empty")
 	// ErrInvalidAccessToken invalid access token
