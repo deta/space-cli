@@ -62,5 +62,5 @@ func SpaceGitignoreInfo() string {
 }
 
 func LoginInfo() string {
-	return styles.Boldf("No auth token found. Run %s or provide access token to login", styles.Code("space login"))
+	return styles.Boldf("No auth token found. Run %s or provide access token to login.", styles.Code("space login"))
 }

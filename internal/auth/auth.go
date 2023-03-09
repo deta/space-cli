@@ -71,14 +71,14 @@ func GetAccessToken() (string, error) {
 	tokensFilePath := filepath.Join(home, spaceAuthTokenPath)
 	accessToken, err := getAccessTokenFromFile(tokensFilePath)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return accessToken, fmt.Errorf("failed to get access token from file: %w", err)
 		}
 		// fallback to old space auth token path
 		tokensFilePath = filepath.Join(home, oldSpaceAuthTokenPath)
 		accessToken, err = getAccessTokenFromFile(tokensFilePath)
 		if err != nil {
-			if !os.IsNotExist(err) {
+			if !errors.Is(err, os.ErrNotExist) {
 				return accessToken, fmt.Errorf("failed to get access token from file: %w", err)
 			}
 			return "", ErrNoAccessTokenFound
