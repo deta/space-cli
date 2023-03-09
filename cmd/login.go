@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/pkg/components/emoji"
@@ -47,7 +46,6 @@ func login(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = client.GetSpace(&api.GetSpaceRequest{
 		AccessToken: accessToken,
 	})
