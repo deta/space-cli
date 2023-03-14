@@ -189,6 +189,12 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
 	port, _ := cmd.Flags().GetInt("port")
+	if port == 0 {
+		port, err = GetFreePort()
+		if err != nil {
+			return err
+		}
+	}
 
 	spacefile, _ := spacefile.Open(projectDir)
 	projectKey, _ := auth.GetProjectKey(projectId)
@@ -197,6 +203,28 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		if micro.Name != microName {
 			continue
 		}
+
+		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
+		if _, err := os.Stat(portFile); !errors.Is(err, os.ErrNotExist) {
+			// check if the port is free
+			portStr, err := os.ReadFile(portFile)
+			if err != nil {
+				return err
+			}
+
+			port, err := strconv.Atoi(string(portStr))
+			if err != nil {
+				return err
+			}
+
+			if _, err = net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 1*time.Second); err == nil {
+				return fmt.Errorf("micro %s is already running", microName)
+			}
+
+			// port is not free, remove the port file
+			os.Remove(portFile)
+		}
+
 		devCommand := micro.Dev
 		if cmd.Flags().Changed("command") {
 			devCommand, _ = cmd.Flags().GetString("command")
@@ -237,7 +265,6 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		command.Stderr = os.Stderr
 		command.Stdin = os.Stdin
 
-		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
 		if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644); err != nil {
 			return err
 		}
