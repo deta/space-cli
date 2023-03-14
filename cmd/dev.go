@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"path"
+	"syscall"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
@@ -13,16 +16,27 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"mvdan.cc/sh/v3/shell"
 )
 
 var (
-	devCmd = &cobra.Command{
+	microDir = path.Join(".space", "micros")
+	devCmd   = &cobra.Command{
 		Use:               "dev",
 		PersistentPreRunE: createDataKeyIfNotExists,
 	}
 	devUpCmd = &cobra.Command{
-		Use: "up",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			dir, _ := cmd.Flags().GetString("dir")
+			microsDir := path.Join(dir, ".space", "micros")
+			if _, err := os.Stat(microsDir); os.IsNotExist(err) {
+				return os.MkdirAll(microsDir, os.ModePerm)
+			}
+
+			return nil
+		},
+		Use:  "up <micro>",
+		RunE: devUp,
 	}
 
 	devRunCmd = &cobra.Command{
@@ -39,6 +53,7 @@ var (
 
 func init() {
 	// dev up
+	devUpCmd.Flags().IntP("port", "p", 3000, "port to run the micro on")
 	devCmd.AddCommand(devUpCmd)
 
 	// dev run
@@ -51,7 +66,7 @@ func init() {
 	devCmd.AddCommand(devTriggerCmd)
 
 	// dev
-	devCmd.PersistentFlags().StringP("dir", "d", "./", "directory of the Spacefile")
+	devCmd.PersistentFlags().StringP("dir", "d", ".", "directory of the Spacefile")
 	devCmd.PersistentFlags().StringP("id", "i", "", "project id of the project to run")
 	rootCmd.AddCommand(devCmd)
 }
@@ -95,29 +110,6 @@ func createDataKeyIfNotExists(cmd *cobra.Command, args []string) error {
 	if !isSpacefilePresent {
 		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile.", emoji.ErrorExclamation))
 		return nil
-	}
-
-	logger.Printf("Validating Spacefile...\n\n")
-
-	// parse spacefile and validate
-	s, err := spacefile.Open(projectDirectory)
-	if err != nil {
-		if te, ok := err.(*yaml.TypeError); ok {
-			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
-			return nil
-		}
-		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
-		return nil
-	}
-	spacefileErrors := spacefile.ValidateSpacefile(s)
-
-	if len(spacefileErrors) > 0 {
-		logValidationErrors(s, spacefileErrors)
-		logger.Println(styles.Error("\nPlease try to fix the issues with your Spacefile."))
-		return nil
-	} else {
-		logValidationErrors(s, spacefileErrors)
-		logger.Printf(styles.Green("\nYour Spacefile looks good!\n"))
 	}
 
 	// check if we have already stored the project key based on the project's id
@@ -176,4 +168,79 @@ func devRun(cmd *cobra.Command, args []string) error {
 	command.Stdin = os.Stdin
 
 	return command.Run()
+}
+
+func devUp(cmd *cobra.Command, args []string) (err error) {
+	microName := args[0]
+
+	projectDir, _ := cmd.Flags().GetString("dir")
+	projectId, _ := cmd.Flags().GetString("id")
+	port, _ := cmd.Flags().GetInt("port")
+
+	spacefile, _ := spacefile.Open(projectDir)
+	projectKey, _ := auth.GetProjectKey(projectId)
+
+	for _, micro := range spacefile.Micros {
+		if micro.Name != microName {
+			continue
+		}
+		devCommand := micro.Dev
+		if cmd.Flags().Changed("command") {
+			devCommand, _ = cmd.Flags().GetString("command")
+		}
+
+		environ := map[string]string{
+			"PORT":                      fmt.Sprintf("%d", port),
+			"DETA_PROJECT_KEY":          projectKey,
+			"DETA_SPACE_APP_HOSTNAME":   fmt.Sprintf("localhost:%d", port),
+			"DETA_SPACE_APP_MICRO_NAME": microName,
+			"DETA_SPACE_APP_MICRO_TYPE": micro.Type(),
+		}
+
+		fields, err := shell.Fields(devCommand, func(s string) string {
+			if env, ok := environ[s]; ok {
+				return env
+			}
+
+			return os.Getenv(s)
+		})
+		if err != nil {
+			return err
+		}
+
+		commandName := fields[0]
+		var commandArgs []string
+		if len(fields) > 0 {
+			commandArgs = fields[1:]
+		}
+
+		command := exec.Command(commandName, commandArgs...)
+		command.Env = os.Environ()
+		for key, value := range environ {
+			command.Env = append(command.Env, fmt.Sprintf("%s=%s", key, value))
+		}
+		command.Dir = path.Join(projectDir, micro.Src)
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
+		command.Stdin = os.Stdin
+
+		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
+		if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644); err != nil {
+			return err
+		}
+		defer os.Remove(portFile)
+
+		// If we receive a SIGINT or SIGTERM, we want to send a SIGTERM to the child process
+		go func() {
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+			<-sigs
+			command.Process.Signal(syscall.SIGTERM)
+		}()
+
+		command.Run()
+		return nil
+	}
+
+	return fmt.Errorf("micro %s not found", microName)
 }

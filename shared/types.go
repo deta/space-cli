@@ -103,6 +103,14 @@ type Micro struct {
 	Actions      []*Action `yaml:"actions,omitempty"`
 	Serve        string    `yaml:"serve,omitempty"`
 	Run          string    `yaml:"run,omitempty"`
+	Dev          string    `yaml:"dev,omitempty"`
+}
+
+func (m Micro) Type() string {
+	if m.Primary {
+		return "primary"
+	}
+	return "normal"
 }
 
 func IsFrontendEngine(engine string) bool {
