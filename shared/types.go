@@ -106,6 +106,18 @@ type Micro struct {
 	Dev          string    `yaml:"dev,omitempty"`
 }
 
+func (m Micro) Prefix() string {
+	if m.Primary {
+		return "/"
+	}
+
+	if m.Path != nil {
+		return "/" + *m.Path
+	}
+
+	return "/" + m.Name
+}
+
 func (m Micro) Type() string {
 	if m.Primary {
 		return "primary"
