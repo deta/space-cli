@@ -3,14 +3,21 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
+	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/pc-cli/internal/proxy"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
@@ -19,10 +26,14 @@ import (
 	"mvdan.cc/sh/v3/shell"
 )
 
+const (
+	DEV_PORT = 3000
+)
+
 var (
-	microDir = path.Join(".space", "micros")
-	devCmd   = &cobra.Command{
+	devCmd = &cobra.Command{
 		Use:               "dev",
+		Short:             "Run your app locally",
 		PersistentPreRunE: createDataKeyIfNotExists,
 	}
 	devUpCmd = &cobra.Command{
@@ -44,7 +55,8 @@ var (
 		RunE: devRun,
 	}
 	devProxyCmd = &cobra.Command{
-		Use: "proxy",
+		Use:  "proxy",
+		RunE: devProxy,
 	}
 	devTriggerCmd = &cobra.Command{
 		Use: "trigger",
@@ -53,13 +65,14 @@ var (
 
 func init() {
 	// dev up
-	devUpCmd.Flags().IntP("port", "p", 3000, "port to run the micro on")
+	devUpCmd.Flags().IntP("port", "p", 0, "port to run the micro on")
 	devCmd.AddCommand(devUpCmd)
 
 	// dev run
 	devCmd.AddCommand(devRunCmd)
 
 	// dev proxy
+	devProxyCmd.Flags().IntP("port", "p", DEV_PORT, "port to run the proxy on")
 	devCmd.AddCommand(devProxyCmd)
 
 	// dev trigger
@@ -176,6 +189,12 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
 	port, _ := cmd.Flags().GetInt("port")
+	if port == 0 {
+		port, err = GetFreePort()
+		if err != nil {
+			return err
+		}
+	}
 
 	spacefile, _ := spacefile.Open(projectDir)
 	projectKey, _ := auth.GetProjectKey(projectId)
@@ -184,6 +203,28 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		if micro.Name != microName {
 			continue
 		}
+
+		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
+		if _, err := os.Stat(portFile); !errors.Is(err, os.ErrNotExist) {
+			// check if the port is free
+			portStr, err := os.ReadFile(portFile)
+			if err != nil {
+				return err
+			}
+
+			port, err := strconv.Atoi(string(portStr))
+			if err != nil {
+				return err
+			}
+
+			if _, err = net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 1*time.Second); err == nil {
+				return fmt.Errorf("micro %s is already running", microName)
+			}
+
+			// port is not free, remove the port file
+			os.Remove(portFile)
+		}
+
 		devCommand := micro.Dev
 		if cmd.Flags().Changed("command") {
 			devCommand, _ = cmd.Flags().GetString("command")
@@ -224,7 +265,6 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		command.Stderr = os.Stderr
 		command.Stdin = os.Stdin
 
-		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
 		if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644); err != nil {
 			return err
 		}
@@ -243,4 +283,55 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	return fmt.Errorf("micro %s not found", microName)
+}
+
+func devProxy(cmd *cobra.Command, args []string) error {
+	directory, _ := cmd.Flags().GetString("dir")
+	port, _ := cmd.Flags().GetInt("port")
+
+	routeDir := path.Join(directory, ".space", "micros")
+	spacefile, _ := spacefile.Open(directory)
+
+	routes := make([]proxy.ProxyRoute, 0)
+	for _, micro := range spacefile.Micros {
+		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
+		portBytes, err := os.ReadFile(portFile)
+		if err != nil {
+			return err
+		}
+
+		microPort, err := strconv.Atoi(string(portBytes))
+		if err != nil {
+			return err
+		}
+
+		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
+
+		log.Println("proxying", micro.Prefix(), "to", target.String())
+		routes = append(routes, proxy.ProxyRoute{
+			Prefix: micro.Prefix(),
+			Target: target,
+		})
+	}
+
+	reverseProxy := proxy.NewReverseProxy(routes)
+	log.Println("listening on", port)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), reverseProxy)
+
+	return nil
+}
+
+// GetFreePort asks the kernel for a free open port that is ready to use.
+func GetFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
