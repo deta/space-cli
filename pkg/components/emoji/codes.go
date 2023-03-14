@@ -28,4 +28,5 @@ var (
 	Tools            = Emoji{Emoji: "💻 ", Fallback: styles.Info}
 	CrystalBall      = Emoji{Emoji: "🔮 ", Fallback: ""}
 	Label            = Emoji{Emoji: "🏷️ ", Fallback: ""}
+	Key              = Emoji{Emoji: "🔑 ", Fallback: ""}
 )

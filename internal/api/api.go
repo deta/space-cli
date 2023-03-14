@@ -807,3 +807,43 @@ func (c *DetaClient) CheckCLIVersionTag(tag string) (bool, error) {
 	msg := o.Error.Detail
 	return false, fmt.Errorf("failed to check if version exists, %s", msg)
 }
+
+type CreateProjectKeyRequest struct {
+	Name string `json:"name"`
+}
+
+type CreateProjectKeyResponse struct {
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	Value     string `json:"value"`
+}
+
+func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) (*CreateProjectKeyResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/keys", version, AppID),
+		Method:    "POST",
+		NeedsAuth: true,
+		Body:      r,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 201 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to create project key: %v", msg)
+	}
+
+	var resp CreateProjectKeyResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new project key: %w", err)
+	}
+	return &resp, nil
+}
