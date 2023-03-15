@@ -13,13 +13,14 @@ var (
 	rootCmd = &cobra.Command{
 		Use:   "space",
 		Short: "Deta Space CLI for mananging Deta Space projects",
-		Long: fmt.Sprintf(`Deta Space command line interface for managing Deta Space projects. 
+		Long: fmt.Sprintf(`Deta Space command line interface for managing Deta Space projects.
 Complete documentation available at %s`, docsUrl),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Usage()
 		},
 		// no usage shown on errors
-		SilenceUsage: false,
+		SilenceUsage:      false,
+		DisableAutoGenTag: true,
 	}
 
 	client = api.NewDetaClient()

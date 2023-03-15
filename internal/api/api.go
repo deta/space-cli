@@ -847,3 +847,38 @@ func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) 
 	}
 	return &resp, nil
 }
+
+type ListProjectResponse struct {
+	Keys []struct {
+		Name      string `json:"name"`
+		CreatedAt string `json:"created_at"`
+	} `json:"keys"`
+}
+
+func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error) {
+	o, err := c.request(&requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/keys", version, AppID),
+		Method:    "GET",
+		NeedsAuth: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to create project key: %v", msg)
+	}
+
+	var resp ListProjectResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list project keys: %w", err)
+	}
+
+	return &resp, nil
+}

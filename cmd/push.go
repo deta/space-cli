@@ -119,7 +119,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
-	spacefileErrors := spacefile.ValidateSpacefile(s)
+	spacefileErrors := spacefile.ValidateSpacefile(s, projectDir)
 
 	if len(spacefileErrors) > 0 {
 		logValidationErrors(s, spacefileErrors)

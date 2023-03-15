@@ -1,0 +1,87 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "space dev",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "dev",
+                "--dir=${workspaceFolder}/${input:appFolder}"
+            ]
+        },
+        {
+            "name": "space dev trigger",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "dev",
+                "--dir=${workspaceFolder}/example",
+                "trigger",
+                "action"
+            ]
+        },
+        {
+            "name": "space dev up",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "dev",
+                "up",
+                "--dir=${workspaceFolder}/starters",
+                "python-app",
+            ]
+        },
+        {
+            "name": "space dev run",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "dev",
+                "run",
+                "--dir=${workspaceFolder}/example",
+                "ls",
+            ]
+        },
+        {
+            "name": "space dev proxy",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "dev",
+                "proxy",
+                "--dir=${workspaceFolder}/example",
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "appFolder",
+            "type": "pickString",
+            "description": "Select the app folder",
+            "options": [
+                "starters",
+                "starters/deno-app",
+                "starters/go-app",
+                "starters/next-app",
+                "starters/node-app",
+                "starters/nuxt-app",
+                "starters/python-app",
+                "starters/sveltekit-app"
+            ]
+        }
+    ]
+}
