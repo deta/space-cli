@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -14,7 +16,6 @@ import (
 	"path"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
@@ -63,7 +64,9 @@ var (
 		RunE: devProxy,
 	}
 	devTriggerCmd = &cobra.Command{
-		Use: "trigger",
+		Use:  "trigger",
+		Args: cobra.ExactArgs(1),
+		RunE: devTrigger,
 	}
 )
 
@@ -210,13 +213,11 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
-		isRunning, err := isMicroRunning(portFile)
-		if err != nil {
-			return err
-		}
-
-		if isRunning {
-			logger.Printf("%s %s is already running on port %d", emoji.Rocket, microName, port)
+		if _, err := os.Stat(portFile); err == nil {
+			microPort, _ := parsePort(portFile)
+			if isPortActive(microPort) {
+				return fmt.Errorf("%s %s is already running on port %d", emoji.Rocket, microName, microPort)
+			}
 		}
 
 		devCommand := micro.Dev
@@ -268,6 +269,56 @@ func devProxy(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+type ActionEvent struct {
+	ID      string `json:"id"`
+	Trigger string `json:"trigger"`
+}
+
+type ActionRequest struct {
+	Event ActionEvent `json:"event"`
+}
+
+func devTrigger(cmd *cobra.Command, args []string) (err error) {
+	directory, _ := cmd.Flags().GetString("dir")
+	spacefile, _ := spacefile.Open(directory)
+	routeDir := path.Join(directory, ".space", "micros")
+
+	for _, micros := range spacefile.Micros {
+		for _, action := range micros.Actions {
+			if action.ID != args[0] {
+				continue
+			}
+
+			portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micros.Name))
+			port, err := parsePort(portFile)
+			if err != nil {
+				return err
+			}
+
+			if !isPortActive(port) {
+				return fmt.Errorf("micro %s is not running", micros.Name)
+			}
+
+			body, err := json.Marshal(ActionRequest{
+				Event: ActionEvent{
+					ID:      args[0],
+					Trigger: "schedule",
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			if _, err := http.Post(fmt.Sprintf("http://localhost:%d/", port), "application/json", bytes.NewReader(body)); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	return errors.New("action not found")
+}
+
 func dev(cmd *cobra.Command, args []string) error {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
@@ -281,7 +332,12 @@ func dev(cmd *cobra.Command, args []string) error {
 	var stoppedMicros []*shared.Micro
 	for _, micro := range spacefile.Micros {
 		portFile := path.Join(routeDir, micro.Name)
-		if isRunning, _ := isMicroRunning(portFile); !isRunning {
+		microPort, err := parsePort(portFile)
+		if err != nil {
+			stoppedMicros = append(stoppedMicros, micro)
+			continue
+		}
+		if isRunning := isPortActive(microPort); !isRunning {
 			stoppedMicros = append(stoppedMicros, micro)
 		}
 	}
@@ -363,29 +419,28 @@ func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy,
 	return proxy.NewReverseProxy(routes), nil
 }
 
-func isMicroRunning(portFile string) (bool, error) {
-	if _, err := os.Stat(portFile); errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	} else if err != nil {
-		return false, err
+func parsePort(portFile string) (int, error) {
+	if _, err := os.Stat(portFile); err != nil {
+		return 0, err
 	}
 
 	// check if the port is already in use
 	portStr, err := os.ReadFile(portFile)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
-	port, err := strconv.Atoi(string(portStr))
+	return strconv.Atoi(string(portStr))
+}
+
+func isPortActive(port int) bool {
+	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		return false, err
+		return false
 	}
 
-	if _, err = net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 1*time.Second); err == nil {
-		return true, nil
-	}
-
-	return false, err
+	conn.Close()
+	return true
 }
 
 func microCommand(micro *shared.Micro, command string, directory, projectKey string, port int) (*exec.Cmd, error) {
