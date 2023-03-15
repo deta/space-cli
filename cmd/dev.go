@@ -231,9 +231,7 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 			}
 		}
 
-		if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644); err != nil {
-			return err
-		}
+		writePortFile(portFile, port)
 
 		devCommand, _ := cmd.Flags().GetString("command")
 		command, err := microCommand(micro, devCommand, projectDir, projectKey, port)
@@ -297,6 +295,10 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 			}
 
 			portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micros.Name))
+			if _, err := os.Stat(portFile); err != nil {
+				return fmt.Errorf("micro %s is not running", micros.Name)
+			}
+
 			port, err := parsePort(portFile)
 			if err != nil {
 				return err
@@ -335,28 +337,34 @@ func dev(cmd *cobra.Command, args []string) error {
 	spacefile, _ := spacefile.Open(projectDir)
 	projectKey, _ := auth.GetProjectKey(projectId)
 
-	// Detect running micros
-	var stoppedMicros []*shared.Micro
+	var microT []*shared.Micro
 	for _, micro := range spacefile.Micros {
 		portFile := path.Join(routeDir, micro.Name)
-		microPort, err := parsePort(portFile)
-		if err != nil {
-			stoppedMicros = append(stoppedMicros, micro)
+		if _, err := os.Stat(portFile); err != nil {
+			microT = append(microT, micro)
 			continue
 		}
+
+		microPort, err := parsePort(portFile)
+		if err != nil {
+			microT = append(microT, micro)
+			continue
+		}
+
 		if isRunning := isPortActive(microPort); !isRunning {
-			stoppedMicros = append(stoppedMicros, micro)
+			microT = append(microT, micro)
+			continue
 		}
 	}
 
-	freePorts, err := freeport.GetFreePorts(len(stoppedMicros))
+	freePorts, err := freeport.GetFreePorts(len(microT))
 	if err != nil {
 		return err
 	}
 
-	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
+	commands := make([]*exec.Cmd, 0, len(microT))
 	// Start missing micros
-	for i, micro := range stoppedMicros {
+	for i, micro := range microT {
 		command, err := microCommand(micro, "", projectDir, projectKey, freePorts[i])
 		if err != nil {
 			return err
@@ -364,7 +372,9 @@ func dev(cmd *cobra.Command, args []string) error {
 		commands = append(commands, command)
 
 		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
-		os.WriteFile(portFile, []byte(fmt.Sprintf("%d", freePorts[i])), 0644)
+		if err := writePortFile(portFile, freePorts[i]); err != nil {
+			return err
+		}
 		defer os.Remove(portFile)
 	}
 	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
@@ -400,18 +410,28 @@ func dev(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func writePortFile(filepath string, port int) error {
+	portDir := path.Dir(filepath)
+	if _, err := os.Stat(portDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(portDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	return os.WriteFile(filepath, []byte(fmt.Sprintf("%d", port)), 0644)
+}
+
 func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy, error) {
 	routes := make([]proxy.ProxyRoute, 0)
 	for _, micro := range micros {
 		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
-		portBytes, err := os.ReadFile(portFile)
-		if err != nil {
-			return nil, err
+		if _, err := os.Stat(portFile); err != nil {
+			continue
 		}
 
-		microPort, err := strconv.Atoi(string(portBytes))
+		microPort, err := parsePort(portFile)
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
@@ -427,10 +447,6 @@ func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy,
 }
 
 func parsePort(portFile string) (int, error) {
-	if _, err := os.Stat(portFile); err != nil {
-		return 0, err
-	}
-
 	// check if the port is already in use
 	portStr, err := os.ReadFile(portFile)
 	if err != nil {
