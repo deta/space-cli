@@ -31,7 +31,18 @@ import (
 )
 
 const (
-	DEV_PORT = 3000
+	devDefaultPort = 3000
+)
+
+var (
+	engineToDevCommand = map[string]string{
+		shared.React:     "npm run start",
+		shared.Vue:       "npm run dev",
+		shared.Svelte:    "npm run dev",
+		shared.Next:      "npm run dev",
+		shared.Nuxt:      "npm run dev",
+		shared.SvelteKit: "npm run dev",
+	}
 )
 
 var (
@@ -79,7 +90,7 @@ func init() {
 	devCmd.AddCommand(devRunCmd)
 
 	// dev proxy
-	devProxyCmd.Flags().IntP("port", "p", DEV_PORT, "port to run the proxy on")
+	devProxyCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
 	devCmd.AddCommand(devProxyCmd)
 
 	// dev trigger
@@ -88,7 +99,7 @@ func init() {
 	// dev
 	devCmd.PersistentFlags().StringP("dir", "d", ".", "directory of the Spacefile")
 	devCmd.PersistentFlags().StringP("id", "i", "", "project id of the project to run")
-	devCmd.Flags().IntP("port", "p", DEV_PORT, "port to run the proxy on")
+	devCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
 	rootCmd.AddCommand(devCmd)
 }
 
@@ -220,15 +231,11 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 			}
 		}
 
-		devCommand := micro.Dev
-		if cmd.Flags().Changed("command") {
-			devCommand, _ = cmd.Flags().GetString("command")
-		}
-
 		if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644); err != nil {
 			return err
 		}
 
+		devCommand, _ := cmd.Flags().GetString("command")
 		command, err := microCommand(micro, devCommand, projectDir, projectKey, port)
 		if err != nil {
 			return err
@@ -444,8 +451,15 @@ func isPortActive(port int) bool {
 }
 
 func microCommand(micro *shared.Micro, command string, directory, projectKey string, port int) (*exec.Cmd, error) {
-	if command == "" {
-		command = micro.Dev
+	var devCommand string
+	if command != "" {
+		devCommand = command
+	} else if micro.Dev != "" {
+		devCommand = micro.Dev
+	} else if engineToDevCommand[micro.Engine] != "" {
+		devCommand = engineToDevCommand[micro.Type()]
+	} else {
+		return nil, fmt.Errorf("no dev command found for micro %s", micro.Name)
 	}
 
 	environ := map[string]string{
@@ -456,7 +470,7 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 		"DETA_SPACE_APP_MICRO_TYPE": micro.Type(),
 	}
 
-	fields, err := shell.Fields(command, func(s string) string {
+	fields, err := shell.Fields(devCommand, func(s string) string {
 		if env, ok := environ[s]; ok {
 			return env
 		}
