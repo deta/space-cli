@@ -155,7 +155,10 @@ func createDataKeyIfNotExists(cmd *cobra.Command, args []string) error {
 				hostname = ""
 			}
 
-			name := fmt.Sprintf("dev %s", hostname)[:20]
+			name := fmt.Sprintf("dev %s", hostname)
+			if len(name) > 20 {
+				name = name[:20]
+			}
 
 			// create a new project key using the api
 			r, err := client.CreateProjectKey(devProjectID, &api.CreateProjectKeyRequest{
