@@ -109,29 +109,32 @@ func init() {
 
 func devPreRun(cmd *cobra.Command, args []string) error {
 	projectDirectory, _ := cmd.Flags().GetString("dir")
-	runtimeManager, err := runtime.NewManager(&projectDirectory, true)
-	if err != nil {
-		return err
-	}
 
-	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
-	if err != nil {
-		return err
-	}
-
-	var devProjectID string
-	// check if project is initialized
-	if isProjectInitialized {
-		projectMeta, err := runtimeManager.GetProjectMeta()
+	devProjectID, _ := cmd.Flags().GetString("id")
+	if devProjectID != "" {
+		runtimeManager, err := runtime.NewManager(&projectDirectory, true)
 		if err != nil {
 			return err
 		}
-		devProjectID = projectMeta.ID
-		cmd.Flags().Set("id", devProjectID)
-	} else if isFlagEmpty(devProjectID) {
-		logger.Printf("No project was found in the current directory.\n\n")
-		logger.Printf("Please provide using the space link command.\n\n")
-		return errors.New("no project found")
+
+		isProjectInitialized, err := runtimeManager.IsProjectInitialized()
+		if err != nil {
+			return err
+		}
+
+		// check if project is initialized
+		if isProjectInitialized {
+			projectMeta, err := runtimeManager.GetProjectMeta()
+			if err != nil {
+				return err
+			}
+			devProjectID = projectMeta.ID
+			cmd.Flags().Set("id", devProjectID)
+		} else if isFlagEmpty(devProjectID) {
+			logger.Printf("No project was found in the current directory.\n\n")
+			logger.Printf("Please provide using the space link command.\n\n")
+			return errors.New("no project found")
+		}
 	}
 
 	if err := generateDataKeyIfNeeded(devProjectID); err != nil {
