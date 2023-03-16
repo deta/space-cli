@@ -16,6 +16,7 @@ import (
 	"path"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
@@ -32,16 +33,17 @@ import (
 
 const (
 	devDefaultPort = 3000
+	actionEndpoint = "__space/v0/actions"
 )
 
 var (
 	engineToDevCommand = map[string]string{
-		shared.React:     "npm run start",
-		shared.Vue:       "npm run dev",
-		shared.Svelte:    "npm run dev",
-		shared.Next:      "npm run dev",
-		shared.Nuxt:      "npm run dev",
-		shared.SvelteKit: "npm run dev",
+		shared.React:     "npm run start -- --port $PORT",
+		shared.Vue:       "npm run dev -- --port $PORT",
+		shared.Svelte:    "npm run dev -- --port $PORT",
+		shared.Next:      "npm run dev -- --port $PORT",
+		shared.Nuxt:      "npm run dev -- --port $PORT",
+		shared.SvelteKit: "npm run dev -- --port $PORT",
 	}
 )
 
@@ -91,6 +93,7 @@ func init() {
 
 	// dev proxy
 	devProxyCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	devProxyCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
 	devCmd.AddCommand(devProxyCmd)
 
 	// dev trigger
@@ -100,6 +103,7 @@ func init() {
 	devCmd.PersistentFlags().StringP("dir", "d", ".", "directory of the Spacefile")
 	devCmd.PersistentFlags().StringP("id", "i", "", "project id of the project to run")
 	devCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	devCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
 	rootCmd.AddCommand(devCmd)
 }
 
@@ -343,7 +347,7 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 				return err
 			}
 
-			if _, err := http.Post(fmt.Sprintf("http://localhost:%d/", port), "application/json", bytes.NewReader(body)); err != nil {
+			if _, err := http.Post(fmt.Sprintf("http://localhost:%d/%s", port, actionEndpoint), "application/json", bytes.NewReader(body)); err != nil {
 				return err
 			}
 			return nil
@@ -406,8 +410,9 @@ func dev(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	addr := fmt.Sprintf("localhost:%d", port)
 	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    addr,
 		Handler: proxy,
 	}
 
@@ -424,14 +429,20 @@ func dev(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
+		log.Println("shutting down")
 		for _, command := range commands {
 			command.Process.Signal(syscall.SIGTERM)
 		}
 
+		time.Sleep(1 * time.Second)
+
 		server.Shutdown(context.Background())
 	}()
 
-	server.ListenAndServe()
+	log.Println("listening on", addr)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
 	return nil
 }
 
@@ -498,7 +509,7 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 	} else if micro.Dev != "" {
 		devCommand = micro.Dev
 	} else if engineToDevCommand[micro.Engine] != "" {
-		devCommand = engineToDevCommand[micro.Type()]
+		devCommand = engineToDevCommand[micro.Engine]
 	} else {
 		return nil, fmt.Errorf("no dev command found for micro %s", micro.Name)
 	}
@@ -522,6 +533,9 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 		return nil, err
 	}
 
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no command found for micro %s", micro.Name)
+	}
 	commandName := fields[0]
 	var commandArgs []string
 	if len(fields) > 0 {
