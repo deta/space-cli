@@ -7,7 +7,7 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 builds:
-  - binary: '{{ if eq .Prerelease "" }}spacex{{ else }}space{{ end }}'
+  - binary: '{{ if eq .Prerelease "" }}space{{ else }}spacex{{ end }}'
     env:
       - CGO_ENABLED=0
     goos:
