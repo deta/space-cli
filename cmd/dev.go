@@ -49,7 +49,7 @@ var (
 	devCmd = &cobra.Command{
 		Use:               "dev",
 		Short:             "Run your app locally",
-		PersistentPreRunE: createDataKeyIfNotExists,
+		PersistentPreRunE: devPreRun,
 		RunE:              dev,
 	}
 	devUpCmd = &cobra.Command{
@@ -103,7 +103,7 @@ func init() {
 	rootCmd.AddCommand(devCmd)
 }
 
-func createDataKeyIfNotExists(cmd *cobra.Command, args []string) error {
+func devPreRun(cmd *cobra.Command, args []string) error {
 	projectDirectory, _ := cmd.Flags().GetString("dir")
 	runtimeManager, err := runtime.NewManager(&projectDirectory, true)
 	if err != nil {
@@ -130,6 +130,10 @@ func createDataKeyIfNotExists(cmd *cobra.Command, args []string) error {
 		return errors.New("no project found")
 	}
 
+	if err := generateDataKeyIfNeeded(devProjectID); err != nil {
+		return err
+	}
+
 	// check if spacefile is present
 	isSpacefilePresent, err := spacefile.IsSpacefilePresent(projectDirectory)
 	if err != nil {
@@ -144,40 +148,58 @@ func createDataKeyIfNotExists(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// check if we have already stored the project key based on the project's id
-	_, err = auth.GetProjectKey(devProjectID)
-	if err != nil {
-		if errors.Is(err, auth.ErrNoProjectKeyFound) {
-			logger.Printf("%sNo project key found, generating new key...\n", emoji.Key)
+	return nil
+}
 
-			hostname, err := os.Hostname()
-			if err != nil {
-				hostname = ""
-			}
+func findAvailableKey(res *api.ListProjectResponse, name string) string {
+	keyMap := make(map[string]struct{})
+	for _, key := range res.Keys {
+		keyMap[key.Name] = struct{}{}
+	}
 
-			name := fmt.Sprintf("dev %s", hostname)
-			if len(name) > 20 {
-				name = name[:20]
-			}
+	if _, ok := keyMap[name]; !ok {
+		return name
+	}
 
-			// create a new project key using the api
-			r, err := client.CreateProjectKey(devProjectID, &api.CreateProjectKeyRequest{
-				Name: name,
-			})
-			if err != nil {
-				return err
-			}
-
-			// store the project key locally
-			err = auth.StoreProjectKey(devProjectID, r.Value)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
+	for i := 1; ; i++ {
+		newName := fmt.Sprintf("%s (%d)", name, i)
+		if _, ok := keyMap[newName]; !ok {
+			return newName
 		}
-	} else {
-		logger.Printf("%sUsing existing project key", emoji.Key)
+	}
+}
+
+func generateDataKeyIfNeeded(projectID string) error {
+	// check if we have already stored the project key based on the project's id
+	_, err := auth.GetProjectKey(projectID)
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, auth.ErrNoProjectKeyFound) {
+		return err
+	}
+
+	logger.Printf("%sNo project key found, generating new key...\n", emoji.Key)
+	listRes, err := client.ListProjectKeys(projectID)
+	if err != nil {
+		return err
+	}
+
+	keyName := findAvailableKey(listRes, "space dev")
+
+	// create a new project key using the api
+	r, err := client.CreateProjectKey(projectID, &api.CreateProjectKeyRequest{
+		Name: keyName,
+	})
+	if err != nil {
+		return err
+	}
+
+	// store the project key locally
+	err = auth.StoreProjectKey(projectID, r.Value)
+	if err != nil {
+		return err
 	}
 
 	return nil
