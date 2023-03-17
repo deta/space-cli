@@ -1,5 +1,7 @@
 package shared
 
+import "strings"
+
 // supported engines
 const (
 	Static    = "static"
@@ -112,6 +114,9 @@ func (m Micro) Prefix() string {
 	}
 
 	if m.Path != nil {
+		if strings.HasPrefix(*m.Path, "/") {
+			return *m.Path
+		}
 		return "/" + *m.Path
 	}
 
