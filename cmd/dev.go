@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -300,7 +301,7 @@ func devProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log.Println("listening on", port)
+	log.Println("proxy listening on", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), reverseProxy)
 
 	return nil
@@ -369,34 +370,33 @@ func dev(cmd *cobra.Command, args []string) error {
 	spacefile, _ := spacefile.Open(projectDir)
 	projectKey, _ := auth.GetProjectKey(projectId)
 
-	var microT []*shared.Micro
+	var stoppedMicros []*shared.Micro
 	for _, micro := range spacefile.Micros {
 		portFile := path.Join(routeDir, micro.Name)
 		if _, err := os.Stat(portFile); err != nil {
-			microT = append(microT, micro)
+			stoppedMicros = append(stoppedMicros, micro)
 			continue
 		}
 
 		microPort, err := parsePort(portFile)
 		if err != nil {
-			microT = append(microT, micro)
+			stoppedMicros = append(stoppedMicros, micro)
 			continue
 		}
 
 		if isRunning := isPortActive(microPort); !isRunning {
-			microT = append(microT, micro)
+			stoppedMicros = append(stoppedMicros, micro)
 			continue
 		}
 	}
 
-	freePorts, err := freeport.GetFreePorts(len(microT))
+	freePorts, err := freeport.GetFreePorts(len(stoppedMicros))
 	if err != nil {
 		return err
 	}
 
-	commands := make([]*exec.Cmd, 0, len(microT))
-	// Start missing micros
-	for i, micro := range microT {
+	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
+	for i, micro := range stoppedMicros {
 		command, err := microCommand(micro, "", projectDir, projectKey, freePorts[i])
 		if err != nil {
 			return err
@@ -419,12 +419,13 @@ func dev(cmd *cobra.Command, args []string) error {
 		Handler: proxy,
 	}
 
+	wg := sync.WaitGroup{}
 	for _, command := range commands {
-		err := command.Start()
-		// We should kill the other processes if one fails to start
-		if err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(command *exec.Cmd) {
+			defer wg.Done()
+			command.Run()
+		}(command)
 	}
 
 	// If we receive a SIGINT or SIGTERM, we want to send a SIGTERM to the child process
@@ -432,13 +433,16 @@ func dev(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		log.Println("shutting down")
+		log.Println("shutting down all commands")
 		for _, command := range commands {
 			command.Process.Signal(syscall.SIGTERM)
 		}
+		wg.Wait()
 
+		// Wait a bit for all logs to be printed
 		time.Sleep(1 * time.Second)
 
+		log.Println("shutting down proxy")
 		server.Shutdown(context.Background())
 	}()
 
@@ -521,7 +525,7 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 	if micro.Src != "" {
 		commandDir = path.Join(directory, micro.Src)
 	} else {
-		commandDir = micro.Name
+		commandDir = path.Join(directory, micro.Name)
 	}
 
 	environ := map[string]string{
