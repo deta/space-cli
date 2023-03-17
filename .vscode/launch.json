@@ -12,7 +12,7 @@
             "program": "${workspaceFolder}",
             "args": [
                 "dev",
-                "--dir=${workspaceFolder}/example",
+                "--dir=${workspaceFolder}/${input:appFolder}"
             ]
         },
         {
@@ -64,6 +64,23 @@
                 "dev",
                 "proxy",
                 "--dir=${workspaceFolder}/example",
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "appFolder",
+            "type": "pickString",
+            "description": "Select the app folder",
+            "options": [
+                "starters",
+                "starters/deno-app",
+                "starters/go-app",
+                "starters/next-app",
+                "starters/node-app",
+                "starters/nuxt-app",
+                "starters/python-app",
+                "starters/sveltekit-app"
             ]
         }
     ]
