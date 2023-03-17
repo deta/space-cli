@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"os/signal"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -562,8 +564,32 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 	cmd.Dir = commandDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = NewPrefixer(micro.Name, os.Stdout)
+	cmd.Stderr = NewPrefixer(micro.Name, os.Stderr)
 
 	return cmd, nil
+}
+
+type Prefixer struct {
+	scope string
+	dest  io.Writer
+}
+
+func NewPrefixer(scope string, dest io.Writer) *Prefixer {
+	return &Prefixer{
+		scope: scope,
+		dest:  dest,
+	}
+}
+
+// parse the logs and prefix them with the scope
+func (p Prefixer) Write(bytes []byte) (int, error) {
+	normalized := strings.ReplaceAll(string(bytes), "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+
+	for _, line := range lines {
+		fmt.Printf("[%s] %s\n", p.scope, line)
+	}
+
+	return len(bytes), nil
 }
