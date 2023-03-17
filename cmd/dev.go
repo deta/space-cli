@@ -517,6 +517,13 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 		return nil, fmt.Errorf("no dev command found for micro %s", micro.Name)
 	}
 
+	commandDir := directory
+	if micro.Src != "" {
+		commandDir = path.Join(directory, micro.Src)
+	} else {
+		commandDir = micro.Name
+	}
+
 	environ := map[string]string{
 		"PORT":                      fmt.Sprintf("%d", port),
 		"DETA_PROJECT_KEY":          projectKey,
@@ -550,7 +557,7 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 	for key, value := range environ {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
-	cmd.Dir = path.Join(directory, micro.Src)
+	cmd.Dir = commandDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
