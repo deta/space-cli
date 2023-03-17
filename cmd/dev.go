@@ -111,7 +111,7 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 	projectDirectory, _ := cmd.Flags().GetString("dir")
 
 	devProjectID, _ := cmd.Flags().GetString("id")
-	if devProjectID != "" {
+	if devProjectID == "" {
 		runtimeManager, err := runtime.NewManager(&projectDirectory, true)
 		if err != nil {
 			return err
