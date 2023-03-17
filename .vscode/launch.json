@@ -37,8 +37,8 @@
             "args": [
                 "dev",
                 "up",
-                "--dir=${workspaceFolder}/example",
-                "example",
+                "--dir=${workspaceFolder}/starters",
+                "python-app",
             ]
         },
         {

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -29,13 +28,13 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/shared"
-	"github.com/phayes/freeport"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"mvdan.cc/sh/v3/shell"
 )
 
 const (
-	devDefaultPort = 3000
+	devDefaultPort = 4200
 	actionEndpoint = "__space/v0/actions"
 )
 
@@ -89,6 +88,7 @@ var (
 func init() {
 	// dev up
 	devUpCmd.Flags().IntP("port", "p", 0, "port to run the micro on")
+	devUpCmd.Flags().Bool("open", false, "open the app in the browser")
 	devCmd.AddCommand(devUpCmd)
 
 	// dev run
@@ -97,6 +97,7 @@ func init() {
 	// dev proxy
 	devProxyCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
 	devProxyCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
+	devProxyCmd.Flags().Bool("open", false, "open the app in the browser")
 	devCmd.AddCommand(devProxyCmd)
 
 	// dev trigger
@@ -107,6 +108,7 @@ func init() {
 	devCmd.PersistentFlags().StringP("id", "i", "", "project id of the project to run")
 	devCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
 	devCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
+	devCmd.Flags().Bool("open", false, "open the app in the browser")
 	rootCmd.AddCommand(devCmd)
 }
 
@@ -237,14 +239,33 @@ func devRun(cmd *cobra.Command, args []string) error {
 	return command.Run()
 }
 
+func GetFreePort(start int) (int, error) {
+	if start < 0 || start > 65535 {
+		return 0, errors.New("invalid port range")
+	}
+
+	for portNumber := start; portNumber < start+100; portNumber++ {
+		if isPortActive(portNumber) {
+			continue
+		}
+
+		return portNumber, nil
+	}
+
+	return 0, errors.New("no free port found")
+}
+
 func devUp(cmd *cobra.Command, args []string) (err error) {
 	microName := args[0]
 
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
-	port, _ := cmd.Flags().GetInt("port")
-	if port == 0 {
-		port, err = freeport.GetFreePort()
+
+	var port int
+	if cmd.Flags().Changed("port") {
+		port, _ = cmd.Flags().GetInt("port")
+	} else {
+		port, err = GetFreePort(devDefaultPort + 1)
 		if err != nil {
 			return err
 		}
@@ -273,8 +294,11 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return err
 		}
-
 		defer os.Remove(portFile)
+
+		if err := command.Start(); err != nil {
+			return fmt.Errorf("failed to start %s: %s", microName, err.Error())
+		}
 
 		// If we receive a SIGINT or SIGTERM, we want to send a SIGTERM to the child process
 		go func() {
@@ -284,7 +308,11 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 			command.Process.Signal(syscall.SIGTERM)
 		}()
 
-		command.Run()
+		if open, _ := cmd.Flags().GetBool("open"); open {
+			browser.OpenURL(fmt.Sprintf("http://localhost:%d", port))
+		}
+
+		command.Wait()
 		return nil
 	}
 
@@ -293,19 +321,49 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 
 func devProxy(cmd *cobra.Command, args []string) error {
 	directory, _ := cmd.Flags().GetString("dir")
-	port, _ := cmd.Flags().GetInt("port")
+	var port int
+	if cmd.Flags().Changed("port") {
+		port, _ = cmd.Flags().GetInt("port")
+	} else {
+		port, _ = GetFreePort(devDefaultPort)
+	}
 
-	routeDir := path.Join(directory, ".space", "micros")
+	microDir := path.Join(directory, ".space", "micros")
 	spacefile, _ := spacefile.Open(directory)
 
-	reverseProxy, err := proxyFromDir(spacefile.Micros, routeDir)
+	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
+		return fmt.Errorf("%s No micros found. Please run `space dev up` first", emoji.ErrorExclamation)
+	}
+
+	reverseProxy, err := proxyFromDir(spacefile.Micros, microDir)
 	if err != nil {
 		return err
 	}
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: reverseProxy,
+	}
 
-	log.Println("proxy listening on", port)
-	http.ListenAndServe(fmt.Sprintf(":%d", port), reverseProxy)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Println("proxy listening on", port)
+		server.ListenAndServe()
+	}()
 
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		<-sigs
+		server.Shutdown(context.Background())
+	}()
+
+	if open, _ := cmd.Flags().GetBool("open"); open {
+		browser.OpenURL(fmt.Sprintf("http://localhost:%d", port))
+	}
+
+	wg.Wait()
 	return nil
 }
 
@@ -366,11 +424,21 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 func dev(cmd *cobra.Command, args []string) error {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
-	port, _ := cmd.Flags().GetInt("port")
 
 	routeDir := path.Join(projectDir, ".space", "micros")
 	spacefile, _ := spacefile.Open(projectDir)
 	projectKey, _ := auth.GetProjectKey(projectId)
+
+	var proxyPort int
+	if cmd.Flags().Changed("port") {
+		proxyPort, _ = cmd.Flags().GetInt("port")
+	} else {
+		var err error
+		proxyPort, err = GetFreePort(devDefaultPort)
+		if err != nil {
+			return err
+		}
+	}
 
 	var stoppedMicros []*shared.Micro
 	for _, micro := range spacefile.Micros {
@@ -392,36 +460,42 @@ func dev(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	freePorts, err := freeport.GetFreePorts(len(stoppedMicros))
-	if err != nil {
-		return err
-	}
-
 	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
-	for i, micro := range stoppedMicros {
-		command, err := microCommand(micro, "", projectDir, projectKey, freePorts[i])
+	startPort := proxyPort + 1
+	for _, micro := range stoppedMicros {
+		freePort, err := GetFreePort(startPort)
 		if err != nil {
 			return err
 		}
-		commands = append(commands, command)
+
+		command, err := microCommand(micro, "", projectDir, projectKey, freePort)
+		if err != nil {
+			return err
+		}
 
 		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
-		if err := writePortFile(portFile, freePorts[i]); err != nil {
+		if err := writePortFile(portFile, freePort); err != nil {
 			return err
 		}
 		defer os.Remove(portFile)
+
+		commands = append(commands, command)
+		startPort = freePort + 1
 	}
+
 	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
 	if err != nil {
 		return err
 	}
-	addr := fmt.Sprintf("localhost:%d", port)
+
+	addr := fmt.Sprintf("localhost:%d", proxyPort)
 	server := http.Server{
 		Addr:    addr,
 		Handler: proxy,
 	}
 
 	wg := sync.WaitGroup{}
+
 	for _, command := range commands {
 		wg.Add(1)
 		go func(command *exec.Cmd) {
@@ -430,28 +504,36 @@ func dev(cmd *cobra.Command, args []string) error {
 		}(command)
 	}
 
-	// If we receive a SIGINT or SIGTERM, we want to send a SIGTERM to the child process
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Println("proxy listening on", addr)
+		err := server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			logger.Println("proxy error", err)
+		}
+	}()
+
 	go func() {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		log.Println("shutting down all commands")
+		logger.Println("shutting down all commands")
 		for _, command := range commands {
 			command.Process.Signal(syscall.SIGTERM)
 		}
-		wg.Wait()
-
-		// Wait a bit for all logs to be printed
-		time.Sleep(1 * time.Second)
-
-		log.Println("shutting down proxy")
 		server.Shutdown(context.Background())
 	}()
 
-	log.Println("listening on", addr)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
+	if open, _ := cmd.Flags().GetBool("open"); open {
+		browser.OpenURL(fmt.Sprintf("http://%s", addr))
 	}
+
+	wg.Wait()
+
+	// Wait a bit for all logs to be printed
+	time.Sleep(1 * time.Second)
+
 	return nil
 }
 
@@ -481,7 +563,7 @@ func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy,
 
 		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
 
-		log.Println("proxying", micro.Prefix(), "to", target.String())
+		logger.Println("proxying", micro.Prefix(), "to", target.String())
 		routes = append(routes, proxy.ProxyRoute{
 			Prefix: micro.Prefix(),
 			Target: target,
