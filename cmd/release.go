@@ -161,11 +161,11 @@ func release(cmd *cobra.Command, args []string) error {
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			if errors.Is(err, auth.ErrNoAccessTokenFound) {
 				logger.Println(LoginInfo())
 				return nil
 			} else {
-				logger.Println(styles.Errorf("%s Invalid project ID: %v", emoji.ErrorExclamation, err))
+				logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
 				return nil
 			}
 		}
@@ -268,7 +268,7 @@ func release(cmd *cobra.Command, args []string) error {
 		Discovery:     *discoveryData,
 	})
 	if err != nil {
-		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+		if errors.Is(err, auth.ErrNoAccessTokenFound) {
 			logger.Println(LoginInfo())
 			return nil
 		}
@@ -301,7 +301,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	r, err := client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if release succeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
 		return nil
 	}
 

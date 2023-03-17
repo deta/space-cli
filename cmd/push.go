@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
@@ -16,6 +17,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -24,6 +26,8 @@ var (
 	pushProjectID  string
 	pushProjectDir string
 	pushTag        string
+	pushOpen       bool
+	skipLogs       bool
 	pushCmd        = &cobra.Command{
 		Use:   "push [flags]",
 		Short: "push code for project",
@@ -35,6 +39,8 @@ func init() {
 	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
 	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
 	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
+	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open builder instance/project in browser after push")
+	pushCmd.Flags().BoolVarP(&skipLogs, "skip-logs", "", false, "skip following logs after push")
 	rootCmd.AddCommand(pushCmd)
 }
 
@@ -128,7 +134,7 @@ func push(cmd *cobra.Command, args []string) error {
 	buildSpinnerInput := spinner.Input{
 		LoadingMsg: "Working on starting your build...",
 		Request: func() tea.Msg {
-			r, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID})
+			r, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: pushTag})
 
 			return spinner.Stop{
 				RequestResponse: spinner.RequestResponse{Response: r, Err: err},
@@ -251,7 +257,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// push code & run build steps
-	logger.Printf("%s Pushing your code & running build process...\n", emoji.Package)
+	logger.Printf("\n%s Pushing your code & running build process...\n", emoji.Package)
 	zippedCode, err := runtimeManager.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
@@ -265,6 +271,35 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+
+	if skipLogs {
+		b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
+		if err != nil {
+			logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+			return nil
+		}
+
+		var url = fmt.Sprintf("%s/%s?event=bld-%s", builderUrl, pushProjectID, b.Tag)
+
+		logger.Println(styles.Greenf("\n%s Successfully pushed your code!", emoji.PartyPopper))
+		logger.Println("\nSkipped following build process, please check build status manually:")
+		logger.Println(styles.Codef(url))
+
+		if pushOpen {
+			err = browser.OpenURL(url)
+
+			if err != nil {
+				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+			}
+		}
+
+		cm := <-c
+		if cm.err == nil && cm.isLower {
+			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+		}
+		return nil
+	}
+
 	// get build logs
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: br.ID,
@@ -284,26 +319,119 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return nil
 	}
+
 	// check build status
-	b, err := client.GetBuild(&api.GetBuildLogsRequest{BuildID: br.ID})
+	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
 	if err != nil {
 		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 		return nil
 	}
-
-	if b.Status == api.Complete {
-		logger.Println(styles.Greenf("\n%s Successfully pushed your code and created a new Revision!", emoji.PartyPopper))
-		logger.Printf("%s Updating your development instance with the latest Revision, it will be available on your Canvas shortly.\n\n", emoji.Tools)
-		logger.Printf("Run %s to create an installable Release for this Revision.\n", styles.Code("space release"))
-
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		return nil
-	} else {
+	if b.Status != api.Complete {
 		logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
 		return nil
 	}
+
+	// get promotion via build id (build id == revision id)
+	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: br.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		return nil
+	}
+
+	logger.Printf("\n%s Updating your Builder instance with the new revision...\n\n", emoji.Tools)
+
+	readCloserPromotion, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
+		ID: p.ID,
+	})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
+	defer readCloserPromotion.Close()
+	scannerPromotion := bufio.NewScanner(readCloserPromotion)
+	for scannerPromotion.Scan() {
+		// we don't want to print the logs to the terminal
+	}
+	if err := scannerPromotion.Err(); err != nil {
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return nil
+	}
+
+	// check promotion status
+	p, err = client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: p.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		return nil
+	}
+	if p.Status != api.Complete {
+		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
+		return nil
+	}
+
+	// get installation via promotion id (promotion id == release id)
+	i, err := client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		return nil
+	}
+
+	readCloserInstallation, err := client.GetInstallationLogs(&api.GetInstallationLogsRequest{
+		ID: i.ID,
+	})
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
+	var instanceUrl string
+
+	defer readCloserInstallation.Close()
+	scannerInstallation := bufio.NewScanner(readCloserInstallation)
+	for scannerInstallation.Scan() {
+		line := scannerInstallation.Text()
+		if strings.Contains(line, "http") {
+			instanceUrl = line
+		} else {
+			fmt.Println(line)
+		}
+	}
+	if err := scannerInstallation.Err(); err != nil {
+		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return nil
+	}
+
+	// check installation status
+	i, err = client.GetInstallation(&api.GetInstallationRequest{ID: i.ID})
+	if err != nil {
+		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		return nil
+	}
+	if i.Status != api.Complete {
+		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
+		return nil
+	}
+
+	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
+	logger.Printf("Run %s to create a release that others can install.\n\n", styles.Code("space release"))
+
+	if instanceUrl != "" {
+		logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
+
+		if pushOpen {
+			err = browser.OpenURL(instanceUrl)
+
+			if err != nil {
+				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+			}
+		}
+	}
+
+	cm := <-c
+	if cm.err == nil && cm.isLower {
+		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
+	return nil
 
 }

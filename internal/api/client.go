@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -86,16 +85,10 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	req.URL.RawQuery = q.Encode()
 
 	if i.NeedsAuth {
-		var accessToken string
-		if i.AccessToken != "" {
-			accessToken = i.AccessToken
-		} else {
-			accessToken, err = auth.GetAccessToken()
+		if i.AccessToken == "" {
+			i.AccessToken, err = auth.GetAccessToken()
 			if err != nil {
-				if errors.Is(err, auth.ErrNoAccessTokenFound) {
-					return nil, auth.ErrNoAccessTokenFound
-				}
-				return nil, fmt.Errorf("failed to authorize")
+				return nil, fmt.Errorf("failed to get access token: %w", err)
 			}
 		}
 		//  request timestamp
@@ -104,7 +97,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 
 		// compute signature
 		signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
-			AccessToken: accessToken,
+			AccessToken: i.AccessToken,
 			HTTPMethod:  i.Method,
 			URI:         req.URL.RequestURI(),
 			Timestamp:   timestamp,
@@ -112,7 +105,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 			RawBody:     marshalled,
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to calculate auth signature: %w", err)
 		}
 		// set needed access key auth headers
 		req.Header.Set("X-Deta-Timestamp", timestamp)

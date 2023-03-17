@@ -27,4 +27,5 @@ var (
 	Pistol           = Emoji{Emoji: "🔫 ", Fallback: ""}
 	Tools            = Emoji{Emoji: "💻 ", Fallback: styles.Info}
 	CrystalBall      = Emoji{Emoji: "🔮 ", Fallback: ""}
+	Label            = Emoji{Emoji: "🏷️ ", Fallback: ""}
 )
