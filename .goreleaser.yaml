@@ -10,6 +10,9 @@ builds:
   - binary: space
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -X github.com/deta/pc-cli/cmd.spaceVersion={{ .Version }}
+      - -X github.com/deta/pc-cli/cmd.platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
     goos:
       - linux
       - windows
