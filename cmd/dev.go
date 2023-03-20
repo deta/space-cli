@@ -316,7 +316,8 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		microUrl := fmt.Sprintf("http://localhost:%d", port)
-		logger.Printf("\n%sMicro %s listening on %s\n\n", emoji.V, styles.Green(microName), styles.Blue(microUrl))
+		logger.Printf("\n%sMicro %s running on %s", emoji.V, styles.Green(microName), styles.Blue(microUrl))
+		logger.Printf("\n%sUse %s to emulate the routing of your Space app\n\n", emoji.LightBulb, styles.Blue("space dev proxy"))
 
 		command.Wait()
 		return nil
@@ -547,7 +548,7 @@ func dev(cmd *cobra.Command, args []string) error {
 	go func() {
 		defer wg.Done()
 		appUrl := fmt.Sprintf("http://%s", addr)
-		logger.Printf("\n%sApp available at %s\n\n", emoji.Rocket, styles.Blue(appUrl))
+		logger.Printf("\n%sSpace app available at %s\n\n", emoji.Rocket, styles.Blue(appUrl))
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			logger.Println("proxy error", err)
