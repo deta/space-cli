@@ -108,7 +108,7 @@ type Micro struct {
 	Dev          string    `yaml:"dev,omitempty"`
 }
 
-func (m Micro) Prefix() string {
+func (m Micro) Route() string {
 	if m.Primary {
 		return "/"
 	}

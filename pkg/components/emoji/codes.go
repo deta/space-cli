@@ -6,6 +6,7 @@ import (
 
 var (
 	Cowboy           = Emoji{Emoji: "🤠 ", Fallback: ""}
+	Laptop           = Emoji{Emoji: "💻 ", Fallback: ""}
 	Gear             = Emoji{Emoji: "⚙️ ", Fallback: ""}
 	PointDown        = Emoji{Emoji: "👇 ", Fallback: ""}
 	Link             = Emoji{Emoji: "🔗 ", Fallback: ""}
@@ -17,9 +18,11 @@ var (
 	Earth            = Emoji{Emoji: "🌍 ", Fallback: ""}
 	PartyFace        = Emoji{Emoji: "🥳 ", Fallback: ""}
 	X                = Emoji{Emoji: "❌ ", Fallback: styles.X}
+	V                = Emoji{Emoji: "✅ ", Fallback: styles.CheckMark}
 	Waving           = Emoji{Emoji: "👋 ", Fallback: ""}
 	Swirl            = Emoji{Emoji: "🌀 ", Fallback: ""}
 	Sparkles         = Emoji{Emoji: "✨ ", Fallback: styles.CheckMark}
+	File             = Emoji{Emoji: "📄 ", Fallback: ""}
 	Files            = Emoji{Emoji: "🗂️ ", Fallback: ""}
 	Package          = Emoji{Emoji: "📦 ", Fallback: styles.Boldf("~")}
 	Eyes             = Emoji{Emoji: "👀 ", Fallback: ""}

@@ -163,7 +163,7 @@ func CalcSignature(i *CalcSignatureInput) (string, error) {
 	return fmt.Sprintf("%s=%s:%s", spaceSignVersion, accessKeyID, hexSign), nil
 }
 
-type Keys map[string]interface{}
+type Keys map[string]string
 
 // GetProjectKey retrieves a project key storage or env var
 func GetProjectKey(projectId string) (string, error) {
@@ -183,9 +183,8 @@ func GetProjectKey(projectId string) (string, error) {
 	contents, _ := ioutil.ReadAll(f)
 	json.Unmarshal(contents, &keys)
 
-	var key = keys[projectId]
-	if key != nil {
-		return key.(string), nil
+	if key, ok := keys[projectId]; ok {
+		return key, nil
 	}
 
 	return "", ErrNoProjectKeyFound

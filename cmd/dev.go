@@ -30,6 +30,7 @@ import (
 	"github.com/deta/pc-cli/shared"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"mvdan.cc/sh/v3/shell"
 )
 
@@ -52,11 +53,12 @@ var (
 var (
 	devCmd = &cobra.Command{
 		Use:               "dev",
-		Short:             "Run your app locally",
+		Short:             "Spin up a local development environment for your Space project",
 		PersistentPreRunE: devPreRun,
 		RunE:              dev,
 	}
 	devUpCmd = &cobra.Command{
+		Short: "Start a local server for a specific micro",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			dir, _ := cmd.Flags().GetString("dir")
 			microsDir := path.Join(dir, ".space", "micros")
@@ -71,17 +73,21 @@ var (
 	}
 
 	devRunCmd = &cobra.Command{
-		Use:  "run",
-		RunE: devRun,
+		Use:   "run <command>",
+		Short: "Run a command in the project's environment",
+		Args:  cobra.MinimumNArgs(1),
+		RunE:  devRun,
 	}
 	devProxyCmd = &cobra.Command{
-		Use:  "proxy",
-		RunE: devProxy,
+		Use:   "proxy",
+		Short: "Start the proxy server for your running micros",
+		RunE:  devProxy,
 	}
 	devTriggerCmd = &cobra.Command{
-		Use:  "trigger",
-		Args: cobra.ExactArgs(1),
-		RunE: devTrigger,
+		Use:   "trigger <action>",
+		Short: "Trigger a micro action",
+		Args:  cobra.ExactArgs(1),
+		RunE:  devTrigger,
 	}
 )
 
@@ -115,49 +121,53 @@ func init() {
 func devPreRun(cmd *cobra.Command, args []string) error {
 	projectDirectory, _ := cmd.Flags().GetString("dir")
 
-	devProjectID, _ := cmd.Flags().GetString("id")
-	if devProjectID == "" {
-		runtimeManager, err := runtime.NewManager(&projectDirectory, true)
+	var devProjectID string
+	if !cmd.Flags().Changed("id") {
+		metaPath := path.Join(projectDirectory, ".space", "meta")
+		bytes, err := os.ReadFile(metaPath)
 		if err != nil {
+			logger.Printf("%sCould not read project meta file. Please run `deta new` to create a new project.\n", emoji.X)
+			os.Exit(1)
+		}
+
+		var meta runtime.ProjectMeta
+		if err := json.Unmarshal(bytes, &meta); err != nil {
 			return err
 		}
 
-		isProjectInitialized, err := runtimeManager.IsProjectInitialized()
-		if err != nil {
-			return err
-		}
+		devProjectID = meta.ID
+		cmd.Flags().Set("id", devProjectID)
 
-		// check if project is initialized
-		if isProjectInitialized {
-			projectMeta, err := runtimeManager.GetProjectMeta()
-			if err != nil {
-				return err
-			}
-			devProjectID = projectMeta.ID
-			cmd.Flags().Set("id", devProjectID)
-		} else if isFlagEmpty(devProjectID) {
-			logger.Printf("No project was found in the current directory.\n\n")
-			logger.Printf("Please provide using the space link command.\n\n")
-			return errors.New("no project found")
-		}
+	} else {
+		devProjectID, _ = cmd.Flags().GetString("id")
 	}
 
-	if err := generateDataKeyIfNeeded(devProjectID); err != nil {
-		return err
-	}
-
-	// check if spacefile is present
-	isSpacefilePresent, err := spacefile.IsSpacefilePresent(projectDirectory)
+	// parse spacefile and validate
+	s, err := spacefile.Open(projectDirectory)
 	if err != nil {
-		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
-			logger.Printf("%s The Spacefile must be called exactly 'Spacefile'.\n", emoji.ErrorExclamation)
+		if te, ok := err.(*yaml.TypeError); ok {
+			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
 			return nil
 		}
-		return err
-	}
-	if !isSpacefilePresent {
-		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile.", emoji.ErrorExclamation))
+		logger.Println(styles.Error(fmt.Sprintf("%sError: %v", emoji.ErrorExclamation, err)))
 		return nil
+	}
+
+	logger.Printf("%sValidating Spacefile...", emoji.V)
+	if spacefileErrors := spacefile.ValidateSpacefile(s, projectDirectory); len(spacefileErrors) > 0 {
+		logValidationErrors(s, spacefileErrors)
+		logger.Println("Please fix the errors in your Spacefile and try again.")
+		os.Exit(1)
+	}
+
+	if _, err := auth.GetProjectKey(devProjectID); err != nil {
+		logger.Printf("%sGenerating new project key...\n", emoji.Key)
+		err := generateDataKey(devProjectID)
+		if err != nil {
+			return err
+		}
+	} else {
+		logger.Printf("%sUsing existing project key...\n", emoji.Key)
 	}
 
 	return nil
@@ -181,18 +191,9 @@ func findAvailableKey(res *api.ListProjectResponse, name string) string {
 	}
 }
 
-func generateDataKeyIfNeeded(projectID string) error {
+func generateDataKey(projectID string) error {
 	// check if we have already stored the project key based on the project's id
-	_, err := auth.GetProjectKey(projectID)
-	if err == nil {
-		return nil
-	}
-
-	if !errors.Is(err, auth.ErrNoProjectKeyFound) {
-		return err
-	}
-
-	logger.Printf("%sNo project key found, generating new key...\n", emoji.Key)
+	logger.Printf("%s No project key found, generating new key...\n", emoji.Key)
 	listRes, err := client.ListProjectKeys(projectID)
 	if err != nil {
 		return err
@@ -235,6 +236,8 @@ func devRun(cmd *cobra.Command, args []string) error {
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 	command.Stdin = os.Stdin
+
+	logger.Printf("\n┌ Command output:\n\n")
 
 	return command.Run()
 }
@@ -283,7 +286,7 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		if _, err := os.Stat(portFile); err == nil {
 			microPort, _ := parsePort(portFile)
 			if isPortActive(microPort) {
-				return fmt.Errorf("%s %s is already running on port %d", emoji.Rocket, microName, microPort)
+				logger.Printf("%s%s is already running on port %d", emoji.X, styles.Green(microName), microPort)
 			}
 		}
 
@@ -297,7 +300,7 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		defer os.Remove(portFile)
 
 		if err := command.Start(); err != nil {
-			return fmt.Errorf("failed to start %s: %s", microName, err.Error())
+			return fmt.Errorf("failed to start %s: %s", styles.Green(microName), err.Error())
 		}
 
 		// If we receive a SIGINT or SIGTERM, we want to send a SIGTERM to the child process
@@ -312,6 +315,9 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 			browser.OpenURL(fmt.Sprintf("http://localhost:%d", port))
 		}
 
+		microUrl := fmt.Sprintf("http://localhost:%d", port)
+		logger.Printf("\n%sMicro %s listening on %s\n\n", emoji.V, styles.Green(microName), styles.Blue(microUrl))
+
 		command.Wait()
 		return nil
 	}
@@ -321,6 +327,8 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 
 func devProxy(cmd *cobra.Command, args []string) error {
 	directory, _ := cmd.Flags().GetString("dir")
+	host, _ := cmd.Flags().GetString("host")
+
 	var port int
 	if cmd.Flags().Changed("port") {
 		port, _ = cmd.Flags().GetInt("port")
@@ -328,11 +336,15 @@ func devProxy(cmd *cobra.Command, args []string) error {
 		port, _ = GetFreePort(devDefaultPort)
 	}
 
+	addr := fmt.Sprintf("%s:%d", host, port)
+
 	microDir := path.Join(directory, ".space", "micros")
 	spacefile, _ := spacefile.Open(directory)
 
 	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
-		return fmt.Errorf("%s No micros found. Please run `space dev up` first", emoji.ErrorExclamation)
+		logger.Printf("\n%sNo running micros detected.", emoji.X)
+		logger.Printf("L Use %s to manually start a micro", styles.Blue("space dev up <micro>"))
+		os.Exit(1)
 	}
 
 	reverseProxy, err := proxyFromDir(spacefile.Micros, microDir)
@@ -340,7 +352,7 @@ func devProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    addr,
 		Handler: reverseProxy,
 	}
 
@@ -348,7 +360,7 @@ func devProxy(cmd *cobra.Command, args []string) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logger.Println("proxy listening on", port)
+		logger.Printf("%sproxy listening on http://%s", emoji.Laptop, addr)
 		server.ListenAndServe()
 	}()
 
@@ -381,29 +393,28 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 	spacefile, _ := spacefile.Open(directory)
 	routeDir := path.Join(directory, ".space", "micros")
 
-	for _, micros := range spacefile.Micros {
-		for _, action := range micros.Actions {
-			if action.ID != args[0] {
+	actionId := args[0]
+
+	for _, micro := range spacefile.Micros {
+		for _, action := range micro.Actions {
+			if action.ID != actionId {
 				continue
 			}
 
-			portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micros.Name))
-			if _, err := os.Stat(portFile); err != nil {
-				return fmt.Errorf("micro %s is not running", micros.Name)
-			}
-
-			port, err := parsePort(portFile)
+			logger.Printf("\n%sChecking if micro %s is running...\n", emoji.Laptop, styles.Green(micro.Name))
+			port, err := getMicroPort(micro, routeDir)
 			if err != nil {
-				return err
+				upCommand := fmt.Sprintf("space dev up %s", micro.Name)
+				logger.Printf("%smicro %s is not running, to start it run:", emoji.X, styles.Green(micro.Name))
+				logger.Printf("L %s", styles.Blue(upCommand))
+				os.Exit(1)
 			}
 
-			if !isPortActive(port) {
-				return fmt.Errorf("micro %s is not running", micros.Name)
-			}
+			logger.Printf("%sMicro %s is running", emoji.V, styles.Green(micro.Name))
 
 			body, err := json.Marshal(ActionRequest{
 				Event: ActionEvent{
-					ID:      args[0],
+					ID:      actionId,
 					Trigger: "schedule",
 				},
 			})
@@ -411,19 +422,42 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 				return err
 			}
 
-			if _, err := http.Post(fmt.Sprintf("http://localhost:%d/%s", port, actionEndpoint), "application/json", bytes.NewReader(body)); err != nil {
-				return err
+			actionEndpoint := fmt.Sprintf("http://localhost:%d/%s", port, actionEndpoint)
+			logger.Printf("\nTriggering action %s", styles.Green(actionId))
+			logger.Printf("L POST %s", styles.Blue(actionEndpoint))
+
+			res, err := http.Post(actionEndpoint, "application/json", bytes.NewReader(body))
+			if err != nil {
+				logger.Printf("\n%sfailed to trigger action: %s", emoji.X, err.Error())
+				os.Exit(1)
 			}
+			defer res.Body.Close()
+
+			logger.Println("\n┌ Action Response:")
+
+			logger.Printf("\n%s", res.Status)
+
+			logger.Println()
+			io.Copy(os.Stdout, res.Body)
+
+			if res.StatusCode >= 400 {
+				logger.Printf("\n\nL %s", styles.Error("failed to trigger action"))
+				os.Exit(1)
+			}
+			logger.Printf("\n\nL Action triggered successfully!")
 			return nil
 		}
 	}
 
-	return errors.New("action not found")
+	logger.Printf("\n%saction `%s` not found", emoji.X, actionId)
+	os.Exit(1)
+	return nil
 }
 
 func dev(cmd *cobra.Command, args []string) error {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
+	host, _ := cmd.Flags().GetString("host")
 
 	routeDir := path.Join(projectDir, ".space", "micros")
 	spacefile, _ := spacefile.Open(projectDir)
@@ -439,29 +473,25 @@ func dev(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	addr := fmt.Sprintf("%s:%d", host, proxyPort)
 
 	var stoppedMicros []*shared.Micro
+	logger.Printf("\n%s Checking for running micros...\n", emoji.Laptop)
 	for _, micro := range spacefile.Micros {
-		portFile := path.Join(routeDir, micro.Name)
-		if _, err := os.Stat(portFile); err != nil {
-			stoppedMicros = append(stoppedMicros, micro)
-			continue
-		}
-
-		microPort, err := parsePort(portFile)
+		port, err := getMicroPort(micro, routeDir)
 		if err != nil {
+			logger.Printf("micro %s is not running\n", styles.Green(micro.Name))
 			stoppedMicros = append(stoppedMicros, micro)
 			continue
 		}
 
-		if isRunning := isPortActive(microPort); !isRunning {
-			stoppedMicros = append(stoppedMicros, micro)
-			continue
-		}
+		logger.Printf("%s micro %s is already running on port %d\n\n", emoji.V, micro.Name, port)
 	}
 
 	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
 	startPort := proxyPort + 1
+
+	logger.Printf("\n%s Starting %d micro servers...\n", emoji.Laptop, len(stoppedMicros))
 	for _, micro := range stoppedMicros {
 		freePort, err := GetFreePort(startPort)
 		if err != nil {
@@ -479,6 +509,16 @@ func dev(cmd *cobra.Command, args []string) error {
 		}
 		defer os.Remove(portFile)
 
+		if micro.Primary {
+			logger.Printf("\nMicro %s (primary)", styles.Green(micro.Name))
+		} else {
+			logger.Printf("\nMicro %s", styles.Green(micro.Name))
+		}
+
+		logger.Printf("L command: %s\n", styles.Blue(command.String()))
+		spaceUrl := fmt.Sprintf("http://%s%s", addr, micro.Route())
+		logger.Printf("L url: %s\n", styles.Blue(spaceUrl))
+
 		commands = append(commands, command)
 		startPort = freePort + 1
 	}
@@ -488,7 +528,6 @@ func dev(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	addr := fmt.Sprintf("localhost:%d", proxyPort)
 	server := http.Server{
 		Addr:    addr,
 		Handler: proxy,
@@ -507,7 +546,8 @@ func dev(cmd *cobra.Command, args []string) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logger.Println("proxy listening on", addr)
+		appUrl := fmt.Sprintf("http://%s", addr)
+		logger.Printf("\n%sApp available at %s\n\n", emoji.Rocket, styles.Blue(appUrl))
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			logger.Println("proxy error", err)
@@ -518,7 +558,7 @@ func dev(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		logger.Println("shutting down all commands")
+		logger.Println("\nShutting down all commands...")
 		for _, command := range commands {
 			command.Process.Signal(syscall.SIGTERM)
 		}
@@ -563,14 +603,31 @@ func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy,
 
 		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
 
-		logger.Println("proxying", micro.Prefix(), "to", target.String())
 		routes = append(routes, proxy.ProxyRoute{
-			Prefix: micro.Prefix(),
+			Prefix: micro.Route(),
 			Target: target,
 		})
 	}
 
 	return proxy.NewReverseProxy(routes), nil
+}
+
+func getMicroPort(micro *shared.Micro, routeDir string) (int, error) {
+	portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
+	if _, err := os.Stat(portFile); err != nil {
+		return 0, err
+	}
+
+	port, err := parsePort(portFile)
+	if err != nil {
+		return 0, err
+	}
+
+	if !isPortActive(port) {
+		return 0, fmt.Errorf("port %d is not active", port)
+	}
+
+	return port, nil
 }
 
 func parsePort(portFile string) (int, error) {
