@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/spf13/cobra"
@@ -42,8 +44,18 @@ type checkVersionMsg struct {
 	err     error
 }
 
+func isPrerelease(version string) bool {
+	return len(strings.Split(version, "-")) > 1
+}
+
 func checkVersion(c chan *checkVersionMsg) {
 	cm := &checkVersionMsg{}
+
+	if isPrerelease(spaceVersion) {
+		c <- cm
+		return
+	}
+
 	latestVersion, err := client.GetLatestCLIVersion()
 	if err != nil {
 		cm.err = err
