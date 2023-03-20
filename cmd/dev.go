@@ -154,7 +154,7 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger.Printf("%sValidating Spacefile...", styles.Green("✔️"))
+	logger.Printf("%s Validating Spacefile...", styles.Green("✔️"))
 	if spacefileErrors := spacefile.ValidateSpacefile(s, projectDirectory); len(spacefileErrors) > 0 {
 		logValidationErrors(s, spacefileErrors)
 		logger.Println("Please fix the errors in your Spacefile and try again.")
@@ -322,7 +322,7 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		microUrl := fmt.Sprintf("http://localhost:%d", port)
-		logger.Printf("\n%sMicro %s running on %s", styles.Green("✔️"), styles.Green(microName), styles.Blue(microUrl))
+		logger.Printf("\n%s Micro %s running on %s", styles.Green("✔️"), styles.Green(microName), styles.Blue(microUrl))
 		logger.Printf("\n%sUse %s to emulate the routing of your Space app\n\n", emoji.LightBulb, styles.Blue("space dev proxy"))
 
 		command.Wait()
@@ -417,7 +417,7 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 				os.Exit(1)
 			}
 
-			logger.Printf("%sMicro %s is running", styles.Green("✔️"), styles.Green(micro.Name))
+			logger.Printf("%s Micro %s is running", styles.Green("✔️"), styles.Green(micro.Name))
 
 			body, err := json.Marshal(ActionRequest{
 				Event: ActionEvent{
@@ -484,19 +484,19 @@ func dev(cmd *cobra.Command, args []string) error {
 
 	var stoppedMicros []*shared.Micro
 	for _, micro := range spacefile.Micros {
-		port, err := getMicroPort(micro, routeDir)
+		_, err := getMicroPort(micro, routeDir)
 		if err != nil {
 			stoppedMicros = append(stoppedMicros, micro)
 			continue
 		}
 
-		logger.Printf("%s micro %s is already running on port %d\n\n", styles.Green("✔️"), micro.Name, port)
+		logger.Printf("\n%smicro %s is already running", emoji.LightBulb, styles.Green(micro.Name))
 	}
 
 	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
 	startPort := proxyPort + 1
 
-	logger.Printf("\n%s Starting %d micro servers...\n", emoji.Laptop, len(stoppedMicros))
+	logger.Printf("\n%sStarting %d micro servers...\n", emoji.Laptop, len(stoppedMicros))
 	for _, micro := range stoppedMicros {
 		freePort, err := GetFreePort(startPort)
 		if err != nil {
@@ -566,7 +566,8 @@ func dev(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		logger.Println("\nShutting down all commands...")
+		logger.Printf("\n\n%sReceived termination signal, stopping micros...\n\n", emoji.X)
+
 		for _, command := range commands {
 			command.Process.Signal(syscall.SIGTERM)
 		}
