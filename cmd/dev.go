@@ -295,6 +295,12 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		devCommand, _ := cmd.Flags().GetString("command")
 		command, err := microCommand(micro, devCommand, projectDir, projectKey, port)
 		if err != nil {
+			if errors.Is(err, ErrNoDevCommand) {
+				logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
+				spaceDevDocs := "https://deta.space/docs/en/basics/projects#local-dev"
+				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocs))
+				os.Exit(1)
+			}
 			return err
 		}
 		defer os.Remove(portFile)
@@ -501,7 +507,12 @@ func dev(cmd *cobra.Command, args []string) error {
 
 		command, err := microCommand(micro, "", projectDir, projectKey, freePort)
 		if err != nil {
-			return err
+			if errors.Is(err, ErrNoDevCommand) {
+				logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
+				spaceDevDocs := "https://deta.space/docs/en/basics/projects#local-dev"
+				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocs))
+				continue
+			}
 		}
 
 		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
@@ -651,6 +662,8 @@ func isPortActive(port int) bool {
 	return true
 }
 
+var ErrNoDevCommand = errors.New("no dev command found for micro")
+
 func microCommand(micro *shared.Micro, command string, directory, projectKey string, port int) (*exec.Cmd, error) {
 	var devCommand string
 	if command != "" {
@@ -660,7 +673,7 @@ func microCommand(micro *shared.Micro, command string, directory, projectKey str
 	} else if engineToDevCommand[micro.Engine] != "" {
 		devCommand = engineToDevCommand[micro.Engine]
 	} else {
-		return nil, fmt.Errorf("no dev command found for micro %s", micro.Name)
+		return nil, ErrNoDevCommand
 	}
 
 	commandDir := directory
