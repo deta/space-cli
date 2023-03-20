@@ -18,7 +18,6 @@ var (
 	Earth            = Emoji{Emoji: "🌍 ", Fallback: ""}
 	PartyFace        = Emoji{Emoji: "🥳 ", Fallback: ""}
 	X                = Emoji{Emoji: "❌ ", Fallback: styles.X}
-	V                = Emoji{Emoji: "✅ ", Fallback: styles.CheckMark}
 	Waving           = Emoji{Emoji: "👋 ", Fallback: ""}
 	Swirl            = Emoji{Emoji: "🌀 ", Fallback: ""}
 	Sparkles         = Emoji{Emoji: "✨ ", Fallback: styles.CheckMark}
