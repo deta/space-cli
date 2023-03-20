@@ -314,6 +314,8 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 			sigs := make(chan os.Signal, 1)
 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 			<-sigs
+			logger.Printf("\n\nShutting down...\n\n")
+
 			command.Process.Signal(syscall.SIGTERM)
 		}()
 
@@ -375,6 +377,7 @@ func devProxy(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
+		logger.Printf("\n\nShutting down...\n\n")
 		server.Shutdown(context.Background())
 	}()
 
@@ -408,7 +411,7 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 				continue
 			}
 
-			logger.Printf("\n%sChecking if micro %s is running...\n", emoji.Laptop, styles.Green(micro.Name))
+			logger.Printf("\n%sChecking if micro %s is running...\n", emoji.Eyes, styles.Green(micro.Name))
 			port, err := getMicroPort(micro, routeDir)
 			if err != nil {
 				upCommand := fmt.Sprintf("space dev up %s", micro.Name)
@@ -482,6 +485,7 @@ func dev(cmd *cobra.Command, args []string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", host, proxyPort)
 
+	logger.Printf("\n%sChecking for running micros...", emoji.Eyes)
 	var stoppedMicros []*shared.Micro
 	for _, micro := range spacefile.Micros {
 		_, err := getMicroPort(micro, routeDir)
@@ -490,13 +494,14 @@ func dev(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		logger.Printf("\n%smicro %s is already running", emoji.LightBulb, styles.Green(micro.Name))
+		logger.Printf("\nMicro %s found", styles.Green(micro.Name))
+		logger.Printf("L url: %s", styles.Blue(fmt.Sprintf("http://%s%s", addr, micro.Route())))
 	}
 
 	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
 	startPort := proxyPort + 1
 
-	logger.Printf("\n%sStarting %d micro servers...\n", emoji.Laptop, len(stoppedMicros))
+	logger.Printf("\n%sStarting %d micro servers...\n\n", emoji.Laptop, len(stoppedMicros))
 	for _, micro := range stoppedMicros {
 		freePort, err := GetFreePort(startPort)
 		if err != nil {
@@ -523,12 +528,12 @@ func dev(cmd *cobra.Command, args []string) error {
 		startPort = freePort + 1
 
 		if micro.Primary {
-			logger.Printf("\nMicro %s (primary)", styles.Green(micro.Name))
+			logger.Printf("Micro %s (primary)", styles.Green(micro.Name))
 		} else {
-			logger.Printf("\nMicro %s", styles.Green(micro.Name))
-			spaceUrl := fmt.Sprintf("http://%s%s", addr, micro.Route())
-			logger.Printf("L url: %s\n", styles.Blue(spaceUrl))
+			logger.Printf("Micro %s", styles.Green(micro.Name))
 		}
+		spaceUrl := fmt.Sprintf("http://%s%s", addr, micro.Route())
+		logger.Printf("L url: %s\n\n", styles.Blue(spaceUrl))
 	}
 
 	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
@@ -554,8 +559,6 @@ func dev(cmd *cobra.Command, args []string) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		appUrl := fmt.Sprintf("http://%s", addr)
-		logger.Printf("\n%sSpace app available at %s\n\n", emoji.Rocket, styles.Blue(appUrl))
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			logger.Println("proxy error", err)
@@ -566,7 +569,7 @@ func dev(cmd *cobra.Command, args []string) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		logger.Printf("\n\n%sReceived termination signal, stopping micros...\n\n", emoji.X)
+		logger.Printf("\n\nShutting down...\n\n")
 
 		for _, command := range commands {
 			command.Process.Signal(syscall.SIGTERM)
