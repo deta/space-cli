@@ -15,7 +15,6 @@ import (
 	"os/signal"
 	"path"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -31,23 +30,11 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"mvdan.cc/sh/v3/shell"
 )
 
 const (
 	devDefaultPort = 4200
 	actionEndpoint = "__space/v0/actions"
-)
-
-var (
-	engineToDevCommand = map[string]string{
-		shared.React:     "npm run start -- --port $PORT",
-		shared.Vue:       "npm run dev -- --port $PORT",
-		shared.Svelte:    "npm run dev -- --port $PORT",
-		shared.Next:      "npm run dev -- --port $PORT",
-		shared.Nuxt:      "npm run dev -- --port $PORT",
-		shared.SvelteKit: "npm run dev -- --port $PORT",
-	}
 )
 
 var (
@@ -292,10 +279,9 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 
 		writePortFile(portFile, port)
 
-		devCommand, _ := cmd.Flags().GetString("command")
-		command, err := microCommand(micro, devCommand, projectDir, projectKey, port)
+		command, err := micro.Command(projectDir, projectKey, port)
 		if err != nil {
-			if errors.Is(err, ErrNoDevCommand) {
+			if errors.Is(err, shared.ErrNoDevCommand) {
 				logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
 				spaceDevDocs := "https://deta.space/docs/en/basics/projects#local-dev"
 				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocs))
@@ -389,15 +375,6 @@ func devProxy(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type ActionEvent struct {
-	ID      string `json:"id"`
-	Trigger string `json:"trigger"`
-}
-
-type ActionRequest struct {
-	Event ActionEvent `json:"event"`
-}
-
 func devTrigger(cmd *cobra.Command, args []string) (err error) {
 	directory, _ := cmd.Flags().GetString("dir")
 	spacefile, _ := spacefile.Open(directory)
@@ -422,8 +399,8 @@ func devTrigger(cmd *cobra.Command, args []string) (err error) {
 
 			logger.Printf("%s Micro %s is running", styles.Green("✔️"), styles.Green(micro.Name))
 
-			body, err := json.Marshal(ActionRequest{
-				Event: ActionEvent{
+			body, err := json.Marshal(shared.ActionRequest{
+				Event: shared.ActionEvent{
 					ID:      actionId,
 					Trigger: "schedule",
 				},
@@ -508,9 +485,9 @@ func dev(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		command, err := microCommand(micro, "", projectDir, projectKey, freePort)
+		command, err := micro.Command(projectDir, projectKey, freePort)
 		if err != nil {
-			if errors.Is(err, ErrNoDevCommand) {
+			if errors.Is(err, shared.ErrNoDevCommand) {
 				logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
 				spaceDevDocs := "https://deta.space/docs/en/basics/projects#local-dev"
 				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocs))
@@ -660,89 +637,4 @@ func isPortActive(port int) bool {
 
 	conn.Close()
 	return true
-}
-
-var ErrNoDevCommand = errors.New("no dev command found for micro")
-
-func microCommand(micro *shared.Micro, command string, directory, projectKey string, port int) (*exec.Cmd, error) {
-	var devCommand string
-	if command != "" {
-		devCommand = command
-	} else if micro.Dev != "" {
-		devCommand = micro.Dev
-	} else if engineToDevCommand[micro.Engine] != "" {
-		devCommand = engineToDevCommand[micro.Engine]
-	} else {
-		return nil, ErrNoDevCommand
-	}
-
-	commandDir := directory
-	if micro.Src != "" {
-		commandDir = path.Join(directory, micro.Src)
-	} else {
-		commandDir = path.Join(directory, micro.Name)
-	}
-
-	environ := map[string]string{
-		"PORT":                      fmt.Sprintf("%d", port),
-		"DETA_PROJECT_KEY":          projectKey,
-		"DETA_SPACE_APP_HOSTNAME":   fmt.Sprintf("localhost:%d", port),
-		"DETA_SPACE_APP_MICRO_NAME": micro.Name,
-		"DETA_SPACE_APP_MICRO_TYPE": micro.Type(),
-	}
-
-	fields, err := shell.Fields(devCommand, func(s string) string {
-		if env, ok := environ[s]; ok {
-			return env
-		}
-
-		return os.Getenv(s)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(fields) == 0 {
-		return nil, fmt.Errorf("no command found for micro %s", micro.Name)
-	}
-	commandName := fields[0]
-	var commandArgs []string
-	if len(fields) > 0 {
-		commandArgs = fields[1:]
-	}
-
-	cmd := exec.Command(commandName, commandArgs...)
-	cmd.Env = os.Environ()
-	for key, value := range environ {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
-	}
-	cmd.Dir = commandDir
-	cmd.Stdout = NewPrefixer(micro.Name, os.Stdout)
-	cmd.Stderr = NewPrefixer(micro.Name, os.Stderr)
-
-	return cmd, nil
-}
-
-type Prefixer struct {
-	scope string
-	dest  io.Writer
-}
-
-func NewPrefixer(scope string, dest io.Writer) *Prefixer {
-	return &Prefixer{
-		scope: scope,
-		dest:  dest,
-	}
-}
-
-// parse the logs and prefix them with the scope
-func (p Prefixer) Write(bytes []byte) (int, error) {
-	normalized := strings.ReplaceAll(string(bytes), "\r\n", "\n")
-	lines := strings.Split(normalized, "\n")
-
-	for _, line := range lines {
-		fmt.Printf("[%s] %s\n", p.scope, line)
-	}
-
-	return len(bytes), nil
 }
