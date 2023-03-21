@@ -149,7 +149,7 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 	}
 
 	if _, err := auth.GetProjectKey(devProjectID); err != nil {
-		logger.Printf("%sGenerating new project key...\n", emoji.Key)
+		logger.Printf("%sGenerating new data key...\n", emoji.Key)
 		err := generateDataKey(devProjectID)
 		if err != nil {
 			return err
@@ -472,7 +472,7 @@ func dev(cmd *cobra.Command, args []string) error {
 		}
 
 		logger.Printf("\nMicro %s found", styles.Green(micro.Name))
-		logger.Printf("L url: %s", styles.Blue(fmt.Sprintf("http://%s%s", addr, micro.Route())))
+		logger.Printf("L url: %s", styles.Blue(fmt.Sprintf("http://%s%s", addr, micro.Path)))
 	}
 
 	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
@@ -509,7 +509,7 @@ func dev(cmd *cobra.Command, args []string) error {
 		} else {
 			logger.Printf("Micro %s", styles.Green(micro.Name))
 		}
-		spaceUrl := fmt.Sprintf("http://%s%s", addr, micro.Route())
+		spaceUrl := fmt.Sprintf("http://%s%s", addr, micro.Path)
 		logger.Printf("L url: %s\n\n", styles.Blue(spaceUrl))
 	}
 
@@ -593,7 +593,7 @@ func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy,
 		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
 
 		routes = append(routes, proxy.ProxyRoute{
-			Prefix: micro.Route(),
+			Prefix: micro.Path,
 			Target: target,
 		})
 	}
