@@ -73,6 +73,10 @@ func Open(sourceDir string) (*Spacefile, error) {
 		return nil, err
 	}
 
+	if len(s.Micros) == 1 {
+		s.Micros[0].Primary = true
+	}
+
 	return &s, nil
 }
 
