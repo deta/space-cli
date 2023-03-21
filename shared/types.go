@@ -103,8 +103,8 @@ type Environment struct {
 
 // Presets xx
 type Presets struct {
-	Env     []*Environment `yaml:"env"`
-	APIKeys bool           `yaml:"api_keys"`
+	Env     []Environment `yaml:"env"`
+	APIKeys bool          `yaml:"api_keys"`
 }
 
 // Action xx
@@ -119,20 +119,20 @@ type Action struct {
 
 // Micro xx
 type Micro struct {
-	Name         string    `yaml:"name"`
-	Src          string    `yaml:"src"`
-	Engine       string    `yaml:"engine"`
-	Path         string    `yaml:"path,omitempty"`
-	Presets      *Presets  `yaml:"presets,omitempty"`
-	PublicRoutes []string  `yaml:"public_routes,omitempty"`
-	Primary      bool      `yaml:"primary"`
-	Runtime      string    `yaml:"runtime,omitempty"`
-	Commands     []string  `yaml:"commands,omitempty"`
-	Include      []string  `yaml:"include,omitempty"`
-	Actions      []*Action `yaml:"actions,omitempty"`
-	Serve        string    `yaml:"serve,omitempty"`
-	Run          string    `yaml:"run,omitempty"`
-	Dev          string    `yaml:"dev,omitempty"`
+	Name         string   `yaml:"name"`
+	Src          string   `yaml:"src"`
+	Engine       string   `yaml:"engine"`
+	Path         string   `yaml:"path,omitempty"`
+	Presets      *Presets `yaml:"presets,omitempty"`
+	PublicRoutes []string `yaml:"public_routes,omitempty"`
+	Primary      bool     `yaml:"primary"`
+	Runtime      string   `yaml:"runtime,omitempty"`
+	Commands     []string `yaml:"commands,omitempty"`
+	Include      []string `yaml:"include,omitempty"`
+	Actions      []Action `yaml:"actions,omitempty"`
+	Serve        string   `yaml:"serve,omitempty"`
+	Run          string   `yaml:"run,omitempty"`
+	Dev          string   `yaml:"dev,omitempty"`
 }
 
 func (m Micro) Type() string {
@@ -155,12 +155,7 @@ func (micro *Micro) Command(directory, projectKey string, port int) (*exec.Cmd, 
 		return nil, ErrNoDevCommand
 	}
 
-	commandDir := directory
-	if micro.Src != "" {
-		commandDir = path.Join(directory, micro.Src)
-	} else {
-		commandDir = path.Join(directory, micro.Name)
-	}
+	commandDir := path.Join(directory, micro.Src)
 
 	environ := map[string]string{
 		"PORT":                      fmt.Sprintf("%d", port),
@@ -170,12 +165,14 @@ func (micro *Micro) Command(directory, projectKey string, port int) (*exec.Cmd, 
 		"DETA_SPACE_APP_MICRO_TYPE": micro.Type(),
 	}
 
-	for _, env := range micro.Presets.Env {
-		// If the env is already set by the user, don't override it
-		if os.Getenv(env.Name) != "" {
-			continue
+	if micro.Presets != nil {
+		for _, env := range micro.Presets.Env {
+			// If the env is already set by the user, don't override it
+			if os.Getenv(env.Name) != "" {
+				continue
+			}
+			environ[env.Name] = env.Default
 		}
-		environ[env.Name] = env.Default
 	}
 
 	fields, err := shell.Fields(devCommand, func(s string) string {

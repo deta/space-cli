@@ -85,15 +85,14 @@ func Open(sourceDir string) (*Spacefile, error) {
 			if !strings.HasSuffix(micro.Path, "/") {
 				s.Micros[i].Path = fmt.Sprintf("%s/", micro.Path)
 			}
-			continue
-		}
+		} else {
+			if micro.Primary {
+				s.Micros[i].Path = "/"
+				continue
+			}
 
-		if micro.Primary {
-			s.Micros[i].Path = "/"
-			continue
+			s.Micros[i].Path = fmt.Sprintf("/%s/", micro.Name)
 		}
-
-		s.Micros[i].Path = fmt.Sprintf("/%s/", micro.Name)
 	}
 
 	return &s, nil
