@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -591,9 +592,20 @@ func proxyFromDir(micros []*shared.Micro, routeDir string) (*proxy.ReverseProxy,
 		}
 
 		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
+		var microRoute string
+		if micro.Path != nil {
+			if strings.HasPrefix(*micro.Path, "/") {
+				microRoute = *micro.Path
+			}
+			microRoute = "/" + *micro.Path
+		} else if micro.Primary || len(micros) == 1 {
+			microRoute = "/"
+		} else {
+			microRoute = "/" + micro.Name
+		}
 
 		routes = append(routes, proxy.ProxyRoute{
-			Prefix: micro.Route(),
+			Prefix: microRoute,
 			Target: target,
 		})
 	}

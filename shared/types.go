@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 
 	"github.com/deta/pc-cli/pkg/writer"
 	"mvdan.cc/sh/v3/shell"
@@ -134,21 +133,6 @@ type Micro struct {
 	Serve        string    `yaml:"serve,omitempty"`
 	Run          string    `yaml:"run,omitempty"`
 	Dev          string    `yaml:"dev,omitempty"`
-}
-
-func (m Micro) Route() string {
-	if m.Primary {
-		return "/"
-	}
-
-	if m.Path != nil {
-		if strings.HasPrefix(*m.Path, "/") {
-			return *m.Path
-		}
-		return "/" + *m.Path
-	}
-
-	return "/" + m.Name
 }
 
 func (m Micro) Type() string {
