@@ -170,6 +170,14 @@ func (micro *Micro) Command(directory, projectKey string, port int) (*exec.Cmd, 
 		"DETA_SPACE_APP_MICRO_TYPE": micro.Type(),
 	}
 
+	for _, env := range micro.Presets.Env {
+		// If the env is already set by the user, don't override it
+		if os.Getenv(env.Name) != "" {
+			continue
+		}
+		environ[env.Name] = env.Default
+	}
+
 	fields, err := shell.Fields(devCommand, func(s string) string {
 		if env, ok := environ[s]; ok {
 			return env
