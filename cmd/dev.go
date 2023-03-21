@@ -59,12 +59,6 @@ var (
 		RunE: devUp,
 	}
 
-	devRunCmd = &cobra.Command{
-		Use:   "run <command>",
-		Short: "Run a command in the project's environment",
-		Args:  cobra.MinimumNArgs(1),
-		RunE:  devRun,
-	}
 	devProxyCmd = &cobra.Command{
 		Use:   "proxy",
 		Short: "Start the proxy server for your running micros",
@@ -83,9 +77,6 @@ func init() {
 	devUpCmd.Flags().IntP("port", "p", 0, "port to run the micro on")
 	devUpCmd.Flags().Bool("open", false, "open the app in the browser")
 	devCmd.AddCommand(devUpCmd)
-
-	// dev run
-	devCmd.AddCommand(devRunCmd)
 
 	// dev proxy
 	devProxyCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
@@ -126,8 +117,6 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 		devProjectID = meta.ID
 		cmd.Flags().Set("id", devProjectID)
 
-	} else {
-		devProjectID, _ = cmd.Flags().GetString("id")
 	}
 
 	// parse spacefile and validate
@@ -146,16 +135,6 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 		logValidationErrors(s, spacefileErrors)
 		logger.Println("Please fix the errors in your Spacefile and try again.")
 		os.Exit(1)
-	}
-
-	if _, err := auth.GetProjectKey(devProjectID); err != nil {
-		logger.Printf("%sGenerating new data key...\n", emoji.Key)
-		err := generateDataKey(devProjectID)
-		if err != nil {
-			return err
-		}
-	} else {
-		logger.Printf("%sUsing existing project key...\n", emoji.Key)
 	}
 
 	return nil
@@ -179,11 +158,18 @@ func findAvailableKey(res *api.ListProjectResponse, name string) string {
 	}
 }
 
-func generateDataKey(projectID string) error {
+func generateDataKeyIfNotExists(projectID string) (string, error) {
 	// check if we have already stored the project key based on the project's id
+	projectKey, err := auth.GetProjectKey(projectID)
+	if err == nil {
+		logger.Printf("%sFound existing data key locally.", emoji.Key)
+		return projectKey, nil
+	}
+
+	logger.Printf("%sGenerating new data key...", emoji.Key)
 	listRes, err := client.ListProjectKeys(projectID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	keyName := findAvailableKey(listRes, "space dev")
@@ -193,40 +179,16 @@ func generateDataKey(projectID string) error {
 		Name: keyName,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// store the project key locally
 	err = auth.StoreProjectKey(projectID, r.Value)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
-}
-
-func devRun(cmd *cobra.Command, args []string) error {
-	commandName := args[0]
-	var commandArgs []string
-	if len(args) > 1 {
-		commandArgs = args[1:]
-	}
-
-	projectId, _ := cmd.Flags().GetString("id")
-	directory, _ := cmd.Flags().GetString("dir")
-	projectKey, _ := auth.GetProjectKey(projectId)
-
-	command := exec.Command(commandName, commandArgs...)
-	command.Env = os.Environ()
-	command.Env = append(command.Env, fmt.Sprintf("DETA_PROJECT_KEY=%s", projectKey))
-	command.Dir = directory
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-	command.Stdin = os.Stdin
-
-	logger.Printf("\n┌ Command output:\n\n")
-
-	return command.Run()
+	return r.Value, nil
 }
 
 func GetFreePort(start int) (int, error) {
@@ -251,6 +213,13 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
 
+	spacefile, _ := spacefile.Open(projectDir)
+	projectKey, err := generateDataKeyIfNotExists(projectId)
+	if err != nil {
+		logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
+		os.Exit(1)
+	}
+
 	var port int
 	if cmd.Flags().Changed("port") {
 		port, _ = cmd.Flags().GetInt("port")
@@ -260,9 +229,6 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 	}
-
-	spacefile, _ := spacefile.Open(projectDir)
-	projectKey, _ := auth.GetProjectKey(projectId)
 
 	for _, micro := range spacefile.Micros {
 		if micro.Name != microName {
@@ -448,7 +414,11 @@ func dev(cmd *cobra.Command, args []string) error {
 
 	routeDir := path.Join(projectDir, ".space", "micros")
 	spacefile, _ := spacefile.Open(projectDir)
-	projectKey, _ := auth.GetProjectKey(projectId)
+	projectKey, err := generateDataKeyIfNotExists(projectId)
+	if err != nil {
+		logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
+		os.Exit(1)
+	}
 
 	var proxyPort int
 	if cmd.Flags().Changed("port") {

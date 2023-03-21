@@ -20,7 +20,6 @@ func GenerateDocs() (string, error) {
 		{command: linkCmd, headerOffset: 1},
 		{command: validateCmd, headerOffset: 1},
 		{command: devCmd, headerOffset: 1},
-		{command: devRunCmd, headerOffset: 2},
 		{command: devTriggerCmd, headerOffset: 2},
 		{command: devUpCmd, headerOffset: 2},
 		{command: devProxyCmd, headerOffset: 2},
