@@ -152,11 +152,10 @@ func ValidateMicro(micro *shared.Micro, projectDir string) []error {
 		}
 	}
 
-	_, err := os.Stat(path.Join(projectDir, micro.Src))
-	if os.IsNotExist(err) {
-		if micro.Src == "" {
-			errors = append(errors, ErrEmptyMicroSrc)
-		} else {
+	if micro.Src == "" {
+		errors = append(errors, ErrEmptyMicroSrc)
+	} else {
+		if _, err := os.Stat(path.Join(projectDir, micro.Src)); os.IsNotExist(err) {
 			errors = append(errors, ErrInvalidMicroSrc)
 		}
 	}
