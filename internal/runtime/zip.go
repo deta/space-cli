@@ -7,22 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
+
+	ignore "github.com/sabhiram/go-gitignore"
 )
-
-func (m *Manager) shouldSkip(path string) (bool, error) {
-	// do not skip .spaceignore file
-	if regexp.MustCompile(ignoreFile).MatchString(path) {
-		return false, nil
-	}
-
-	// do not skip if skipPaths is empty
-	if m.skipPaths == nil {
-		return false, nil
-	}
-
-	return m.skipPaths.MatchesPath(path), nil
-}
 
 func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 	absDir, err := filepath.Abs(sourceDir)
@@ -37,20 +24,21 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 		}
 	}
 
+	spaceignore, err := ignore.CompileIgnoreFile(filepath.Join(absDir, ignoreFile))
+	if err != nil {
+		spaceignore = defaultSpaceIgnore
+	}
+
 	files := make(map[string][]byte)
 
 	// go through the dir and read all the files
 	err = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-
 		if err != nil {
 			return err
 		}
 
 		// skip if shouldSkip according to skipPaths which are derived from .spaceignore
-		shouldSkip, err := m.shouldSkip(path)
-		if err != nil {
-			return err
-		}
+		shouldSkip := spaceignore.MatchesPath(path)
 
 		if info.IsDir() {
 			if shouldSkip {

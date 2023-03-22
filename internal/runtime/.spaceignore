@@ -1,0 +1,16 @@
+# python
+venv
+.venv
+__pycache__
+
+# go
+vendor
+
+# node
+node_modules
+
+# git
+.git
+
+# env files
+.env
