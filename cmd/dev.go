@@ -65,10 +65,11 @@ var (
 		RunE:  devProxy,
 	}
 	devTriggerCmd = &cobra.Command{
-		Use:   "trigger <action>",
-		Short: "Trigger a micro action",
-		Args:  cobra.ExactArgs(1),
-		RunE:  devTrigger,
+		Use:     "trigger <action>",
+		Short:   "Trigger a micro action",
+		Aliases: []string{"t"},
+		Args:    cobra.ExactArgs(1),
+		RunE:    devTrigger,
 	}
 )
 
