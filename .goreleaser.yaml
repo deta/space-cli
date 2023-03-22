@@ -16,7 +16,37 @@ builds:
     goos:
       - linux
       - windows
+    goarch:
+      - amd64
+      - arm64
+  - binary: space
+    id: space-macos
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X github.com/deta/pc-cli/cmd.spaceVersion={{ .Version }}
+      - -X github.com/deta/pc-cli/cmd.platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
+    goos:
       - darwin
+    goarch:
+      - amd64
+    hooks:
+      post:
+        - gon -log-level=info -log-json .gon-amd64.hcl
+  - binary: space
+    id: space-macos-arm
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X github.com/deta/pc-cli/cmd.spaceVersion={{ .Version }}
+      - -X github.com/deta/pc-cli/cmd.platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    hooks:
+      post:
+        - gon -log-level=info -log-json .gon-arm64.hcl
 
 archives:
   - format: zip
@@ -41,7 +71,3 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-# The lines beneath this are called `modelines`. See `:help modeline`
-# Feel free to remove those if you don't want/use them.
-# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-# vim: set ts=2 sw=2 tw=0 fo=cnqoj
