@@ -1,15 +1,16 @@
 package runtime
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
-	ignore "github.com/deta/pc-cli/pkg/ignore"
+	ignore "github.com/sabhiram/go-gitignore"
 )
 
 const (
@@ -21,23 +22,26 @@ const (
 
 var (
 	PythonSkipPattern = `__pycache__`
-
-	NodeSkipPattern = `node_modules`
-
-	ignoreFile      = ".spaceignore"
-	spaceDir        = ".space"
-	projectMetaFile = "meta"
-
-	defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
+	NodeSkipPattern   = `node_modules`
+	ignoreFile        = ".spaceignore"
+	spaceDir          = ".space"
+	projectMetaFile   = "meta"
 )
+
+//go:embed .spaceignore
+var defaultSpaceignoreRaw string
+var defaultSpaceIgnore *ignore.GitIgnore
+
+func init() {
+	lines := strings.Split(defaultSpaceignoreRaw, "\n")
+	defaultSpaceIgnore = ignore.CompileIgnoreLines(lines...)
+}
 
 // Manager runtime manager handles files management and other services
 type Manager struct {
-	rootDir         string            // working directory of the project
-	spacePath       string            // dir for storing project meta
-	projectMetaPath string            // path to info file about the project
-	skipPaths       *ignore.GitIgnore // skip patterns that need to be ignored for space push
-	ignorePath      string            // .spaceignore path
+	rootDir         string // working directory of the project
+	spacePath       string // dir for storing project meta
+	projectMetaPath string // path to info file about the project
 }
 
 // NewManager returns a new manager for the root dir of the project
@@ -66,31 +70,18 @@ func NewManager(root *string, initDirs bool) (*Manager, error) {
 		rootDir:         rootDir,
 		spacePath:       spacePath,
 		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
-		ignorePath:      filepath.Join(rootDir, ignoreFile),
-		skipPaths:       ignore.CompileIgnoreLines(defaultSkipPatterns...),
 	}
-
-	// not handling error as we don't want cli to crash if .spaceignore is not found
-	manager.handleIgnoreFile()
 
 	return manager, nil
 }
 
-// handleIgnoreFile build a slice of patterns to skip from .spaceignore file if it exists
-func (m *Manager) handleIgnoreFile() error {
-	contents, err := m.readFile(m.ignorePath)
-	if err != nil {
-		return err
+func CreateSpaceIgnoreIfNotExists(projectDir string) error {
+	spaceIgnorePath := filepath.Join(projectDir, ignoreFile)
+	if _, err := os.Stat(spaceIgnorePath); !os.IsNotExist(err) {
+		return nil
 	}
 
-	lines, err := readLines(contents)
-	if err != nil {
-		return err
-	}
-
-	m.skipPaths = ignore.CompileIgnoreLines(append(defaultSkipPatterns, lines...)...)
-
-	return nil
+	return os.WriteFile(spaceIgnorePath, []byte(defaultSpaceignoreRaw), filePermMode)
 }
 
 // StoreProjectMeta stores project meta to disk
@@ -101,9 +92,9 @@ func (m *Manager) StoreProjectMeta(p *ProjectMeta) error {
 	}
 
 	spaceReadmeNotes := "Don't commit this folder (.space) to git as it may contain security-sensitive data."
-	ioutil.WriteFile(filepath.Join(m.spacePath, "README"), []byte(spaceReadmeNotes), filePermMode)
+	os.WriteFile(filepath.Join(m.spacePath, "README"), []byte(spaceReadmeNotes), filePermMode)
 
-	return ioutil.WriteFile(m.projectMetaPath, marshalled, filePermMode)
+	return os.WriteFile(m.projectMetaPath, marshalled, filePermMode)
 }
 
 // GetProjectMeta gets the project info stored
@@ -160,14 +151,14 @@ func (m *Manager) AddSpaceToGitignore() error {
 		}
 
 		contents = append(contents, []byte("\n.space")...)
-		err = ioutil.WriteFile(gitignorePath, contents, filePermMode)
+		err = os.WriteFile(gitignorePath, contents, filePermMode)
 		if err != nil {
 			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
 		}
 		return nil
 	}
 
-	err = ioutil.WriteFile(gitignorePath, []byte(".space"), filePermMode)
+	err = os.WriteFile(gitignorePath, []byte(".space"), filePermMode)
 	if err != nil {
 		return fmt.Errorf("failed to write .space to .gitignore: %w", err)
 	}
