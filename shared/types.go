@@ -95,6 +95,7 @@ type Micro struct {
 	Engine       string    `yaml:"engine"`
 	Path         *string   `yaml:"path,omitempty"`
 	Presets      *Presets  `yaml:"presets,omitempty"`
+	Public       bool      `yaml:"public,omitempty"`
 	PublicRoutes []string  `yaml:"public_routes,omitempty"`
 	Primary      bool      `yaml:"primary"`
 	Runtime      string    `yaml:"runtime,omitempty"`
