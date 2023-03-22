@@ -414,7 +414,6 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
-	logger.Printf("Run %s to create a release that others can install.\n\n", styles.Code("space release"))
 
 	if instanceUrl != "" {
 		logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
