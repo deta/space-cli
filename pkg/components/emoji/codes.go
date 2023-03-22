@@ -6,6 +6,7 @@ import (
 
 var (
 	Cowboy           = Emoji{Emoji: "🤠 ", Fallback: ""}
+	Laptop           = Emoji{Emoji: "💻 ", Fallback: ""}
 	Gear             = Emoji{Emoji: "⚙️ ", Fallback: ""}
 	PointDown        = Emoji{Emoji: "👇 ", Fallback: ""}
 	Link             = Emoji{Emoji: "🔗 ", Fallback: ""}
@@ -20,12 +21,15 @@ var (
 	Waving           = Emoji{Emoji: "👋 ", Fallback: ""}
 	Swirl            = Emoji{Emoji: "🌀 ", Fallback: ""}
 	Sparkles         = Emoji{Emoji: "✨ ", Fallback: styles.CheckMark}
+	File             = Emoji{Emoji: "📄 ", Fallback: ""}
 	Files            = Emoji{Emoji: "🗂️ ", Fallback: ""}
 	Package          = Emoji{Emoji: "📦 ", Fallback: styles.Boldf("~")}
 	Eyes             = Emoji{Emoji: "👀 ", Fallback: ""}
 	Lightning        = Emoji{Emoji: "⚡ ", Fallback: ""}
+	LightBulb        = Emoji{Emoji: "💡 ", Fallback: ""}
 	Pistol           = Emoji{Emoji: "🔫 ", Fallback: ""}
 	Tools            = Emoji{Emoji: "💻 ", Fallback: styles.Info}
 	CrystalBall      = Emoji{Emoji: "🔮 ", Fallback: ""}
 	Label            = Emoji{Emoji: "🏷️ ", Fallback: ""}
+	Key              = Emoji{Emoji: "🔑 ", Fallback: ""}
 )

@@ -194,7 +194,7 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 
 		// validate spacefile before creating new project with the existing spacefile
-		spacefileErrors := spacefile.ValidateSpacefile(s)
+		spacefileErrors := spacefile.ValidateSpacefile(s, projectDir)
 
 		if len(spacefileErrors) > 0 {
 			logValidationErrors(s, spacefileErrors)

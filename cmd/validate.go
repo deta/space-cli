@@ -148,7 +148,7 @@ func validate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("problem while opening spacefile in dir %s, %w", validateDir, err)
 	}
 
-	spacefileErrors := spacefile.ValidateSpacefile(s)
+	spacefileErrors := spacefile.ValidateSpacefile(s, validateDir)
 
 	logValidationErrors(s, spacefileErrors)
 
