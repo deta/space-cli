@@ -51,6 +51,17 @@ type requestOutput struct {
 	Error          *errorResp
 }
 
+type ProgressReader struct {
+	io.Reader
+	spinner *ReadSpinner
+}
+
+func (r *ProgressReader) Read(b []byte) (n int, err error) {
+	n, err = r.Reader.Read(b)
+	r.spinner.Status(n)
+	return n, err
+}
+
 // Request send an http request to the deta api
 func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	marshalled, _ := i.Body.([]byte)
@@ -64,7 +75,12 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		}
 	}
 
-	req, err := http.NewRequest(i.Method, fmt.Sprintf("%s%s", i.Root, i.Path), bytes.NewBuffer(marshalled))
+	r := &ProgressReader{
+		bytes.NewBuffer(marshalled),
+		NewReadSpinner("<-", int64(len(marshalled))),
+	}
+
+	req, err := http.NewRequest(i.Method, fmt.Sprintf("%s%s", i.Root, i.Path), r)
 	if err != nil {
 		return nil, err
 	}
