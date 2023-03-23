@@ -24,7 +24,7 @@ func (m *Manager) shouldSkip(path string) (bool, error) {
 	return m.skipPaths.MatchesPath(path), nil
 }
 
-func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
+func (m *Manager) ZipDir(sourceDir string, verbose bool) ([]byte, error) {
 	absDir, err := filepath.Abs(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path for dir %s to zip, %w", sourceDir, err)
@@ -87,6 +87,9 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 		}
 
 		files[relPath] = contents
+		if verbose {
+			fmt.Println("adding file", relPath, "of size", len(contents))
+		}
 		return nil
 	})
 	if err != nil {
@@ -112,5 +115,8 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 		return nil, fmt.Errorf("cannot close zip writer for dir %s, %w", sourceDir, err)
 	}
 
+	if verbose {
+		fmt.Println("zip size", len(buf.Bytes()))
+	}
 	return buf.Bytes(), nil
 }

@@ -28,6 +28,7 @@ var (
 	pushTag        string
 	pushOpen       bool
 	skipLogs       bool
+	verbose        bool
 	pushCmd        = &cobra.Command{
 		Use:   "push [flags]",
 		Short: "push code for project",
@@ -41,6 +42,7 @@ func init() {
 	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
 	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open builder instance/project in browser after push")
 	pushCmd.Flags().BoolVarP(&skipLogs, "skip-logs", "", false, "skip following logs after push")
+	pushCmd.Flags().BoolVarP(&verbose, "verbose", "", false, "verbose output during push")
 	rootCmd.AddCommand(pushCmd)
 }
 
@@ -258,7 +260,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	// push code & run build steps
 	logger.Printf("\n%s Pushing your code & running build process...\n", emoji.Package)
-	zippedCode, err := runtimeManager.ZipDir(pushProjectDir)
+	zippedCode, err := runtimeManager.ZipDir(pushProjectDir, verbose)
 	if err != nil {
 		return err
 	}
