@@ -4,17 +4,16 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/pkg/browser"
@@ -77,6 +76,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// check if project is initialized
+	pushProjectID := pushProjectID
 	if isProjectInitialized {
 		projectMeta, err := runtimeManager.GetProjectMeta()
 		if err != nil {
@@ -107,9 +107,6 @@ func push(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// parse spacefile and validate
-	logger.Printf("Validating Spacefile...\n\n")
-
 	s, err := spacefile.Open(pushProjectDir)
 	if err != nil {
 		if te, ok := err.(*yaml.TypeError); ok {
@@ -130,141 +127,67 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
-	// start push & build process
-	buildSpinnerInput := spinner.Input{
-		LoadingMsg: "Working on starting your build...",
-		Request: func() tea.Msg {
-			r, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: pushTag})
-
-			return spinner.Stop{
-				RequestResponse: spinner.RequestResponse{Response: r, Err: err},
-				FinishMsg:       fmt.Sprintf("%s Successfully started your build!", emoji.Check),
-			}
-		},
+	// push code & run build steps
+	zippedCode, nbFiles, err := runtime.ZipDir(pushProjectDir)
+	if err != nil {
+		return err
 	}
-	r := spinner.Run(&buildSpinnerInput)
-	if r.Err != nil {
-		if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
-			logger.Println(LoginInfo())
-			return nil
-		}
-		logger.Println(styles.Errorf("\n%s Failed to push project: %s", emoji.ErrorExclamation, r.Err))
+
+	logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
+	build, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: pushTag})
+	if err != nil {
+		logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
 		return nil
 	}
-	var br *api.CreateBuildResponse
-	var ok bool
-	if br, ok = r.Response.(*api.CreateBuildResponse); !ok {
-		return fmt.Errorf("failed to parse create build response")
-	}
+	logger.Printf("%s Successfully started your build!", emoji.Check)
 
 	// push spacefile
 	raw, err := spacefile.OpenRaw(pushProjectDir)
 	if err != nil {
 		return err
 	}
-	pushSpacefileInput := spinner.Input{
-		LoadingMsg: "Pushing your spacefile...",
-		Request: func() tea.Msg {
-			pr, err := client.PushSpacefile(&api.PushSpacefileRequest{
-				Manifest: raw,
-				BuildID:  br.ID,
-			})
-			return spinner.Stop{
-				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
-				FinishMsg:       fmt.Sprintf("%s Successfully pushed your Spacefile!", emoji.Check),
-			}
-		},
-	}
-	r = spinner.Run(&pushSpacefileInput)
-	if r.Err != nil {
-		if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
-			logger.Println(LoginInfo())
-			return nil
-		}
-		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, r.Err))
+
+	_, err = client.PushSpacefile(&api.PushSpacefileRequest{
+		Manifest: raw,
+		BuildID:  build.ID,
+	})
+	if err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, err))
 		return nil
 	}
+	logger.Printf("%s Successfully pushed your Spacefile!", emoji.Check)
 
-	// push spacefile icon
-	icon, err := s.GetIcon()
-	if err != nil {
-		if !errors.Is(err, spacefile.ErrInvalidIconPath) {
-			logger.Println(styles.Errorf("\n%s Failed to get icon, %v", emoji.ErrorExclamation, err))
-			return nil
-		}
-	}
-	pushSpacefileIcon := spinner.Input{
-		LoadingMsg: "Pushing your icon...",
-		Request: func() tea.Msg {
-			pr, err := client.PushIcon(&api.PushIconRequest{
-				Icon:        icon.Raw,
-				ContentType: icon.IconMeta.ContentType,
-				BuildID:     br.ID,
-			})
-			return spinner.Stop{
-				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
-				FinishMsg:       fmt.Sprintf("%s Successfully pushed your icon!", emoji.Check),
-			}
-		},
-	}
-	if !errors.Is(err, spacefile.ErrInvalidIconPath) {
-		r = spinner.Run(&pushSpacefileIcon)
-		if r.Err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
-				logger.Println(LoginInfo())
-				return nil
-			}
-			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, r.Err))
-			return nil
+	// // push spacefile icon
+	if icon, err := s.GetIcon(); err == nil {
+		if _, err := client.PushIcon(&api.PushIconRequest{
+			Icon:        icon.Raw,
+			ContentType: icon.IconMeta.ContentType,
+			BuildID:     build.ID,
+		}); err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, err))
+			os.Exit(1)
 		}
 	}
 
 	// push discovery file
-	df, err := discovery.Open(pushProjectDir)
-	if err != nil {
-		if !(errors.Is(err, discovery.ErrDiscoveryFileNotFound)) {
-			if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
-				logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
-				return nil
-			}
-			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+	if df, err := discovery.Open(pushProjectDir); err == nil {
+		if _, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
+			DiscoveryFile: df,
+			BuildID:       build.ID,
+		}); err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, err))
 			return nil
 		}
-	}
-	pushDiscoveryFile := spinner.Input{
-		LoadingMsg: "Pushing your Discovery file...",
-		Request: func() tea.Msg {
-			pr, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
-				DiscoveryFile: df,
-				BuildID:       br.ID,
-			})
-			return spinner.Stop{
-				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
-				FinishMsg:       fmt.Sprintf("%s Successfully pushed your Discovery file!", emoji.Check),
-			}
-		},
-	}
-	if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-		r = spinner.Run(&pushDiscoveryFile)
-		if r.Err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
-				logger.Println(LoginInfo())
-				return nil
-			}
-			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, r.Err))
-			return nil
-		}
-	}
-
-	// push code & run build steps
-	logger.Printf("\n%s Pushing your code & running build process...\n", emoji.Package)
-	zippedCode, err := runtime.ZipDir(pushProjectDir)
-	if err != nil {
-		return err
+		logger.Printf("%s Successfully pushed your Discovery file!", emoji.Check)
+	} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
+		logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
+		return nil
+	} else if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
+		logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
 	}
 
 	if _, err = client.PushCode(&api.PushCodeRequest{
-		BuildID: br.ID, ZippedCode: zippedCode,
+		BuildID: build.ID, ZippedCode: zippedCode,
 	}); err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
 			logger.Println(LoginInfo())
@@ -274,7 +197,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	if skipLogs {
-		b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
+		b, err := client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 		if err != nil {
 			logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 			return nil
@@ -303,7 +226,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	// get build logs
 	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
-		BuildID: br.ID,
+		BuildID: build.ID,
 	})
 	if err != nil {
 		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
@@ -322,7 +245,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// check build status
-	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: br.ID})
+	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 	if err != nil {
 		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 		return nil
@@ -333,7 +256,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// get promotion via build id (build id == revision id)
-	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: br.ID})
+	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: build.ID})
 	if err != nil {
 		logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
 		return nil

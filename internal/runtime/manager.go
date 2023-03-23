@@ -27,7 +27,7 @@ var (
 )
 
 //go:embed .spaceignore
-var defaultSpaceignore []byte
+var defaultSpaceignore string
 
 // Manager runtime manager handles files management and other services
 type Manager struct {
@@ -54,10 +54,6 @@ func NewManager(root string) (*Manager, error) {
 	}
 
 	return manager, nil
-}
-
-func CreateSpaceignore(projectDir string) error {
-	return os.WriteFile(path.Join(projectDir, ignoreFile), defaultSpaceignore, filePermMode)
 }
 
 // StoreProjectMeta stores project meta to disk
@@ -128,7 +124,7 @@ func AddSpaceToGitignore(projectDir string) error {
 		return nil
 	}
 
-	contents = append(contents, []byte("\n.space")...)
+	contents = append(contents, []byte("\n# Deta Space\n.space")...)
 	err = os.WriteFile(gitignorePath, contents, filePermMode)
 	if err != nil {
 		return fmt.Errorf("failed to append .space to .gitignore: %w", err)

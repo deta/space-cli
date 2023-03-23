@@ -1,13 +1,24 @@
-# python
-venv
+.hg
+.git
+.gitmodules
+.svn
+.cache
+.next
+.now
+.vercel
+.npmignore
+.dockerignore
+.gitignore
+.*.swp
+.DS_Store
+.wafpicke-*
+.lock-wscript
+.env.local
+.env.*.local
 .venv
-__pycache__
-
-# go
-vendor
-
-# node
+npm-debug.log
+config.gypi
 node_modules
-
-# all hidden files
-.*
+__pycache__
+venv
+CVS

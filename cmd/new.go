@@ -124,13 +124,6 @@ func new(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	// Create spaceignore if it doesn't exist
-	if _, err := os.Stat(path.Join(projectDir, ".spaceignore")); os.IsNotExist(err) {
-		if err := runtime.CreateSpaceignore(projectDir); err != nil {
-			return fmt.Errorf("failed to create .spaceignore, %w", err)
-		}
-	}
-
 	// add .space folder to gitignore
 	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
 		return fmt.Errorf("failed to add .space to gitignore, %w", err)
