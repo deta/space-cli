@@ -59,14 +59,15 @@ func ZipDir(sourceDir string) ([]byte, error) {
 
 		// skip if shouldSkip according to skipPaths which are derived from .spaceignore
 		shouldSkip := spaceignore.MatchesPath(path)
+		if shouldSkip && info.IsDir() {
+			return filepath.SkipDir
+		}
 
-		if info.IsDir() {
-			if shouldSkip {
-				return filepath.SkipDir
-			}
+		if shouldSkip {
 			return nil
 		}
-		if shouldSkip {
+
+		if info.IsDir() {
 			return nil
 		}
 

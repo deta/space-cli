@@ -94,7 +94,7 @@ func link(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to add .space to .gitignore, %w", err)
 	}
 
-	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
+	projectRes, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
 			logger.Println(LoginInfo())
@@ -107,17 +107,14 @@ func link(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: project.ID, Name: project.Name, Alias: project.Alias})
+	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: projectRes.ID, Name: projectRes.Name, Alias: projectRes.Alias})
 	if err != nil {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
 
-	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
-	projectInfo, err := runtimeManager.GetProjectMeta()
-	if err != nil {
-		return fmt.Errorf("failed to retrieve project info")
-	}
-	logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
+	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))
+
+	logger.Println(projectNotes(projectRes.Name, projectRes.ID))
 	cm := <-c
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))

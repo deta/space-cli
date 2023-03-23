@@ -9,8 +9,5 @@ vendor
 # node
 node_modules
 
-# git
-.git
-
-# env files
-.env
+# all hidden files
+.*

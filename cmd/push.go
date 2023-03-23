@@ -64,7 +64,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	var err error
 
-	pushProjectDir = filepath.Clean(pushProjectDir)
+	pushProjectDir := filepath.Clean(pushProjectDir)
 
 	runtimeManager, err := runtime.NewManager(pushProjectDir)
 	if err != nil {
@@ -94,7 +94,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// check if spacefile is present
-	isSpacefilePrsent, err := spacefile.IsSpacefilePresent(pushProjectDir)
+	isSpacefilePresent, err := spacefile.IsSpacefilePresent(pushProjectDir)
 	if err != nil {
 		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
 			logger.Printf("%s The Spacefile must be called exactly 'Spacefile'.\n", emoji.ErrorExclamation)
@@ -102,7 +102,7 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	if !isSpacefilePrsent {
+	if !isSpacefilePresent {
 		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile before pushing code.", emoji.ErrorExclamation))
 		return nil
 	}
@@ -262,6 +262,7 @@ func push(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if _, err = client.PushCode(&api.PushCodeRequest{
 		BuildID: br.ID, ZippedCode: zippedCode,
 	}); err != nil {
