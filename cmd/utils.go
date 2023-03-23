@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/shared"
+	"github.com/mattn/go-isatty"
 )
 
 const (
@@ -56,4 +58,8 @@ func projectNotes(projectName string, projectId string) string {
 
 func LoginInfo() string {
 	return styles.Boldf("No auth token found. Run %s or provide access token to login.", styles.Code("space login"))
+}
+
+func isOutputInteractive() bool {
+	return isatty.IsTerminal(os.Stdout.Fd())
 }

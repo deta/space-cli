@@ -46,7 +46,6 @@ func init() {
 	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
 	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "c", false, "release latest revision")
 	releaseCmd.Flags().StringVarP(&releaseNotes, "notes", "n", "", "release notes")
-	releaseCmd.Flags().Lookup("notes").NoOptDefVal = "<RELEASE_NOTES>" //use this line
 	rootCmd.AddCommand(releaseCmd)
 }
 
@@ -61,6 +60,9 @@ func selectProjectID() (string, error) {
 }
 
 func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
+	if !isOutputInteractive() {
+		return nil, fmt.Errorf("cannot select revision in non-interactive mode")
+	}
 	tags := []string{}
 	if len(revisions) > 5 {
 		revisions = revisions[:5]
@@ -123,6 +125,18 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if !cmd.Flags().Changed("notes") {
+		if !isOutputInteractive() {
+			return fmt.Errorf("--notes flag is required in non-interactive mode")
+		}
+		releaseNotes, err = selectReleaseNotes()
+		if err != nil {
+			return fmt.Errorf("problem while trying to get release notes from text area, %w", err)
+		}
+	} else if !isFlagEmpty(releaseNotes) {
+		logger.Printf("Using notes provided via arguments.\n\n")
+	}
+
 	if isFlagEmpty(revisionID) {
 		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
 		if err != nil {
@@ -143,6 +157,9 @@ func release(cmd *cobra.Command, args []string) error {
 		latestRevision := r.Revisions[0]
 
 		if !useLatestRevision {
+			if !isOutputInteractive() {
+				return fmt.Errorf("--confirm or --rid flag is required in non-interactive mode")
+			}
 			useLatestRevision, err = confirm.Run(&confirm.Input{
 				Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
 			})
@@ -154,21 +171,14 @@ func release(cmd *cobra.Command, args []string) error {
 		revisionID = latestRevision.ID
 
 		if !useLatestRevision {
-			selectedRevision, err := selectRevision(r.Revisions)
-			if err != nil {
-				return fmt.Errorf("problem while trying to get latest revision from prompt, %w", err)
+			if !isOutputInteractive() {
+				selectedRevision, err := selectRevision(r.Revisions)
+				if err != nil {
+					return fmt.Errorf("problem while trying to get latest revision from prompt, %w", err)
+				}
+				revisionID = selectedRevision.ID
 			}
-			revisionID = selectedRevision.ID
 		}
-	}
-
-	if releaseNotes == "<RELEASE_NOTES>" {
-		releaseNotes, err = selectReleaseNotes()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get release notes from text area, %w", err)
-		}
-	} else if !isFlagEmpty(releaseNotes) {
-		logger.Printf("Using notes provided via arguments.\n\n")
 	}
 
 	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
