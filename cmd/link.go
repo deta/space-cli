@@ -8,12 +8,9 @@ import (
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
-	"github.com/deta/pc-cli/internal/spacefile"
-	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
-	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +56,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 	linkProjectDir = filepath.Clean(linkProjectDir)
 
-	runtimeManager, err := runtime.NewManager(&linkProjectDir, true)
+	runtimeManager, err := runtime.NewManager(linkProjectDir)
 	if err != nil {
 		return err
 	}
@@ -92,117 +89,10 @@ func link(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	isSpacefilePresent, err := spacefile.IsSpacefilePresent(linkProjectDir)
+	err = runtime.AddSpaceToGitignore(projectDir)
 	if err != nil {
-		return fmt.Errorf("problem while trying to scan spacefile in dir %s, %v", linkProjectDir, err)
+		return fmt.Errorf("failed to add .space to .gitignore, %w", err)
 	}
-
-	// Spacefile exists
-	if isSpacefilePresent {
-		logger.Printf("%s Spacefile found, linking project with id \"%s\" to Space ...\n", emoji.Package, linkProjectID)
-
-		project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
-		if err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, err) {
-				logger.Println(LoginInfo())
-				return nil
-			}
-			if errors.Is(err, api.ErrProjectNotFound) {
-				logger.Println(NoProjectFoundMsg)
-				return nil
-			}
-			return err
-		}
-
-		err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: project.ID, Name: project.Name, Alias: project.Alias})
-		if err != nil {
-			return fmt.Errorf("failed to link project, %w", err)
-		}
-
-		logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
-		projectInfo, err := runtimeManager.GetProjectMeta()
-		if err != nil {
-			return fmt.Errorf("failed to retrieve project info")
-		}
-		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		err = runtimeManager.AddSpaceToGitignore()
-		if err != nil {
-			logger.Println(SpaceGitignoreInfo())
-		}
-		return nil
-	}
-
-	// no Spacefile present, auto-detect micros
-	logger.Printf("%s No Spacefile found, trying to auto-detect configuration ...\n", emoji.Package)
-	autoDetectedMicros, err := scanner.Scan(linkProjectDir)
-	if err != nil {
-		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks, %v", err)
-	}
-
-	if len(autoDetectedMicros) > 0 {
-		// prompt user for confirmation to link project with detected configuration
-		logger.Printf("%s Space detected the following configuration:\n\n", emoji.PointDown)
-		logDetectedMicros(autoDetectedMicros)
-
-		link, err := confirm.Run(&confirm.Input{
-			Prompt: "Do you want to use this configuration?",
-		})
-		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to link project with the auto-detected configuration from prompt, %v", err)
-		}
-
-		// link project with detected config
-		if link {
-			logger.Printf("%s Linking project with ID \"%s\" using bootstrapped configuration ...\n", emoji.Package, linkProjectID)
-
-			project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
-			if err != nil {
-				if errors.Is(auth.ErrNoAccessTokenFound, err) {
-					logger.Println(LoginInfo())
-					return nil
-				}
-				if errors.Is(err, api.ErrProjectNotFound) {
-					logger.Println(NoProjectFoundMsg)
-					return nil
-				}
-				return err
-			}
-
-			_, err = spacefile.CreateSpacefileWithMicros(linkProjectDir, autoDetectedMicros)
-			if err != nil {
-				return fmt.Errorf("failed to link project with detected micros, %w", err)
-			}
-
-			// TODO: verify project id through request
-			err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID, Name: project.Name, Alias: project.Alias})
-			if err != nil {
-				return fmt.Errorf("failed to link project, %w", err)
-			}
-
-			logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(project.Name), styles.Green("was linked!"))
-			projectInfo, err := runtimeManager.GetProjectMeta()
-			if err != nil {
-				return fmt.Errorf("failed to retrieve project info")
-			}
-			logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-			cm := <-c
-			if cm.err == nil && cm.isLower {
-				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-			}
-			err = runtimeManager.AddSpaceToGitignore()
-			if err != nil {
-				logger.Println(SpaceGitignoreInfo())
-			}
-			return nil
-		}
-	}
-
-	// linking with blank
-	logger.Printf("%s Linking project with id \"%s\" with a blank configuration ...\n", emoji.Package, linkProjectID)
 
 	project, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
 	if err != nil {
@@ -217,12 +107,7 @@ func link(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = spacefile.CreateBlankSpacefile(linkProjectDir)
-	if err != nil {
-		return fmt.Errorf("failed to create blank project, %w", err)
-	}
-
-	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: linkProjectID, Name: project.Name, Alias: project.Alias})
+	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: project.ID, Name: project.Name, Alias: project.Alias})
 	if err != nil {
 		return fmt.Errorf("failed to link project, %w", err)
 	}
@@ -237,9 +122,6 @@ func link(cmd *cobra.Command, args []string) error {
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 	}
-	err = runtimeManager.AddSpaceToGitignore()
-	if err != nil {
-		logger.Println(SpaceGitignoreInfo())
-	}
+
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -46,26 +47,15 @@ type Manager struct {
 
 // NewManager returns a new manager for the root dir of the project
 // if initDirs is true, it creates dirs under root
-func NewManager(root *string, initDirs bool) (*Manager, error) {
+func NewManager(root string) (*Manager, error) {
 	var rootDir string
-	if root != nil {
-		rootDir = *root
-	} else {
-		wd, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		rootDir = wd
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
 	}
+	rootDir = wd
 
 	spacePath := filepath.Join(rootDir, spaceDir)
-	if initDirs {
-		err := os.MkdirAll(spacePath, dirPermMode)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	manager := &Manager{
 		rootDir:         rootDir,
 		spacePath:       spacePath,
@@ -75,26 +65,25 @@ func NewManager(root *string, initDirs bool) (*Manager, error) {
 	return manager, nil
 }
 
-func CreateSpaceIgnoreIfNotExists(projectDir string) error {
-	spaceIgnorePath := filepath.Join(projectDir, ignoreFile)
-	if _, err := os.Stat(spaceIgnorePath); !os.IsNotExist(err) {
-		return nil
-	}
-
-	return os.WriteFile(spaceIgnorePath, []byte(defaultSpaceignoreRaw), filePermMode)
+func CreateSpaceignore(projectDir string) error {
+	return os.WriteFile(path.Join(projectDir, ignoreFile), []byte(defaultSpaceignoreRaw), filePermMode)
 }
 
 // StoreProjectMeta stores project meta to disk
-func (m *Manager) StoreProjectMeta(p *ProjectMeta) error {
+func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
+	spaceDir := path.Join(projectDir, ".space")
+	if _, err := os.Stat(spaceDir); os.IsNotExist(err) {
+		os.MkdirAll(spaceDir, dirPermMode)
+	}
 	marshalled, err := json.Marshal(p)
 	if err != nil {
 		return err
 	}
 
 	spaceReadmeNotes := "Don't commit this folder (.space) to git as it may contain security-sensitive data."
-	os.WriteFile(filepath.Join(m.spacePath, "README"), []byte(spaceReadmeNotes), filePermMode)
+	os.WriteFile(filepath.Join(spaceDir, "README"), []byte(spaceReadmeNotes), filePermMode)
 
-	return os.WriteFile(m.projectMetaPath, marshalled, filePermMode)
+	return os.WriteFile(spaceDir, marshalled, filePermMode)
 }
 
 // GetProjectMeta gets the project info stored
@@ -127,40 +116,32 @@ func (m *Manager) IsProjectInitialized() (bool, error) {
 }
 
 // AddSpaceToGitignore add .space to .gitignore
-func (m *Manager) AddSpaceToGitignore() error {
-	gitignorePath := filepath.Join(m.rootDir, ".gitignore")
-	gitignoreExists := true
-
-	_, err := os.Stat(gitignorePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			gitignoreExists = false
-		}
-	}
-
-	if gitignoreExists {
-		contents, err := m.readFile(gitignorePath)
+func AddSpaceToGitignore(projectDir string) error {
+	gitignorePath := filepath.Join(projectDir, ".gitignore")
+	if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
+		err = os.WriteFile(gitignorePath, []byte(".space"), filePermMode)
 		if err != nil {
-			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
-		}
-
-		// check if .space already exists
-		pass, _ := regexp.MatchString(`(?m)^(\.space)\b`, string(contents))
-		if pass {
-			return nil
-		}
-
-		contents = append(contents, []byte("\n.space")...)
-		err = os.WriteFile(gitignorePath, contents, filePermMode)
-		if err != nil {
-			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
+			return fmt.Errorf("failed to write .space to .gitignore: %w", err)
 		}
 		return nil
 	}
 
-	err = os.WriteFile(gitignorePath, []byte(".space"), filePermMode)
+	contents, err := os.ReadFile(gitignorePath)
 	if err != nil {
-		return fmt.Errorf("failed to write .space to .gitignore: %w", err)
+		return fmt.Errorf("failed to read .gitignore: %w", err)
+	}
+
+	// check if .space already exists
+	pass, _ := regexp.MatchString(`(?m)^(\.space)\b`, string(contents))
+	if pass {
+		return nil
+	}
+
+	contents = append(contents, []byte("\n.space")...)
+	err = os.WriteFile(gitignorePath, contents, filePermMode)
+	if err != nil {
+		return fmt.Errorf("failed to append .space to .gitignore: %w", err)
 	}
 	return nil
+
 }

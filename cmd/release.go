@@ -98,7 +98,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	releaseDir = filepath.Clean(releaseDir)
 
-	runtimeManager, err := runtime.NewManager(&releaseDir, true)
+	runtimeManager, err := runtime.NewManager(releaseDir)
 	if err != nil {
 		return err
 	}

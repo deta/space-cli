@@ -54,10 +54,6 @@ func projectNotes(projectName string, projectId string) string {
 		styles.Code("space push"))
 }
 
-func SpaceGitignoreInfo() string {
-	return styles.Errorf("%s Make sure to not commit %s %s %s", emoji.ErrorExclamation, styles.Codef(".space"), styles.Error("to git as it may contain security-sensitive data. Make sure to add it to your"), styles.Codef(".gitignore"))
-}
-
 func LoginInfo() string {
 	return styles.Boldf("No auth token found. Run %s or provide access token to login.", styles.Code("space login"))
 }

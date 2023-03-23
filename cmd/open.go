@@ -37,7 +37,7 @@ func open(cmd *cobra.Command, args []string) error {
 
 	openProjectDir = filepath.Clean(openProjectDir)
 
-	runtimeManager, err := runtime.NewManager(&openProjectDir, false)
+	runtimeManager, err := runtime.NewManager(openProjectDir)
 	if err != nil {
 		return err
 	}

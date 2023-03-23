@@ -64,20 +64,15 @@ func selectProjectName(placeholder string) (string, error) {
 	return text.Run(&promptInput)
 }
 
-func createProject(name string, runtimeManager *runtime.Manager) (string, error) {
+func createProject(name string, runtimeManager *runtime.Manager) (*runtime.ProjectMeta, error) {
 	res, err := client.CreateProject(&api.CreateProjectRequest{
 		Name: name,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias})
-	if err != nil {
-		return "", fmt.Errorf("failed to write project id to .space/meta, %w", err)
-	}
-
-	return res.ID, nil
+	return &runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias}, nil
 }
 
 func newPreRun(cmd *cobra.Command, args []string) {
@@ -88,13 +83,13 @@ func newPreRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func new(cmd *cobra.Command, args []string) error {
+func new(cmd *cobra.Command, args []string) (err error) {
 	// check space version
 	c := make(chan *checkVersionMsg, 1)
 	defer close(c)
 	go checkVersion(c)
 
-	projectName, err := cmd.Flags().GetString("name")
+	projectName, _ := cmd.Flags().GetString("name")
 	if strings.TrimSpace(projectName) == "" {
 		projectName, err = selectProjectName(filepath.Base(projectDir))
 		if err != nil {
@@ -102,15 +97,14 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	runtimeManager, err := runtime.NewManager(&projectDir, true)
+	runtimeManager, err := runtime.NewManager(projectDir)
 	if err != nil {
 		return fmt.Errorf("failed to initialize runtime manager, %w", err)
 	}
 
 	// Create spacefile if it doesn't exist
 	spaceFilePath := path.Join(projectDir, "Spacefile")
-	if _, err := os.Stat(spaceFilePath); !errors.Is(err, os.ErrNotExist) {
-
+	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
 		if blank {
 			if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
 				return fmt.Errorf("failed to create blank project, %w", err)
@@ -125,17 +119,25 @@ func new(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return fmt.Errorf("failed to create project with detected micros, %w", err)
 			}
-		}
 
+			logDetectedMicros(autoDetectedMicros)
+		}
 	}
 
 	// Create spaceignore if it doesn't exist
-	if err := runtime.CreateSpaceIgnoreIfNotExists(projectDir); err != nil {
-		return fmt.Errorf("failed to create .spaceignore, %w", err)
+	if _, err := os.Stat(path.Join(projectDir, ".spaceignore")); os.IsNotExist(err) {
+		if err := runtime.CreateSpaceignore(projectDir); err != nil {
+			return fmt.Errorf("failed to create .spaceignore, %w", err)
+		}
+	}
+
+	// add .space folder to gitignore
+	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
+		return fmt.Errorf("failed to add .space to gitignore, %w", err)
 	}
 
 	// Create project
-	projectId, err := createProject(projectName, runtimeManager)
+	meta, err := createProject(projectName, runtimeManager)
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
 			logger.Println(LoginInfo())
@@ -143,17 +145,17 @@ func new(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
 
-	logger.Println(projectNotes(projectName, projectId))
+	if err := runtime.StoreProjectMeta(projectDir, meta); err != nil {
+		return fmt.Errorf("failed to save project meta, %w", err)
+	}
+
+	logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
 
 	cm := <-c
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 	}
-	err = runtimeManager.AddSpaceToGitignore()
-	if err != nil {
-		logger.Println(SpaceGitignoreInfo())
-	}
+
 	return nil
 }
