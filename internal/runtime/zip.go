@@ -4,14 +4,20 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	ignore "github.com/sabhiram/go-gitignore"
 )
 
-func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
+func CompileIgnoreBytes(bytes []byte) (*ignore.GitIgnore, error) {
+	s := strings.Split(string(bytes), "\n")
+	return ignore.CompileIgnoreLines(s...), nil
+}
+
+func ZipDir(sourceDir string) ([]byte, error) {
 	absDir, err := filepath.Abs(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path for dir %s to zip, %w", sourceDir, err)
@@ -24,9 +30,23 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 		}
 	}
 
-	spaceignore, err := ignore.CompileIgnoreFile(filepath.Join(absDir, ignoreFile))
-	if err != nil {
-		spaceignore = defaultSpaceIgnore
+	var spaceignore *ignore.GitIgnore
+	spaceignorePath := filepath.Join(absDir, ".spaceignore")
+	if _, err := os.Stat(spaceignorePath); err == nil {
+		bytes, err := os.ReadFile(spaceignorePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read .spaceignore: %w", err)
+		}
+
+		spaceignore, err = CompileIgnoreBytes(bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile .spaceignore: %w", err)
+		}
+	} else {
+		spaceignore, err = CompileIgnoreBytes(defaultSpaceignore)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile default .spaceignore: %w", err)
+		}
 	}
 
 	files := make(map[string][]byte)
@@ -69,7 +89,7 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 			return e
 		}
 		defer f.Close()
-		contents, e := ioutil.ReadAll(f)
+		contents, e := io.ReadAll(f)
 		if e != nil {
 			return e
 		}

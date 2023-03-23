@@ -258,7 +258,7 @@ func push(cmd *cobra.Command, args []string) error {
 
 	// push code & run build steps
 	logger.Printf("\n%s Pushing your code & running build process...\n", emoji.Package)
-	zippedCode, err := runtimeManager.ZipDir(pushProjectDir)
+	zippedCode, err := runtime.ZipDir(pushProjectDir)
 	if err != nil {
 		return err
 	}

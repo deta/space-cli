@@ -9,9 +9,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
-
-	ignore "github.com/sabhiram/go-gitignore"
 )
 
 const (
@@ -30,13 +27,7 @@ var (
 )
 
 //go:embed .spaceignore
-var defaultSpaceignoreRaw string
-var defaultSpaceIgnore *ignore.GitIgnore
-
-func init() {
-	lines := strings.Split(defaultSpaceignoreRaw, "\n")
-	defaultSpaceIgnore = ignore.CompileIgnoreLines(lines...)
-}
+var defaultSpaceignore []byte
 
 // Manager runtime manager handles files management and other services
 type Manager struct {
@@ -66,7 +57,7 @@ func NewManager(root string) (*Manager, error) {
 }
 
 func CreateSpaceignore(projectDir string) error {
-	return os.WriteFile(path.Join(projectDir, ignoreFile), []byte(defaultSpaceignoreRaw), filePermMode)
+	return os.WriteFile(path.Join(projectDir, ignoreFile), defaultSpaceignore, filePermMode)
 }
 
 // StoreProjectMeta stores project meta to disk
