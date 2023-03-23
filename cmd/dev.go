@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	devDefaultPort = 4200
-	actionEndpoint = "__space/v0/actions"
+	devDefaultPort  = 4200
+	actionEndpoint  = "__space/v0/actions"
+	spaceDevDocsURL = "https://deta.space/docs/en/basics/local"
 )
 
 var (
@@ -250,8 +251,7 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			if errors.Is(err, shared.ErrNoDevCommand) {
 				logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
-				spaceDevDocs := "https://deta.space/docs/en/basics/projects#local-dev"
-				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocs))
+				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
 				os.Exit(1)
 			}
 			return err
@@ -460,8 +460,7 @@ func dev(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			if errors.Is(err, shared.ErrNoDevCommand) {
 				logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
-				spaceDevDocs := "https://deta.space/docs/en/basics/projects#local-dev"
-				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocs))
+				logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
 				continue
 			}
 		}
