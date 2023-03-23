@@ -526,6 +526,8 @@ func dev(cmd *cobra.Command, args []string) error {
 	}()
 
 	if open, _ := cmd.Flags().GetBool("open"); open {
+		// Wait a bit for the server to start
+		time.Sleep(1 * time.Second)
 		browser.OpenURL(fmt.Sprintf("http://%s", addr))
 	}
 
