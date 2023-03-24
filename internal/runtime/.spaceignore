@@ -1,24 +1,10 @@
-.hg
-.git
-.gitmodules
-.svn
-.cache
-.next
-.now
-.vercel
-.npmignore
-.dockerignore
-.gitignore
-.*.swp
-.DS_Store
-.wafpicke-*
-.lock-wscript
-.env.local
-.env.*.local
-.venv
-npm-debug.log
-config.gypi
+# Dotfiles
+.*
+
+# Javascript
 node_modules
+
+# Python
 __pycache__
 venv
-CVS
+virtualenv
