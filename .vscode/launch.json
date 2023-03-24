@@ -5,6 +5,51 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "space new",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "new"
+            ]
+        },
+        {
+            "name": "space link",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "link",
+                "--id=a0wrQNbiw9h2"
+            ]
+        },
+        {
+            "name": "space push",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "push",
+                "-d=starters/python-app"
+            ]
+        },
+        {
+            "name": "space release",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "release",
+                "-d=starters/python-app",
+                "--notes='Release notes'",
+                "--confirm"
+            ]
+        },
+        {
             "name": "space dev",
             "type": "go",
             "request": "launch",
