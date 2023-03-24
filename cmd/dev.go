@@ -126,10 +126,10 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if te, ok := err.(*yaml.TypeError); ok {
 			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
-			return nil
+			os.Exit(1)
 		}
 		logger.Println(styles.Error(fmt.Sprintf("%sError: %v", emoji.ErrorExclamation, err)))
-		return nil
+		os.Exit(1)
 	}
 
 	logger.Printf("%s Validating Spacefile...", styles.Green("✔️"))
