@@ -29,26 +29,6 @@ var (
 //go:embed .spaceignore
 var defaultSpaceignore string
 
-// Manager runtime manager handles files management and other services
-type Manager struct {
-	rootDir         string // working directory of the project
-	spacePath       string // dir for storing project meta
-	projectMetaPath string // path to info file about the project
-}
-
-// NewManager returns a new manager for the root dir of the project
-// if initDirs is true, it creates dirs under root
-func NewManager(rootDir string) *Manager {
-	spacePath := filepath.Join(rootDir, spaceDir)
-	manager := &Manager{
-		rootDir:         rootDir,
-		spacePath:       spacePath,
-		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
-	}
-
-	return manager
-}
-
 // StoreProjectMeta stores project meta to disk
 func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
 	spaceDir := path.Join(projectDir, ".space")
@@ -67,8 +47,8 @@ func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
 }
 
 // GetProjectMeta gets the project info stored
-func (m *Manager) GetProjectMeta() (*ProjectMeta, error) {
-	contents, err := m.readFile(m.projectMetaPath)
+func GetProjectMeta(projectDir string) (*ProjectMeta, error) {
+	contents, err := os.ReadFile(path.Join(projectDir, spaceDir, projectMetaFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
@@ -84,15 +64,9 @@ func (m *Manager) GetProjectMeta() (*ProjectMeta, error) {
 	return projectMeta, nil
 }
 
-func (m *Manager) IsProjectInitialized() (bool, error) {
-	_, err := os.Stat(m.projectMetaPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+func IsProjectInitialized(projectDir string) bool {
+	_, err := os.Stat(path.Join(projectDir, spaceDir))
+	return err == nil
 }
 
 // AddSpaceToGitignore add .space to .gitignore

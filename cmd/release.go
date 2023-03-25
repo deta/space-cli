@@ -90,7 +90,7 @@ func selectReleaseNotes() (string, error) {
 	return notes, err
 }
 
-func release(cmd *cobra.Command, args []string) error {
+func release(cmd *cobra.Command, args []string) (err error) {
 	logger.Println()
 
 	// check space version
@@ -99,16 +99,10 @@ func release(cmd *cobra.Command, args []string) error {
 	go checkVersion(c)
 
 	releaseDir = filepath.Clean(releaseDir)
-
-	runtimeManager := runtime.NewManager(releaseDir)
-
-	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
-	if err != nil {
-		return err
-	}
+	isProjectInitialized := runtime.IsProjectInitialized(releaseDir)
 
 	if isProjectInitialized {
-		projectMeta, err := runtimeManager.GetProjectMeta()
+		projectMeta, err := runtime.GetProjectMeta(releaseDir)
 		if err != nil {
 			return err
 		}

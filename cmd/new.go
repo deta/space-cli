@@ -64,7 +64,7 @@ func selectProjectName(placeholder string) (string, error) {
 	return text.Run(&promptInput)
 }
 
-func createProject(name string, runtimeManager *runtime.Manager) (*runtime.ProjectMeta, error) {
+func createProject(name string) (*runtime.ProjectMeta, error) {
 	res, err := client.CreateProject(&api.CreateProjectRequest{
 		Name: name,
 	})
@@ -97,8 +97,6 @@ func new(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	runtimeManager := runtime.NewManager(projectDir)
-
 	// Create spacefile if it doesn't exist
 	spaceFilePath := path.Join(projectDir, "Spacefile")
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
@@ -127,7 +125,7 @@ func new(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Create project
-	meta, err := createProject(projectName, runtimeManager)
+	meta, err := createProject(projectName)
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
 			logger.Println(LoginInfo())

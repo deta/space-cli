@@ -37,18 +37,12 @@ func open(cmd *cobra.Command, args []string) error {
 
 	openProjectDir = filepath.Clean(openProjectDir)
 
-	runtimeManager := runtime.NewManager(openProjectDir)
-
-	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
-	if err != nil {
-		return err
-	}
+	isProjectInitialized := runtime.IsProjectInitialized(openProjectDir)
 
 	var projectName string
-
 	// check if project is initialized
 	if isProjectInitialized {
-		projectMeta, err := runtimeManager.GetProjectMeta()
+		projectMeta, err := runtime.GetProjectMeta(openProjectDir)
 		if err != nil {
 			return err
 		}
