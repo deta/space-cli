@@ -38,14 +38,7 @@ type Manager struct {
 
 // NewManager returns a new manager for the root dir of the project
 // if initDirs is true, it creates dirs under root
-func NewManager(root string) (*Manager, error) {
-	var rootDir string
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	rootDir = wd
-
+func NewManager(rootDir string) *Manager {
 	spacePath := filepath.Join(rootDir, spaceDir)
 	manager := &Manager{
 		rootDir:         rootDir,
@@ -53,7 +46,7 @@ func NewManager(root string) (*Manager, error) {
 		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
 	}
 
-	return manager, nil
+	return manager
 }
 
 // StoreProjectMeta stores project meta to disk

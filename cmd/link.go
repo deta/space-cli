@@ -56,11 +56,7 @@ func link(cmd *cobra.Command, args []string) error {
 
 	linkProjectDir = filepath.Clean(linkProjectDir)
 
-	runtimeManager, err := runtime.NewManager(linkProjectDir)
-	if err != nil {
-		return err
-	}
-
+	runtimeManager := runtime.NewManager(linkProjectDir)
 	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
 	if err != nil {
 		return err

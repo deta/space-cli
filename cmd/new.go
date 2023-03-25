@@ -97,10 +97,7 @@ func new(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	runtimeManager, err := runtime.NewManager(projectDir)
-	if err != nil {
-		return fmt.Errorf("failed to initialize runtime manager, %w", err)
-	}
+	runtimeManager := runtime.NewManager(projectDir)
 
 	// Create spacefile if it doesn't exist
 	spaceFilePath := path.Join(projectDir, "Spacefile")

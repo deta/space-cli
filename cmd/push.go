@@ -64,11 +64,7 @@ func push(cmd *cobra.Command, args []string) error {
 	var err error
 
 	pushProjectDir := filepath.Clean(pushProjectDir)
-
-	runtimeManager, err := runtime.NewManager(pushProjectDir)
-	if err != nil {
-		return err
-	}
+	runtimeManager := runtime.NewManager(pushProjectDir)
 
 	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
 	if err != nil {

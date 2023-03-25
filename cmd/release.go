@@ -100,10 +100,7 @@ func release(cmd *cobra.Command, args []string) error {
 
 	releaseDir = filepath.Clean(releaseDir)
 
-	runtimeManager, err := runtime.NewManager(releaseDir)
-	if err != nil {
-		return err
-	}
+	runtimeManager := runtime.NewManager(releaseDir)
 
 	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
 	if err != nil {
