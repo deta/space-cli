@@ -8,6 +8,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"mime"
+	"path"
 
 	"os"
 
@@ -64,7 +65,7 @@ var (
 )
 
 // ValidateSpacefile checks for general errors such as duplicate micros and max micro limit
-func ValidateSpacefile(s *Spacefile) []error {
+func ValidateSpacefile(s *Spacefile, projectDir string) []error {
 
 	var primarySpecified bool
 
@@ -93,7 +94,7 @@ func ValidateSpacefile(s *Spacefile) []error {
 			primarySpecified = true
 		}
 		microNames[micro.Name] = struct{}{}
-		microErrors := ValidateMicro(micro)
+		microErrors := ValidateMicro(micro, projectDir)
 		for _, err := range microErrors {
 			if err != nil {
 				errors = append(errors, &MicroError{Err: err, Micro: micro})
@@ -136,7 +137,7 @@ func ValidateSpacefileIcon(iconPath string) error {
 }
 
 // ValidateMicro validate micro
-func ValidateMicro(micro *shared.Micro) []error {
+func ValidateMicro(micro *shared.Micro, projectDir string) []error {
 	errors := []error{}
 
 	if micro.Name == "" {
@@ -151,11 +152,10 @@ func ValidateMicro(micro *shared.Micro) []error {
 		}
 	}
 
-	_, err := os.Stat(micro.Src)
-	if os.IsNotExist(err) {
-		if micro.Src == "" {
-			errors = append(errors, ErrEmptyMicroSrc)
-		} else {
+	if micro.Src == "" {
+		errors = append(errors, ErrEmptyMicroSrc)
+	} else {
+		if _, err := os.Stat(path.Join(projectDir, micro.Src)); os.IsNotExist(err) {
 			errors = append(errors, ErrInvalidMicroSrc)
 		}
 	}

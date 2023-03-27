@@ -46,15 +46,12 @@ func projectNotes(projectName string, projectId string) string {
 
 %s Find your project in Builder: %s
 %s Use the %s to configure your app: %s
-%s Push your code to Space with %s
-%s Launch your app to the world with %s`, styles.Bold("Next steps:"), emoji.Eyes,
+%s Push your code to Space with %s`, styles.Bold("Next steps:"), emoji.Eyes,
 		styles.Bold(fmt.Sprintf("%s/%s", builderUrl, projectId)),
 		emoji.Files,
 		styles.Code("Spacefile"), styles.Bold(spacefileDocsUrl),
 		emoji.Swirl,
-		styles.Code("space push"),
-		emoji.Rocket,
-		styles.Code("space release"))
+		styles.Code("space push"))
 }
 
 func SpaceGitignoreInfo() string {

@@ -110,7 +110,7 @@ func push(cmd *cobra.Command, args []string) error {
 	// parse spacefile and validate
 	logger.Printf("Validating Spacefile...\n\n")
 
-	s, err := spacefile.Open(projectDir)
+	s, err := spacefile.Open(pushProjectDir)
 	if err != nil {
 		if te, ok := err.(*yaml.TypeError); ok {
 			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
@@ -119,7 +119,7 @@ func push(cmd *cobra.Command, args []string) error {
 		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
 		return nil
 	}
-	spacefileErrors := spacefile.ValidateSpacefile(s)
+	spacefileErrors := spacefile.ValidateSpacefile(s, pushProjectDir)
 
 	if len(spacefileErrors) > 0 {
 		logValidationErrors(s, spacefileErrors)
@@ -414,7 +414,6 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
-	logger.Printf("Run %s to create a release that others can install.\n\n", styles.Code("space release"))
 
 	if instanceUrl != "" {
 		logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
