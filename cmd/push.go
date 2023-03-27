@@ -10,7 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
-	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
@@ -215,43 +214,6 @@ func push(cmd *cobra.Command, args []string) error {
 				return nil
 			}
 			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, r.Err))
-			return nil
-		}
-	}
-
-	// push discovery file
-	df, err := discovery.Open(pushProjectDir)
-	if err != nil {
-		if !(errors.Is(err, discovery.ErrDiscoveryFileNotFound)) {
-			if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
-				logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
-				return nil
-			}
-			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
-			return nil
-		}
-	}
-	pushDiscoveryFile := spinner.Input{
-		LoadingMsg: "Pushing your Discovery file...",
-		Request: func() tea.Msg {
-			pr, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
-				DiscoveryFile: df,
-				BuildID:       br.ID,
-			})
-			return spinner.Stop{
-				RequestResponse: spinner.RequestResponse{Response: pr, Err: err},
-				FinishMsg:       fmt.Sprintf("%s Successfully pushed your Discovery file!", emoji.Check),
-			}
-		},
-	}
-	if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-		r = spinner.Run(&pushDiscoveryFile)
-		if r.Err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, r.Err) {
-				logger.Println(LoginInfo())
-				return nil
-			}
-			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, r.Err))
 			return nil
 		}
 	}
