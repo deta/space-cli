@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
@@ -15,118 +15,61 @@ import (
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
-var (
-	pushProjectID  string
-	pushProjectDir string
-	pushTag        string
-	pushOpen       bool
-	skipLogs       bool
-	pushCmd        = &cobra.Command{
-		Use:   "push [flags]",
-		Short: "push code for project",
-		RunE:  push,
-	}
-)
-
-func init() {
-	pushCmd.Flags().StringVarP(&pushProjectID, "id", "i", "", "project id of project to push")
-	pushCmd.Flags().StringVarP(&pushProjectDir, "dir", "d", "./", "src of project to push")
-	pushCmd.Flags().StringVarP(&pushTag, "tag", "t", "", "tag to identify this push")
-	pushCmd.Flags().BoolVarP(&pushOpen, "open", "o", false, "open builder instance/project in browser after push")
-	pushCmd.Flags().BoolVarP(&skipLogs, "skip-logs", "", false, "skip following logs after push")
-	rootCmd.AddCommand(pushCmd)
-}
-
-func selectPushProjectID() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "What is your Project ID?",
-		Placeholder: "",
-		Validator:   projectIDValidator,
+func newCmdPush() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "push [flags]",
+		Short:   "push code for project",
+		Args:    cobra.NoArgs,
+		PreRunE: CheckAll(CheckProjectInitialized("dir"), CheckNotEmpty("id", "tag")),
+		RunE:    push,
 	}
 
-	return text.Run(&promptInput)
+	cmd.Flags().StringP("id", "i", "", "project id of project to push")
+	cmd.Flags().StringP("dir", "d", "./", "src of project to push")
+	cmd.MarkFlagDirname("dir")
+	cmd.Flags().StringP("tag", "t", "", "tag to identify this push")
+	cmd.Flags().BoolP("skip-logs", "", false, "skip following logs after push")
+
+	return cmd
 }
 
 func push(cmd *cobra.Command, args []string) error {
-	logger.Println()
-
 	// check space version
 	c := make(chan *checkVersionMsg, 1)
 	defer close(c)
 	go checkVersion(c)
 
-	var err error
+	projectDir, _ := cmd.Flags().GetString("dir")
+	projectID, _ := cmd.Flags().GetString("id")
+	pushTag, _ := cmd.Flags().GetString("tag")
+	openInBrowser, _ := cmd.Flags().GetBool("open")
+	skipLogs, _ := cmd.Flags().GetBool("skip-logs")
 
-	pushProjectDir := filepath.Clean(pushProjectDir)
-
-	isProjectInitialized := runtime.IsProjectInitialized(pushProjectDir)
-
-	// check if project is initialized
-	pushProjectID := pushProjectID
-	if isProjectInitialized {
-		projectMeta, err := runtime.GetProjectMeta(pushProjectDir)
+	if !cmd.Flags().Changed("id") {
+		var err error
+		projectID, err = runtime.GetProjectID(projectDir)
 		if err != nil {
 			return err
 		}
-		pushProjectID = projectMeta.ID
-	} else if isFlagEmpty(pushProjectID) {
-		logger.Printf("No project was found in the current directory.\n\n")
-		logger.Printf("You can still push by providing a valid Project ID.\n\n")
-
-		pushProjectID, err = selectPushProjectID()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get project id to push from prompt, %v", err)
-		}
 	}
 
-	// check if spacefile is present
-	isSpacefilePresent, err := spacefile.IsSpacefilePresent(pushProjectDir)
+	s, err := spacefile.Parse(path.Join(projectDir, "Spacefile"))
 	if err != nil {
-		if errors.Is(err, spacefile.ErrSpacefileWrongCase) {
-			logger.Printf("%s The Spacefile must be called exactly 'Spacefile'.\n", emoji.ErrorExclamation)
-			return nil
-		}
 		return err
-	}
-	if !isSpacefilePresent {
-		logger.Println(styles.Errorf("%s No Spacefile is present. Please add a Spacefile before pushing code.", emoji.ErrorExclamation))
-		return nil
-	}
-
-	s, err := spacefile.Open(pushProjectDir)
-	if err != nil {
-		if te, ok := err.(*yaml.TypeError); ok {
-			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
-			return nil
-		}
-		logger.Println(styles.Error(fmt.Sprintf("%s Error: %v", emoji.ErrorExclamation, err)))
-		return nil
-	}
-	spacefileErrors := spacefile.ValidateSpacefile(s, pushProjectDir)
-
-	if len(spacefileErrors) > 0 {
-		logValidationErrors(s, spacefileErrors)
-		logger.Println(styles.Error("\nPlease try to fix the issues with your Spacefile before pushing code."))
-		return nil
-	} else {
-		logValidationErrors(s, spacefileErrors)
-		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
 
 	// push code & run build steps
-	zippedCode, nbFiles, err := runtime.ZipDir(pushProjectDir)
+	zippedCode, nbFiles, err := runtime.ZipDir(projectDir)
 	if err != nil {
 		return err
 	}
 
 	logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
-	build, err := client.CreateBuild(&api.CreateBuildRequest{AppID: pushProjectID, Tag: pushTag})
+	build, err := client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag})
 	if err != nil {
 		logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
 		return nil
@@ -134,7 +77,7 @@ func push(cmd *cobra.Command, args []string) error {
 	logger.Printf("%s Successfully started your build!", emoji.Check)
 
 	// push spacefile
-	raw, err := spacefile.OpenRaw(pushProjectDir)
+	raw, err := os.ReadFile(path.Join(projectDir, "Spacefile"))
 	if err != nil {
 		return err
 	}
@@ -162,7 +105,7 @@ func push(cmd *cobra.Command, args []string) error {
 	}
 
 	// push discovery file
-	if df, err := discovery.Open(pushProjectDir); err == nil {
+	if df, err := discovery.Open(projectDir); err == nil {
 		if _, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
 			DiscoveryFile: df,
 			BuildID:       build.ID,
@@ -191,24 +134,22 @@ func push(cmd *cobra.Command, args []string) error {
 	if skipLogs {
 		b, err := client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 		if err != nil {
-			logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+			logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
 			return nil
 		}
 
-		var url = fmt.Sprintf("%s/%s?event=bld-%s", builderUrl, pushProjectID, b.Tag)
+		var url = fmt.Sprintf("%s/%s?event=bld-%s", builderUrl, projectID, b.Tag)
 
 		logger.Println(styles.Greenf("\n%s Successfully pushed your code!", emoji.PartyPopper))
 		logger.Println("\nSkipped following build process, please check build status manually:")
 		logger.Println(styles.Codef(url))
-
-		if pushOpen {
+		if openInBrowser {
 			err = browser.OpenURL(url)
 
 			if err != nil {
 				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
 			}
 		}
-
 		cm := <-c
 		if cm.err == nil && cm.isLower {
 			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
@@ -239,7 +180,7 @@ func push(cmd *cobra.Command, args []string) error {
 	// check build status
 	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
 		return nil
 	}
 	if b.Status != api.Complete {
@@ -250,7 +191,7 @@ func push(cmd *cobra.Command, args []string) error {
 	// get promotion via build id (build id == revision id)
 	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: build.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
 		return nil
 	}
 
@@ -277,7 +218,7 @@ func push(cmd *cobra.Command, args []string) error {
 	// check promotion status
 	p, err = client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: p.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
 		return nil
 	}
 	if p.Status != api.Complete {
@@ -289,7 +230,7 @@ func push(cmd *cobra.Command, args []string) error {
 	i, err := client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
 	if err != nil {
 		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, pushProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
 		return nil
 	}
 
@@ -321,7 +262,7 @@ func push(cmd *cobra.Command, args []string) error {
 	// check installation status
 	i, err = client.GetInstallation(&api.GetInstallationRequest{ID: i.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
+		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
 		return nil
 	}
 	if i.Status != api.Complete {
@@ -334,7 +275,7 @@ func push(cmd *cobra.Command, args []string) error {
 	if instanceUrl != "" {
 		logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
 
-		if pushOpen {
+		if openInBrowser {
 			err = browser.OpenURL(instanceUrl)
 
 			if err != nil {

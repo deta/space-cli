@@ -11,20 +11,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	execCmd = &cobra.Command{
+func newCmdExec() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:    "exec",
 		Short:  "executes a command in space context",
 		Args:   cobra.MinimumNArgs(1),
 		PreRun: execPreRun,
 		Run:    execRun,
 	}
-)
 
-func init() {
-	execCmd.Flags().String("project", "", "id of project to exec the command in")
-	execCmd.MarkFlagRequired("project")
-	rootCmd.AddCommand(execCmd)
+	cmd.Flags().String("project", "", "id of project to exec the command in")
+	cmd.MarkFlagRequired("project")
+
+	return cmd
 }
 
 func execPreRun(cmd *cobra.Command, args []string) {

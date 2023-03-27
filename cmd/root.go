@@ -10,7 +10,12 @@ import (
 )
 
 var (
-	rootCmd = &cobra.Command{
+	client = api.NewDetaClient()
+	logger = log.New(os.Stderr, "", 0)
+)
+
+func NewSpaceCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "space",
 		Short: "Deta Space CLI for mananging Deta Space projects",
 		Long: fmt.Sprintf(`Deta Space command line interface for managing Deta Space projects.
@@ -23,14 +28,16 @@ Complete documentation available at %s`, docsUrl),
 		DisableAutoGenTag: true,
 	}
 
-	client = api.NewDetaClient()
+	cmd.AddCommand(newCmdLogin())
+	cmd.AddCommand(newCmdLink())
+	cmd.AddCommand(newCmdPush())
+	cmd.AddCommand(newCmdExec())
+	cmd.AddCommand(newCmdDev())
+	cmd.AddCommand(newCmdNew())
+	cmd.AddCommand(newCmdVersion())
+	cmd.AddCommand(newCmdOpen())
+	cmd.AddCommand(newCmdValidate())
+	cmd.AddCommand(newCmdRelease())
 
-	logger = log.New(os.Stderr, "", 0)
-)
-
-// Execute xx
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+	return cmd
 }

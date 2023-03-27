@@ -9,18 +9,19 @@ import (
 )
 
 var (
-	spaceVersion string
+	spaceVersion string = "dev"
 	platform     string
+)
 
-	versionCmd = &cobra.Command{
+func newCmdVersion() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Space CLI version",
 		RunE:  version,
 	}
-)
 
-func init() {
-	rootCmd.AddCommand(versionCmd)
+	cmd.AddCommand(newCmdVersionUpgrade())
+	return cmd
 }
 
 func version(cmd *cobra.Command, args []string) error {
@@ -51,7 +52,7 @@ func isPrerelease(version string) bool {
 func checkVersion(c chan *checkVersionMsg) {
 	cm := &checkVersionMsg{}
 
-	if isPrerelease(spaceVersion) {
+	if isPrerelease(spaceVersion) || spaceVersion == "dev" {
 		c <- cm
 		return
 	}

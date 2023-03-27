@@ -6,59 +6,63 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
-	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/scanner"
 	"github.com/spf13/cobra"
 )
 
-var (
-	projectName string
-	projectDir  string
-	blank       bool
+func newCmdNew() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "new [flags]",
+		Short: "create new project",
+		RunE:  new,
+		PreRunE: CheckAll(
+			CheckExists("dir"),
+			func(cmd *cobra.Command, args []string) error {
+				if cmd.Flags().Changed("name") {
+					name, _ := cmd.Flags().GetString("name")
+					return validateProjectName(name)
+				}
 
-	newCmd = &cobra.Command{
-		Use:    "new [flags]",
-		Short:  "create new project",
-		RunE:   new,
-		PreRun: newPreRun,
+				return nil
+			}),
 	}
-)
 
-func init() {
-	newCmd.Flags().StringVarP(&projectName, "name", "n", "", "project name")
-	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "src of project to release")
-	newCmd.MarkFlagDirname("dir")
-	newCmd.Flags().BoolVarP(&blank, "blank", "b", false, "create blank project")
-	rootCmd.AddCommand(newCmd)
+	cmd.Flags().StringP("name", "n", "", "project name")
+	cmd.Flags().StringP("dir", "d", "./", "src of project to release")
+	cmd.MarkFlagDirname("dir")
+	cmd.Flags().BoolP("blank", "b", false, "create blank project")
+
+	if !isOutputInteractive() {
+		cmd.MarkFlagRequired("name")
+	}
+
+	return cmd
 }
 
-func projectNameValidator(projectName string) error {
-
+func validateProjectName(projectName string) error {
 	if len(projectName) < 4 {
-		return fmt.Errorf("project name \"%s\" must be at least 4 characters long", projectName)
+		return fmt.Errorf("project name must be at least 4 characters long")
 	}
 
 	if len(projectName) > 16 {
-		return fmt.Errorf("project name \"%s\" must be at most 16 characters long", projectName)
+		return fmt.Errorf("project name must be at most 16 characters long")
 	}
 
 	return nil
 }
 
 func selectProjectName(placeholder string) (string, error) {
-
 	promptInput := text.Input{
 		Prompt:      "What is your project's name?",
 		Placeholder: placeholder,
-		Validator:   projectNameValidator,
+		Validator:   validateProjectName,
 	}
 
 	return text.Run(&promptInput)
@@ -75,32 +79,27 @@ func createProject(name string) (*runtime.ProjectMeta, error) {
 	return &runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias}, nil
 }
 
-func newPreRun(cmd *cobra.Command, args []string) {
-	if _, err := os.Stat(path.Join(projectDir, ".space")); !errors.Is(err, os.ErrNotExist) {
-		logger.Println(styles.Error("A project already exists in this directory."))
-		logger.Println(styles.Error("You can use"), styles.Code("space push"), styles.Error("to create a Revision."))
-		os.Exit(1)
-	}
-}
-
 func new(cmd *cobra.Command, args []string) (err error) {
 	// check space version
 	c := make(chan *checkVersionMsg, 1)
 	defer close(c)
 	go checkVersion(c)
 
+	projectDir, _ := cmd.Flags().GetString("dir")
+	blankProject, _ := cmd.Flags().GetBool("blank")
 	projectName, _ := cmd.Flags().GetString("name")
-	if strings.TrimSpace(projectName) == "" {
+
+	if !cmd.Flags().Changed("name") {
 		projectName, err = selectProjectName(filepath.Base(projectDir))
 		if err != nil {
-			return fmt.Errorf("problem while trying to get project's name through prompt, %w", err)
+			os.Exit(1)
 		}
 	}
 
 	// Create spacefile if it doesn't exist
 	spaceFilePath := path.Join(projectDir, "Spacefile")
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
-		if blank {
+		if blankProject {
 			if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
 				return fmt.Errorf("failed to create blank project, %w", err)
 			}
@@ -110,12 +109,15 @@ func new(cmd *cobra.Command, args []string) (err error) {
 				return fmt.Errorf("problem while trying to auto detect runtimes/frameworks for project %s, %w", projectName, err)
 			}
 
+			for _, micro := range autoDetectedMicros {
+				logger.Printf("Micro found in \"%s\"\n", styles.Code(fmt.Sprintf("%s/", micro.Src)))
+				logger.Printf("L engine: %s\n\n", styles.Blue(micro.Engine))
+			}
+
 			_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
 				return fmt.Errorf("failed to create project with detected micros, %w", err)
 			}
-
-			logDetectedMicros(autoDetectedMicros)
 		}
 	}
 
@@ -138,7 +140,9 @@ func new(cmd *cobra.Command, args []string) (err error) {
 		return fmt.Errorf("failed to save project meta, %w", err)
 	}
 
-	logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
+	logger.Println(styles.Greenf("Project %s created successfully!", projectName))
+
+	logger.Println(projectNotes(projectName, meta.ID))
 
 	cm := <-c
 	if cm.err == nil && cm.isLower {

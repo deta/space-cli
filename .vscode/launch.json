@@ -5,6 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "build space docs",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/scripts/generate-docs.go",
+        },
+        {
             "name": "space new",
             "type": "go",
             "request": "launch",
@@ -26,6 +33,17 @@
             ]
         },
         {
+            "name": "space validate",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "validate",
+                "-d=${input:appFolder}"
+            ]
+        },
+        {
             "name": "space push",
             "type": "go",
             "request": "launch",
@@ -33,7 +51,7 @@
             "program": "${workspaceFolder}",
             "args": [
                 "push",
-                "-d=starters/python-app"
+                "-d=${input:appFolder}"
             ]
         },
         {
@@ -46,7 +64,7 @@
                 "release",
                 "-d=starters/python-app",
                 "--notes='Release notes'",
-                "--confirm"
+                "--latest"
             ]
         },
         {

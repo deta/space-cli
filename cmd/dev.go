@@ -29,7 +29,6 @@ import (
 	"github.com/deta/pc-cli/shared"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -38,14 +37,31 @@ const (
 	spaceDevDocsURL = "https://deta.space/docs/en/basics/local"
 )
 
-var (
-	devCmd = &cobra.Command{
+var ()
+
+func newCmdDev() *cobra.Command {
+	devCmd := &cobra.Command{
 		Use:               "dev",
 		Short:             "Spin up a local development environment for your Space project",
 		PersistentPreRunE: devPreRun,
 		RunE:              dev,
 	}
-	devUpCmd = &cobra.Command{
+
+	devCmd.AddCommand(newCmdDevUp())
+	devCmd.AddCommand(newCmdDevProxy())
+	devCmd.AddCommand(newCmdDevTrigger())
+
+	devCmd.PersistentFlags().StringP("dir", "d", ".", "directory of the Spacefile")
+	devCmd.PersistentFlags().StringP("id", "i", "", "project id of the project to run")
+	devCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	devCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
+	devCmd.Flags().Bool("open", false, "open the app in the browser")
+
+	return devCmd
+}
+
+func newCmdDevUp() *cobra.Command {
+	devUpCmd := &cobra.Command{
 		Short: "Start a local server for a specific micro",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			dir, _ := cmd.Flags().GetString("dir")
@@ -60,42 +76,36 @@ var (
 		RunE: devUp,
 	}
 
-	devProxyCmd = &cobra.Command{
+	devUpCmd.Flags().IntP("port", "p", 0, "port to run the micro on")
+	devUpCmd.Flags().Bool("open", false, "open the app in the browser")
+
+	return devUpCmd
+}
+
+func newCmdDevProxy() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "proxy",
 		Short: "Start the proxy server for your running micros",
 		RunE:  devProxy,
 	}
-	devTriggerCmd = &cobra.Command{
+
+	cmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	cmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
+	cmd.Flags().Bool("open", false, "open the app in the browser")
+
+	return cmd
+}
+
+func newCmdDevTrigger() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "trigger <action>",
 		Short:   "Trigger a micro action",
 		Aliases: []string{"t"},
 		Args:    cobra.ExactArgs(1),
 		RunE:    devTrigger,
 	}
-)
 
-func init() {
-	// dev up
-	devUpCmd.Flags().IntP("port", "p", 0, "port to run the micro on")
-	devUpCmd.Flags().Bool("open", false, "open the app in the browser")
-	devCmd.AddCommand(devUpCmd)
-
-	// dev proxy
-	devProxyCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
-	devProxyCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
-	devProxyCmd.Flags().Bool("open", false, "open the app in the browser")
-	devCmd.AddCommand(devProxyCmd)
-
-	// dev trigger
-	devCmd.AddCommand(devTriggerCmd)
-
-	// dev
-	devCmd.PersistentFlags().StringP("dir", "d", ".", "directory of the Spacefile")
-	devCmd.PersistentFlags().StringP("id", "i", "", "project id of the project to run")
-	devCmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
-	devCmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
-	devCmd.Flags().Bool("open", false, "open the app in the browser")
-	rootCmd.AddCommand(devCmd)
+	return cmd
 }
 
 func devPreRun(cmd *cobra.Command, args []string) error {
@@ -119,24 +129,6 @@ func devPreRun(cmd *cobra.Command, args []string) error {
 		devProjectID = meta.ID
 		cmd.Flags().Set("id", devProjectID)
 
-	}
-
-	// parse spacefile and validate
-	s, err := spacefile.Open(projectDirectory)
-	if err != nil {
-		if te, ok := err.(*yaml.TypeError); ok {
-			logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
-			return nil
-		}
-		logger.Println(styles.Error(fmt.Sprintf("%sError: %v", emoji.ErrorExclamation, err)))
-		return nil
-	}
-
-	logger.Printf("%s Validating Spacefile...", styles.Green("✔️"))
-	if spacefileErrors := spacefile.ValidateSpacefile(s, projectDirectory); len(spacefileErrors) > 0 {
-		logValidationErrors(s, spacefileErrors)
-		logger.Println("Please fix the errors in your Spacefile and try again.")
-		os.Exit(1)
 	}
 
 	return nil
@@ -215,7 +207,11 @@ func devUp(cmd *cobra.Command, args []string) (err error) {
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectId, _ := cmd.Flags().GetString("id")
 
-	spacefile, _ := spacefile.Open(projectDir)
+	spacefile, err := spacefile.Parse(projectDir)
+	if err != nil {
+		return err
+	}
+
 	projectKey, err := generateDataKeyIfNotExists(projectId)
 	if err != nil {
 		logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
@@ -301,7 +297,7 @@ func devProxy(cmd *cobra.Command, args []string) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
 
 	microDir := path.Join(directory, ".space", "micros")
-	spacefile, _ := spacefile.Open(directory)
+	spacefile, _ := spacefile.Parse(directory)
 
 	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
 		logger.Printf("\n%sNo running micros detected.", emoji.X)
@@ -344,7 +340,7 @@ func devProxy(cmd *cobra.Command, args []string) error {
 
 func devTrigger(cmd *cobra.Command, args []string) (err error) {
 	directory, _ := cmd.Flags().GetString("dir")
-	spacefile, _ := spacefile.Open(directory)
+	spacefile, _ := spacefile.Parse(directory)
 	routeDir := path.Join(directory, ".space", "micros")
 
 	actionId := args[0]
@@ -414,7 +410,7 @@ func dev(cmd *cobra.Command, args []string) error {
 	host, _ := cmd.Flags().GetString("host")
 
 	routeDir := path.Join(projectDir, ".space", "micros")
-	spacefile, _ := spacefile.Open(projectDir)
+	spacefile, _ := spacefile.Parse(projectDir)
 	projectKey, err := generateDataKeyIfNotExists(projectId)
 	if err != nil {
 		logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)

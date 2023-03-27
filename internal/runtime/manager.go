@@ -51,7 +51,7 @@ func GetProjectMeta(projectDir string) (*ProjectMeta, error) {
 	contents, err := os.ReadFile(path.Join(projectDir, spaceDir, projectMetaFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, err
 		}
 		return nil, err
 	}
@@ -64,8 +64,16 @@ func GetProjectMeta(projectDir string) (*ProjectMeta, error) {
 	return projectMeta, nil
 }
 
-func IsProjectInitialized(projectDir string) bool {
-	_, err := os.Stat(path.Join(projectDir, spaceDir))
+func GetProjectID(projectDir string) (string, error) {
+	projectMeta, err := GetProjectMeta(projectDir)
+	if err != nil {
+		return "", err
+	}
+	return projectMeta.ID, nil
+}
+
+func CheckProjectInitialized(projectDir string) bool {
+	_, err := os.Stat(path.Join(projectDir, spaceDir, projectMetaFile))
 	return err == nil
 }
 

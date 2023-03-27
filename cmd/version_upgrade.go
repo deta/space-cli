@@ -11,46 +11,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	versionFlag string
-	upgradeCmd  = &cobra.Command{
+func newCmdVersionUpgrade() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "upgrade",
 		Short:   "Upgrade Space CLI version",
 		Example: versionUpgradeExamples(),
 		RunE:    upgrade,
 		Args:    cobra.NoArgs,
 	}
-)
-
-func init() {
-	upgradeCmd.Flags().StringVarP(&versionFlag, "version", "v", "", "version number")
-	versionCmd.AddCommand(upgradeCmd)
+	cmd.Flags().StringP("version", "v", "", "version number")
+	return cmd
 }
 
 func upgrade(cmd *cobra.Command, args []string) error {
 	logger.Println()
+	version, _ := cmd.Flags().GetString("version")
 	latestVersion, err := client.GetLatestCLIVersion()
 	if err != nil {
 		return err
 	}
 
 	upgradingTo := latestVersion.Tag
-	if versionFlag != "" {
-		if !strings.HasPrefix(versionFlag, "v") {
-			versionFlag = fmt.Sprintf("v%s", versionFlag)
+	if version != "" {
+		if !strings.HasPrefix(version, "v") {
+			version = fmt.Sprintf("v%s", version)
 		}
 
-		versionExists, err := client.CheckCLIVersionTag(versionFlag)
+		versionExists, err := client.CheckCLIVersionTag(version)
 		if err != nil {
 			logger.Println(styles.Errorf("%s Failed to check if version exists. Please check version and try again.", emoji.X))
 			return nil
 		}
 		if !versionExists {
-			logger.Println(styles.Errorf("%s not found.", styles.Code(versionFlag)))
+			logger.Println(styles.Errorf("%s not found.", styles.Code(version)))
 			return nil
 		}
 
-		upgradingTo = versionFlag
+		upgradingTo = version
 	}
 	if spaceVersion == upgradingTo {
 		logger.Println(styles.Boldf("Space CLI version already %s, no upgrade required", styles.Code(upgradingTo)))
@@ -59,15 +56,15 @@ func upgrade(cmd *cobra.Command, args []string) error {
 
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		return upgradeUnix()
+		return upgradeUnix(version)
 	case "windows":
-		return upgradeWin()
+		return upgradeWin(version)
 	default:
 		return fmt.Errorf("unsupported platform")
 	}
 }
 
-func upgradeUnix() error {
+func upgradeUnix(version string) error {
 	curlCmd := exec.Command("curl", "-fsSL", "https://get.deta.dev/space-cli.sh")
 	msg := "Upgrading Space CLI"
 	curlOutput, err := curlCmd.CombinedOutput()
@@ -78,12 +75,12 @@ func upgradeUnix() error {
 
 	co := string(curlOutput)
 	shCmd := exec.Command("sh", "-c", co)
-	if versionFlag != "" {
-		if !strings.HasPrefix(versionFlag, "v") {
-			versionFlag = fmt.Sprintf("v%s", versionFlag)
+	if version != "" {
+		if !strings.HasPrefix(version, "v") {
+			version = fmt.Sprintf("v%s", version)
 		}
-		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(versionFlag))
-		shCmd = exec.Command("sh", "-c", co, "upgrade", versionFlag)
+		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))
+		shCmd = exec.Command("sh", "-c", co, "upgrade", version)
 	}
 	logger.Printf("%s...\n", msg)
 

@@ -3,7 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
+	"os"
 
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
@@ -14,94 +14,79 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	linkProjectID  string
-	linkProjectDir string
-	linkCmd        = &cobra.Command{
+func newCmdLink() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "link [flags]",
 		Short: "link code to project",
-		RunE:  link,
+		Run:   link,
 	}
-)
 
-func init() {
-	linkCmd.Flags().StringVarP(&linkProjectID, "id", "i", "", "project id of project to link")
-	linkCmd.Flags().StringVarP(&linkProjectDir, "dir", "d", "./", "src of project to link")
-	rootCmd.AddCommand(linkCmd)
+	cmd.Flags().StringP("id", "i", "", "project id of project to link")
+	cmd.Flags().StringP("dir", "d", "./", "src of project to link")
+
+	return cmd
 }
 
 func selectLinkProjectID() (string, error) {
 	promptInput := text.Input{
 		Prompt:      "Project ID",
 		Placeholder: "",
-		Validator:   projectIDValidator,
+		Validator: func(value string) error {
+			if value == "" {
+				return fmt.Errorf("please provide a valid id, empty project id is not valid")
+			}
+			return nil
+		},
 	}
 
 	return text.Run(&promptInput)
 }
 
-var (
-	NoProjectFoundMsg = styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation)
-)
-
-func link(cmd *cobra.Command, args []string) error {
-	logger.Println()
+func link(cmd *cobra.Command, args []string) {
+	var err error
 
 	// check space version
 	c := make(chan *checkVersionMsg, 1)
 	defer close(c)
 	go checkVersion(c)
 
-	var err error
+	projectDir, _ := cmd.Flags().GetString("dir")
 
-	linkProjectDir = filepath.Clean(linkProjectDir)
-
-	isProjectInitialized := runtime.IsProjectInitialized(projectDir)
-
-	if isProjectInitialized {
-		existingProjectMeta, err := runtime.GetProjectMeta(linkProjectDir)
-		if err != nil {
-			return err
-		}
-		logger.Printf("%s This directory is already linked to a project named \"%s\".\n", emoji.Cowboy, existingProjectMeta.Name)
-		logger.Println(projectNotes(existingProjectMeta.Name, existingProjectMeta.ID))
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		return nil
-	}
-
-	if isFlagEmpty(linkProjectID) {
-		logger.Printf("You can link your local src code to a Space project!\n\n")
+	var projectID string
+	if cmd.Flags().Changed("id") {
+		projectID, _ = cmd.Flags().GetString("id")
+	} else {
 		logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
-		linkProjectID, err = selectLinkProjectID()
-		if err != nil {
-			return err
+
+		if projectID, err = selectLinkProjectID(); err != nil {
+			os.Exit(1)
 		}
 	}
 
-	err = runtime.AddSpaceToGitignore(projectDir)
-	if err != nil {
-		return fmt.Errorf("failed to add .space to .gitignore, %w", err)
+	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
+		logger.Println("failed to add .space to .gitignore, %w", err)
+		os.Exit(1)
 	}
 
-	projectRes, err := client.GetProject(&api.GetProjectRequest{ID: linkProjectID})
+	projectRes, err := client.GetProject(&api.GetProjectRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
 			logger.Println(LoginInfo())
-			return nil
+			os.Exit(1)
 		}
 		if errors.Is(err, api.ErrProjectNotFound) {
-			logger.Println(NoProjectFoundMsg)
-			return nil
+			logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
+			os.Exit(1)
 		}
-		return err
+
+		logger.Println(styles.Errorf("%s Failed to link project, %s", emoji.ErrorExclamation, err.Error()))
+		os.Exit(1)
 	}
 
 	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: projectRes.ID, Name: projectRes.Name, Alias: projectRes.Alias})
 	if err != nil {
-		return fmt.Errorf("failed to link project, %w", err)
+		logger.Printf("failed to link project: %s", err)
+		os.Exit(1)
 	}
 
 	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))
@@ -111,6 +96,4 @@ func link(cmd *cobra.Command, args []string) error {
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 	}
-
-	return nil
 }

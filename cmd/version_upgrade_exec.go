@@ -3,6 +3,6 @@
 
 package cmd
 
-func upgradeWin() error {
+func upgradeWin(version string) error {
 	return nil
 }

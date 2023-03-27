@@ -9,13 +9,13 @@ import (
 	"os/exec"
 )
 
-func upgradeWin() error {
+func upgradeWin(version string) error {
 	msg := "Upgrading Space CLI"
 	cmd := "iwr https://get.deta.dev/space-cli.ps1 -useb | iex"
 
-	if versionFlag != "" {
-		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(versionFlag))
-		cmd = fmt.Sprintf(`$v="%s"; %s`, versionFlag, cmd)
+	if version != "" {
+		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))
+		cmd = fmt.Sprintf(`$v="%s"; %s`, version, cmd)
 	}
 	logger.Printf("%s...\n", msg)
 

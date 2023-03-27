@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/emoji"
@@ -11,20 +10,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	openProjectID  string
-	openProjectDir string
-	openCmd        = &cobra.Command{
-		Use:   "open",
-		Short: "open current project in browser",
-		RunE:  open,
+func newCmdOpen() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "open",
+		Short:   "open current project in browser",
+		PreRunE: CheckAll(CheckExists("dir"), CheckNotEmpty("id")),
+		RunE:    open,
 	}
-)
 
-func init() {
-	openCmd.Flags().StringVarP(&openProjectID, "id", "i", "", "project id of project to open")
-	openCmd.Flags().StringVarP(&openProjectDir, "dir", "d", "./", "src of project to open")
-	rootCmd.AddCommand(openCmd)
+	cmd.Flags().StringP("id", "i", "", "project id of project to open")
+	cmd.Flags().StringP("dir", "d", "./", "src of project to open")
+
+	return cmd
 }
 
 func open(cmd *cobra.Command, args []string) error {
@@ -33,36 +30,22 @@ func open(cmd *cobra.Command, args []string) error {
 	defer close(c)
 	go checkVersion(c)
 
-	var err error
+	projectDir, _ := cmd.Flags().GetString("dir")
+	projectID, _ := cmd.Flags().GetString("id")
 
-	openProjectDir = filepath.Clean(openProjectDir)
-
-	isProjectInitialized := runtime.IsProjectInitialized(openProjectDir)
-
-	var projectName string
-	// check if project is initialized
-	if isProjectInitialized {
-		projectMeta, err := runtime.GetProjectMeta(openProjectDir)
+	if !cmd.Flags().Changed("id") {
+		var err error
+		projectID, err = runtime.GetProjectID(projectDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s Failed to get project id %w", emoji.ErrorExclamation, err)
 		}
-		openProjectID = projectMeta.ID
-		projectName = projectMeta.Name
-	} else if isFlagEmpty(openProjectID) {
-		logger.Printf("No project was found in the current directory.\n\n")
-		logger.Printf("To create a new project run %s", styles.Code("space new"))
-
-		return nil
 	}
 
-	logger.Printf("Opening project %s in default browser...\n", styles.Pink(projectName))
-
-	var url = fmt.Sprintf("%s/%s", builderUrl, openProjectID)
-	err = browser.OpenURL(url)
-
-	if err != nil {
+	logger.Printf("Opening project in default browser...\n")
+	if err := browser.OpenURL(fmt.Sprintf("%s/%s", builderUrl, projectID)); err != nil {
 		return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
 	}
+
 	cm := <-c
 	if cm.err == nil && cm.isLower {
 		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))

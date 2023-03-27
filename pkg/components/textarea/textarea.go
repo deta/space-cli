@@ -2,7 +2,6 @@ package textarea
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,9 +11,11 @@ import (
 type errMsg error
 
 type Model struct {
-	TextArea textarea.Model
-	Prompt   string
-	Err      error
+	TextArea  textarea.Model
+	Hidden    bool
+	Prompt    string
+	Cancelled bool
+	Err       error
 }
 
 type Input struct {
@@ -45,10 +46,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEsc:
+		case tea.KeyCtrlS:
+			m.Hidden = true
 			return m, tea.Quit
 		case tea.KeyCtrlC:
-			os.Exit(1)
+			m.Hidden = true
+			m.Cancelled = true
+			return m, tea.Quit
 		default:
 			if !m.TextArea.Focused() {
 				cmd = m.TextArea.Focus()
@@ -68,23 +72,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	if m.Hidden {
+		return ""
+	}
 	return fmt.Sprintf(
 		"%s\n\n%s\n\n%s\n\n",
 		m.Prompt,
 		m.TextArea.View(),
-		styles.Subtle("Newline (enter) Submit (esc)"),
+		styles.Subtle("Submit (ctrl+s), Cancel (ctrl+c)"),
 	)
 }
 
 func Run(i *Input) (string, error) {
 	program := tea.NewProgram(initialModel(i))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return "", err
 	}
 
 	if m, ok := m.(Model); ok {
+		if m.Cancelled {
+			return "", fmt.Errorf("cancelled")
+		}
 		return m.TextArea.Value(), nil
 	}
 
