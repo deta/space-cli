@@ -237,11 +237,10 @@ func release(cmd *cobra.Command, args []string) error {
 			discoveryData.Tagline = tagline
 
 			discovery.CreateDiscoveryFile("Discovery.md", *discoveryData)
+		} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
+			logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
+			return nil
 		} else {
-			if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
-				logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
-				return nil
-			}
 			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
 			return nil
 		}
@@ -254,7 +253,7 @@ func release(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		discoveryData.Content = string(rest)
+		discoveryData.ContentRaw = string(rest)
 	}
 
 	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
@@ -265,7 +264,6 @@ func release(cmd *cobra.Command, args []string) error {
 		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
 		Channel:       ReleaseChannelExp, // always experimental release for now
-		Discovery:     *discoveryData,
 	})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
@@ -274,6 +272,13 @@ func release(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+
+	err = client.StoreDiscoveryData(cr.ID, discoveryData)
+	if err != nil {
+		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return nil
+	}
+
 	readCloser, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
 		ID: cr.ID,
 	})

@@ -224,5 +224,5 @@ type DiscoveryFrontmatter struct {
 	ThemeColor string `yaml:"theme_color,omitempty" json:"theme_color"`
 	Git        string `yaml:"git,omitempty" json:"git"`
 	Homepage   string `yaml:"homepage,omitempty" json:"homepage"`
-	Content    string `yaml:"content,omitempty" json:"content"`
+	ContentRaw string `yaml:"content_raw,omitempty" json:"content_raw"`
 }

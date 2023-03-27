@@ -207,6 +207,31 @@ func (c *DetaClient) CreateRelease(r *CreateReleaseRequest) (*CreateReleaseRespo
 	return &resp, nil
 }
 
+func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryFrontmatter) error {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/promotions/%s/discovery", version, PromotionID),
+		Method:    "POST",
+		NeedsAuth: true,
+		Body:      r,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return err
+	}
+
+	if o.Status != 202 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return fmt.Errorf("failed to store discovery data: %v", msg)
+	}
+
+	return nil
+}
+
 type GetReleaseLogsRequest struct {
 	ID string `json:"id"`
 }
