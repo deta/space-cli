@@ -5,6 +5,7 @@ package version
 
 import (
 	"fmt"
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"os/exec"
 )
