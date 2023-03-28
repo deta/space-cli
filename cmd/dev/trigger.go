@@ -13,7 +13,7 @@ import (
 	"github.com/deta/pc-cli/internal/spacefile"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/types"
+	types "github.com/deta/pc-cli/shared"
 	"github.com/spf13/cobra"
 )
 

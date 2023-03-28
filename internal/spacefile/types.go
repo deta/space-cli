@@ -3,7 +3,7 @@ package spacefile
 import (
 	"errors"
 
-	"github.com/deta/pc-cli/types"
+	"github.com/deta/pc-cli/shared"
 )
 
 var (
@@ -15,10 +15,10 @@ var (
 
 // Spacefile xx
 type Spacefile struct {
-	V       int            `yaml:"v"`
-	Icon    string         `yaml:"icon,omitempty"`
-	AppName string         `yaml:"app_name,omitempty"`
-	Micros  []*types.Micro `yaml:"micros,omitempty"`
+	V       int             `yaml:"v"`
+	Icon    string          `yaml:"icon,omitempty"`
+	AppName string          `yaml:"app_name,omitempty"`
+	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
 // IconMeta xx
@@ -37,7 +37,7 @@ type Icon struct {
 // MicroError xx
 type MicroError struct {
 	Err   error
-	Micro *types.Micro
+	Micro *shared.Micro
 }
 
 func (me *MicroError) Error() string {

@@ -23,7 +23,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/writer"
-	"github.com/deta/pc-cli/types"
+	types "github.com/deta/pc-cli/shared"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"mvdan.cc/sh/v3/shell"

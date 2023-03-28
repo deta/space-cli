@@ -4,16 +4,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deta/pc-cli/types"
+	"github.com/deta/pc-cli/shared"
 )
 
-func Scan(sourceDir string) ([]*types.Micro, error) {
+func Scan(sourceDir string) ([]*shared.Micro, error) {
 	files, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return nil, err
 	}
 
-	var micros []*types.Micro
+	var micros []*shared.Micro
 
 	// scan root source dir for a micro
 	m, err := scanDir(sourceDir)
@@ -43,7 +43,7 @@ func Scan(sourceDir string) ([]*types.Micro, error) {
 	return micros, nil
 }
 
-func scanDir(dir string) (*types.Micro, error) {
+func scanDir(dir string) (*shared.Micro, error) {
 	runtimeScanners := []engineScanner{
 		pythonScanner,
 		nodeScanner,

@@ -11,7 +11,7 @@ import (
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/util/fs"
-	"github.com/deta/pc-cli/types"
+	"github.com/deta/pc-cli/shared"
 	"gopkg.in/yaml.v3"
 )
 
@@ -139,7 +139,7 @@ func (s *Spacefile) Save(sourceDir string) error {
 	return nil
 }
 
-func (s *Spacefile) AddMicros(newMicros []*types.Micro) error {
+func (s *Spacefile) AddMicros(newMicros []*shared.Micro) error {
 	for _, micro := range newMicros {
 		if err := s.AddMicro(micro); err != nil {
 			return fmt.Errorf("failed to add micro %s to spacefile, %w", micro.Name, err)
@@ -152,7 +152,7 @@ func (s *Spacefile) GetIcon() (*Icon, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *Spacefile) AddMicro(newMicro *types.Micro) error {
+func (s *Spacefile) AddMicro(newMicro *shared.Micro) error {
 	// mark new micro as primary if it is the only one
 	if len(s.Micros) == 0 {
 		newMicro.Primary = true
@@ -171,14 +171,14 @@ func (s *Spacefile) AddMicro(newMicro *types.Micro) error {
 	return nil
 }
 
-func CreateSpacefileWithMicros(sourceDir string, micros []*types.Micro) (*Spacefile, error) {
+func CreateSpacefileWithMicros(sourceDir string, micros []*shared.Micro) (*Spacefile, error) {
 	// mark one micro as primary
 	if len(micros) > 0 {
 		micros[0].Primary = true
 	}
 
 	s := new(Spacefile)
-	s.Micros = make([]*types.Micro, len(micros))
+	s.Micros = make([]*shared.Micro, len(micros))
 	copy(s.Micros, micros)
 
 	err := s.Save(sourceDir)
@@ -200,7 +200,7 @@ func CreateBlankSpacefile(sourceDir string) (*Spacefile, error) {
 	return s, nil
 }
 
-func (s *Spacefile) HasMicro(otherMicro *types.Micro) bool {
+func (s *Spacefile) HasMicro(otherMicro *shared.Micro) bool {
 	for _, micro := range s.Micros {
 		if micro.Name == otherMicro.Name && micro.Src == otherMicro.Src {
 			return true
