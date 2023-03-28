@@ -214,17 +214,17 @@ func release(cmd *cobra.Command, args []string) error {
 		// if no file is found we prompt the user for the required fields
 		if errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
 			logger.Println(styles.Errorf("\n%s No Discovery file found\n", emoji.ErrorExclamation))
-			logger.Printf("Please give your app a friendly title and add a short description so others know what this app does.\n\n")
+			logger.Printf("Please give your app a friendly name and add a short description so others know what this app does.\n\n")
 
-			title, err := text.Run(&text.Input{
-				Prompt:      "App Title (max 45 chars)",
+			name, err := text.Run(&text.Input{
+				Prompt:      "App Name (max 12 chars)",
 				Placeholder: "",
 				Validator:   emptyPromptValidator,
 			})
 			if err != nil {
 				return fmt.Errorf("problem while trying to get title from text prompt, %w", err)
 			}
-			discoveryData.Title = title
+			discoveryData.AppName = name
 
 			tagline, err := text.Run(&text.Input{
 				Prompt:      "Short Description (max 69 chars)",

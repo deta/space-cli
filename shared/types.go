@@ -219,6 +219,7 @@ func IsFullstackEngine(engine string) bool {
 }
 
 type DiscoveryFrontmatter struct {
+	AppName    string `yaml:"name,omitempty" json:"name"`
 	Title      string `yaml:"title,omitempty" json:"title"`
 	Tagline    string `yaml:"tagline,omitempty" json:"tagline"`
 	ThemeColor string `yaml:"theme_color,omitempty" json:"theme_color"`
