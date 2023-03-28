@@ -3,8 +3,12 @@ package spacefile
 import (
 	"errors"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"mime"
 	"os"
+	"path/filepath"
 )
 
 var (
@@ -42,15 +46,6 @@ type Icon struct {
 
 // ValidateSpacefileIcon validate spacefile icon
 func ValidateIcon(iconPath string) error {
-	if iconPath == "" {
-		return nil
-	}
-
-	_, err := os.Stat(iconPath)
-	if os.IsNotExist(err) {
-		return ErrInvalidIconPath
-	}
-
 	iconMeta, err := getIconMeta(iconPath)
 	if err != nil {
 		return err
@@ -68,12 +63,8 @@ func ValidateIcon(iconPath string) error {
 }
 
 func getIconMeta(iconPath string) (*IconMeta, error) {
-	_, err := os.Stat(iconPath)
-	if os.IsNotExist(err) {
-		return nil, ErrInvalidIconPath
-	}
-
-	imgFile, err := os.Open(iconPath)
+	abs, _ := filepath.Abs(iconPath)
+	imgFile, err := os.Open(abs)
 	if err != nil {
 		return nil, ErrInvalidIconPath
 	}
