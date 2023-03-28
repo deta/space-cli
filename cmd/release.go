@@ -62,12 +62,14 @@ func newCmdRelease() *cobra.Command {
 				projectID = projectMeta.ID
 			}
 
-			if !cmd.Flags().Changed("latest") && !cmd.Flags().Changed("rid") {
-				useLatestRevision, err = confirm.Run(&confirm.Input{
-					Prompt: "Do you want to use the latest revision? (y/n)",
-				})
-				if err != nil {
-					os.Exit(1)
+			if !cmd.Flags().Changed("rid") {
+				if !cmd.Flags().Changed("confirm") {
+					useLatestRevision, err = confirm.Run(&confirm.Input{
+						Prompt: "Do you want to use the latest revision? (y/n)",
+					})
+					if err != nil {
+						os.Exit(1)
+					}
 				}
 
 				revision, err := selectRevision(projectID, useLatestRevision)
@@ -77,13 +79,7 @@ func newCmdRelease() *cobra.Command {
 				shared.Logger.Printf("Selected revision: %s", styles.Blue(revision.Tag))
 
 				revisionID = revision.ID
-			}
 
-			if !cmd.Flags().Changed("notes") {
-				releaseNotes, err = selectReleaseNotes()
-				if err != nil {
-					os.Exit(1)
-				}
 			}
 
 			shared.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))

@@ -155,5 +155,7 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 	}
 
 	shared.Logger.Println(styles.Greenf("Project %s created successfully!", projectName))
+	shared.Logger.Println(shared.ProjectNotes(projectName, meta.ID))
+
 	return nil
 }
