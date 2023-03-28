@@ -14,7 +14,11 @@ require (
 	mvdan.cc/sh/v3 v3.6.0
 )
 
-require github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
+require (
+	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+)
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
