@@ -14,7 +14,6 @@ import (
 	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/pkg/components/textarea"
 	"github.com/spf13/cobra"
 )
 
@@ -142,14 +141,6 @@ func selectRevision(projectID string, useLatestRevision bool) (revision *api.Rev
 	}
 
 	return revisions[m.Cursor], nil
-}
-
-func selectReleaseNotes() (string, error) {
-	notes, err := textarea.Run(&textarea.Input{
-		Placeholder: "start typing...",
-		Prompt:      "Enter your Release notes.",
-	})
-	return notes, err
 }
 
 func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string) (err error) {
