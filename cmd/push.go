@@ -7,15 +7,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adrg/frontmatter"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/pc-cli/internal/discovery"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/internal/spacefile"
+	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/spinner"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/deta/pc-cli/shared"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -51,6 +55,41 @@ func selectPushProjectID() (string, error) {
 	}
 
 	return text.Run(&promptInput)
+}
+
+func migrateAppNameToDiscovery(s *spacefile.Spacefile) {
+	discoveryData := &shared.DiscoveryFrontmatter{}
+
+	df, err := discovery.Open(pushProjectDir)
+	if err != nil {
+		if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
+			logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+			return
+		}
+	} else {
+		rest, err := frontmatter.Parse(strings.NewReader(string(df)), &discoveryData)
+		if err != nil {
+			logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
+			return
+		}
+		discoveryData.ContentRaw = string(rest)
+	}
+
+	discoveryData.AppName = s.AppName
+	err = discovery.CreateDiscoveryFile("Discovery.md", *discoveryData)
+	if err != nil {
+		logger.Println(styles.Errorf("\n%s Failed to create Discovery file, %v", emoji.ErrorExclamation, err))
+		logger.Println(styles.Error("\nPlease manually move the app_name from the Spacefile to the Discovery.md file before pushing."))
+		return
+	}
+
+	s.AppName = ""
+
+	err = s.Save(projectDir)
+	if err != nil {
+		logger.Println(styles.Errorf("\n%s failed to modify spacefile in %s, %w", emoji.ErrorExclamation, projectDir, err))
+		return
+	}
 }
 
 func push(cmd *cobra.Command, args []string) error {
@@ -124,10 +163,30 @@ func push(cmd *cobra.Command, args []string) error {
 		logValidationErrors(s, spacefileErrors)
 		logger.Println(styles.Error("\nPlease try to fix the issues with your Spacefile before pushing code."))
 		return nil
-	} else {
-		logValidationErrors(s, spacefileErrors)
-		logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 	}
+
+	logValidationErrors(s, spacefileErrors)
+
+	// migrate app name from spacefile to discovery file if present
+	if s.AppName != "" {
+		logger.Printf("\n%s The %s field was recently moved from the Spacefile to the Discovery.md file.\n\n", emoji.ErrorExclamation, styles.Code("app_name"))
+
+		migrateAppName, err := confirm.Run(&confirm.Input{
+			Prompt: fmt.Sprintf("Do you want to move %s from your Spacefile to the Discovery.md file automatically? (y/n)", styles.Code("app_name")),
+		})
+		if err != nil {
+			return fmt.Errorf("problem while trying to get confirmation to migrate app_name, %w", err)
+		}
+
+		if !migrateAppName {
+			logger.Println(styles.Errorf("Please manually move the app_name field from the Spacefile to the Discovery.md file before pushing."))
+			return nil
+		}
+
+		migrateAppNameToDiscovery(s)
+	}
+
+	logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!!\n"))
 
 	// start push & build process
 	buildSpinnerInput := spinner.Input{
