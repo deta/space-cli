@@ -205,7 +205,20 @@ func (s *Spacefile) AddMicros(newMicros []*shared.Micro) error {
 }
 
 func (s *Spacefile) GetIcon() (*Icon, error) {
-	return nil, fmt.Errorf("not implemented")
+	if s.Icon == "" {
+		return nil, ErrInvalidIconPath
+	}
+	iconMeta, err := getIconMeta(s.Icon)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := os.ReadFile(filepath.Join(s.Icon))
+	if err != nil {
+		return nil, fmt.Errorf("cannot read image, %w", err)
+	}
+
+	return &Icon{Raw: raw, IconMeta: iconMeta}, nil
 }
 
 func (s *Spacefile) AddMicro(newMicro *shared.Micro) error {

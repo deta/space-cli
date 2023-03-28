@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -43,8 +45,18 @@ func validate(projectDir string) error {
 		shared.Logger.Printf("\n%s No app icon specified.", styles.Blue("i"))
 	} else {
 		if err := spacefile.ValidateIcon(s.Icon); err != nil {
-			shared.Logger.Println(styles.Errorf("%s Detected some issues with your icon. Please fix them before pushing your code.", emoji.ErrorExclamation))
-			shared.Logger.Println(styles.Error(err.Error()))
+			shared.Logger.Println(styles.Errorf("\nDetected some issues with your icon. Please fix them before pushing your code."))
+			switch {
+			case errors.Is(spacefile.ErrInvalidIconType, err):
+				shared.Logger.Println(styles.Error("L Invalid icon type. Please use a 512x512 sized PNG or WebP icon"))
+			case errors.Is(spacefile.ErrInvalidIconSize, err):
+				shared.Logger.Println(styles.Error("L Icon size is not valid. Please use a 512x512 sized PNG or WebP icon"))
+			case errors.Is(spacefile.ErrInvalidIconPath, err):
+				shared.Logger.Println(styles.Error("L Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon."))
+			default:
+				shared.Logger.Println(styles.Error(fmt.Sprintf("%s Validation Error: %v", emoji.X, err)))
+			}
+			return err
 		}
 	}
 
