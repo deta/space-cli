@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/deta/pc-cli/cmd/shared"
@@ -59,11 +59,17 @@ func newCmdPush() *cobra.Command {
 }
 
 func push(projectID string, projectDir string, pushTag string, openInBrowser bool, skipLogs bool) error {
-	s, err := spacefile.Parse(path.Join(projectDir, "Spacefile"))
+	shared.Logger.Printf("Validating your Spacefile...")
+
+	s, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
 		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
 	}
+
+	shared.Logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!"))
+
+	shared.Logger.Printf("%s Successfully started your build!", emoji.Check)
 
 	// push code & run build steps
 	zippedCode, nbFiles, err := runtime.ZipDir(projectDir)
@@ -78,10 +84,10 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 		shared.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
 		return err
 	}
-	shared.Logger.Printf("%s Successfully started your build!", emoji.Check)
+	shared.Logger.Printf("\n%s Successfully started your build!", emoji.Check)
 
 	// push spacefile
-	raw, err := os.ReadFile(path.Join(projectDir, "Spacefile"))
+	raw, err := os.ReadFile(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
 		shared.Logger.Printf("%s Failed to read Spacefile: %s", emoji.ErrorExclamation, err)
 		return err

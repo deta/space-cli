@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/spacefile"
@@ -37,8 +37,11 @@ func newCmdDevTrigger() *cobra.Command {
 }
 
 func devTrigger(projectDir string, actionID string) (err error) {
-	spacefile, _ := spacefile.Parse(projectDir)
-	routeDir := path.Join(projectDir, ".space", "micros")
+	spacefile, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
+	if err != nil {
+		shared.Logger.Printf("%s failed to parse Spacefile: %s", emoji.X, err.Error())
+	}
+	routeDir := filepath.Join(projectDir, ".space", "micros")
 
 	for _, micro := range spacefile.Micros {
 		for _, action := range micro.Actions {
@@ -46,7 +49,7 @@ func devTrigger(projectDir string, actionID string) (err error) {
 				continue
 			}
 
-			shared.Logger.Printf("\n%sChecking if micro %s is running...\n", emoji.Eyes, styles.Green(micro.Name))
+			shared.Logger.Printf("\n%s Checking if micro %s is running...\n", emoji.Eyes, styles.Green(micro.Name))
 			port, err := getMicroPort(micro, routeDir)
 			if err != nil {
 				upCommand := fmt.Sprintf("space dev up %s", micro.Name)
@@ -73,7 +76,7 @@ func devTrigger(projectDir string, actionID string) (err error) {
 
 			res, err := http.Post(actionEndpoint, "application/json", bytes.NewReader(body))
 			if err != nil {
-				shared.Logger.Printf("\n%sfailed to trigger action: %s", emoji.X, err.Error())
+				shared.Logger.Printf("\n%s failed to trigger action: %s", emoji.X, err.Error())
 				os.Exit(1)
 			}
 			defer res.Body.Close()

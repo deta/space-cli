@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -58,11 +58,11 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 
 	addr := fmt.Sprintf("%s:%d", host, port)
 
-	microDir := path.Join(projectDir, ".space", "micros")
-	spacefile, _ := spacefile.Parse(projectDir)
+	microDir := filepath.Join(projectDir, ".space", "micros")
+	spacefile, _ := spacefile.Open(projectDir)
 
 	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
-		shared.Logger.Printf("\n%sNo running micros detected.", emoji.X)
+		shared.Logger.Printf("%s No running micros detected.", emoji.X)
 		shared.Logger.Printf("L Use %s to manually start a micro", styles.Blue("space dev up <micro>"))
 		os.Exit(1)
 	}
@@ -80,7 +80,7 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		shared.Logger.Printf("%sproxy listening on http://%s", emoji.Laptop, addr)
+		shared.Logger.Printf("%s proxy listening on http://%s", emoji.Laptop, addr)
 		server.ListenAndServe()
 	}()
 

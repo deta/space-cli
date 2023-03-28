@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"syscall"
 
 	"github.com/deta/pc-cli/cmd/shared"
@@ -62,7 +62,7 @@ func newCmdDevUp() *cobra.Command {
 
 func devUp(projectDir string, projectId string, port int, microName string, open bool) (err error) {
 
-	spacefile, err := spacefile.Parse(projectDir)
+	spacefile, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
 		return err
 	}
@@ -78,11 +78,11 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 			continue
 		}
 
-		portFile := path.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
+		portFile := filepath.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
 		if _, err := os.Stat(portFile); err == nil {
 			microPort, _ := parsePort(portFile)
 			if isPortActive(microPort) {
-				shared.Logger.Printf("%s%s is already running on port %d", emoji.X, styles.Green(microName), microPort)
+				shared.Logger.Printf("%s %s is already running on port %d", emoji.X, styles.Green(microName), microPort)
 			}
 		}
 
@@ -119,7 +119,7 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 
 		microUrl := fmt.Sprintf("http://localhost:%d", port)
 		shared.Logger.Printf("\n%s Micro %s running on %s", styles.Green("✔️"), styles.Green(microName), styles.Blue(microUrl))
-		shared.Logger.Printf("\n%sUse %s to emulate the routing of your Space app\n\n", emoji.LightBulb, styles.Blue("space dev proxy"))
+		shared.Logger.Printf("\n%s Use %s to emulate the routing of your Space app\n\n", emoji.LightBulb, styles.Blue("space dev proxy"))
 
 		command.Wait()
 		return nil

@@ -62,13 +62,6 @@ func newCmdRelease() *cobra.Command {
 				projectID = projectMeta.ID
 			}
 
-			if !cmd.Flags().Changed("notes") {
-				releaseNotes, err = selectReleaseNotes()
-				if err != nil {
-					os.Exit(1)
-				}
-			}
-
 			if !cmd.Flags().Changed("latest") && !cmd.Flags().Changed("rid") {
 				useLatestRevision, err = confirm.Run(&confirm.Input{
 					Prompt: "Do you want to use the latest revision? (y/n)",
@@ -76,10 +69,18 @@ func newCmdRelease() *cobra.Command {
 				if err != nil {
 					os.Exit(1)
 				}
+
+				revision, err := selectRevision(projectID, useLatestRevision)
+				if err != nil {
+					os.Exit(1)
+				}
+				shared.Logger.Printf("Selected revision: %s", styles.Blue(revision.Tag))
+
+				revisionID = revision.ID
 			}
 
-			if !cmd.Flags().Changed("rid") {
-				revisionID, err = selectRevision(projectID, useLatestRevision)
+			if !cmd.Flags().Changed("notes") {
+				releaseNotes, err = selectReleaseNotes()
 				if err != nil {
 					os.Exit(1)
 				}
@@ -106,27 +107,27 @@ func newCmdRelease() *cobra.Command {
 	return cmd
 }
 
-func selectRevision(projectID string, useLatestRevision bool) (revisionID string, err error) {
+func selectRevision(projectID string, useLatestRevision bool) (revision *api.Revision, err error) {
 	r, err := shared.Client.GetRevisions(&api.GetRevisionsRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
 			shared.Logger.Println(shared.LoginInfo())
-			return "", err
+			return nil, err
 		} else {
 			shared.Logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
-			return "", err
+			return nil, err
 		}
 	}
 	revisions := r.Revisions
 
 	if len(r.Revisions) == 0 {
 		shared.Logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
-		return "", err
+		return nil, err
 	}
 
 	latestRevision := r.Revisions[0]
 	if useLatestRevision {
-		return latestRevision.ID, nil
+		return latestRevision, nil
 	}
 	tags := []string{}
 	if len(revisions) > 5 {
@@ -141,10 +142,10 @@ func selectRevision(projectID string, useLatestRevision bool) (revisionID string
 		Choices: tags,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return revisions[m.Cursor].Tag, nil
+	return revisions[m.Cursor], nil
 }
 
 func selectReleaseNotes() (string, error) {
@@ -169,6 +170,7 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 			shared.Logger.Println(shared.LoginInfo())
 			return nil
 		}
+		shared.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 	readCloser, err := shared.Client.GetReleaseLogs(&api.GetReleaseLogsRequest{
@@ -221,5 +223,5 @@ func getCreatingReleaseMsg(listed bool, latest bool) string {
 	if latest {
 		latestInfo = " with the latest Revision"
 	}
-	return fmt.Sprintf("%s Creating a%s Release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
+	return fmt.Sprintf("\n%s Creating a%s Release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
 }

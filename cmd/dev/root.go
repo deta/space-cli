@@ -10,7 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"syscall"
@@ -112,16 +112,22 @@ func GetFreePort(start int) (int, error) {
 }
 
 func dev(projectDir string, projectID string, host string, port int, open bool) error {
-	routeDir := path.Join(projectDir, ".space", "micros")
-	spacefile, _ := spacefile.Parse(projectDir)
+	routeDir := filepath.Join(projectDir, ".space", "micros")
+	spacefile, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
+	if err != nil {
+		shared.Logger.Printf("%s Failed to parse spacefile: %s", emoji.ErrorExclamation, err)
+		return err
+	}
+
 	projectKey, err := shared.GenerateDataKeyIfNotExists(projectID)
+
 	addr := fmt.Sprintf("%s:%d", host, port)
 	if err != nil {
 		shared.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
 		os.Exit(1)
 	}
 
-	shared.Logger.Printf("\n%sChecking for running micros...", emoji.Eyes)
+	shared.Logger.Printf("\n%s Checking for running micros...", emoji.Eyes)
 	var stoppedMicros []*types.Micro
 	for _, micro := range spacefile.Micros {
 		_, err := getMicroPort(micro, routeDir)
@@ -137,7 +143,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
 	startPort := port + 1
 
-	shared.Logger.Printf("\n%sStarting %d micro servers...\n\n", emoji.Laptop, len(stoppedMicros))
+	shared.Logger.Printf("\n%s Starting %d micro servers...\n\n", emoji.Laptop, len(stoppedMicros))
 	for _, micro := range stoppedMicros {
 		freePort, err := GetFreePort(startPort)
 		if err != nil {
@@ -153,7 +159,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 			}
 		}
 
-		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
+		portFile := filepath.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
 		if err := writePortFile(portFile, freePort); err != nil {
 			return err
 		}
@@ -226,21 +232,21 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	return nil
 }
 
-func writePortFile(filepath string, port int) error {
-	portDir := path.Dir(filepath)
+func writePortFile(portfile string, port int) error {
+	portDir := filepath.Dir(portfile)
 	if _, err := os.Stat(portDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(portDir, 0755); err != nil {
 			return err
 		}
 	}
 
-	return os.WriteFile(filepath, []byte(fmt.Sprintf("%d", port)), 0644)
+	return os.WriteFile(portfile, []byte(fmt.Sprintf("%d", port)), 0644)
 }
 
 func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, error) {
 	routes := make([]proxy.ProxyRoute, 0)
 	for _, micro := range micros {
-		portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
+		portFile := filepath.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
 		if _, err := os.Stat(portFile); err != nil {
 			continue
 		}
@@ -262,7 +268,7 @@ func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, 
 }
 
 func getMicroPort(micro *types.Micro, routeDir string) (int, error) {
-	portFile := path.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
+	portFile := filepath.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
 	if _, err := os.Stat(portFile); err != nil {
 		return 0, err
 	}
@@ -310,7 +316,7 @@ func MicroCommand(micro *types.Micro, directory, projectKey string, port int) (*
 		return nil, errNoDevCommand
 	}
 
-	commandDir := path.Join(directory, micro.Src)
+	commandDir := filepath.Join(directory, micro.Src)
 
 	environ := map[string]string{
 		"PORT":                      fmt.Sprintf("%d", port),

@@ -10,7 +10,7 @@ import (
 type Model struct {
 	Cursor    int
 	Chosen    bool
-	Quitting  bool
+	Hidden    bool
 	Cancelled bool
 	Prompt    string
 	Choices   []string
@@ -23,11 +23,10 @@ type Input struct {
 
 func initialModel(i *Input) Model {
 	return Model{
-		Cursor:   0,
-		Chosen:   false,
-		Quitting: false,
-		Prompt:   i.Prompt,
-		Choices:  i.Choices,
+		Cursor:  0,
+		Chosen:  false,
+		Prompt:  i.Prompt,
+		Choices: i.Choices,
 	}
 }
 
@@ -40,10 +39,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			m.Chosen = true
+			m.Hidden = true
 			return m, tea.Quit
 		case tea.KeyCtrlC:
-			m.Quitting = true
+			m.Hidden = true
 			m.Cancelled = true
 			return m, tea.Quit
 		}
@@ -53,13 +52,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	if m.Quitting {
+	if m.Hidden {
 		return ""
 	}
 
 	c := m.Cursor
 
-	tpl := fmt.Sprintf("%s %s  \n\n", styles.Question, styles.Bold(m.Prompt))
+	tpl := fmt.Sprintf("\n%s %s  \n\n", styles.Question, styles.Bold(m.Prompt))
 
 	tpl += "%s\n"
 	choices := ""
@@ -71,9 +70,6 @@ func (m Model) View() string {
 		}
 	}
 
-	if m.Quitting && m.Chosen {
-		tpl += fmt.Sprintf("\n%s Selected %s\n\n", styles.SelectTag, styles.Pink(m.Choices[m.Cursor]))
-	}
 	return fmt.Sprintf(tpl, choices)
 }
 

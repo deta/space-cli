@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -63,17 +62,17 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError) string {
 	return strings.Join(lines, "\n")
 }
 
-func Parse(filepath string) (*Spacefile, error) {
-	projectDir := path.Dir(filepath)
+func Open(spacefilePath string) (*Spacefile, error) {
+	projectDir := filepath.Dir(spacefilePath)
 
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+	if _, err := os.Stat(spacefilePath); os.IsNotExist(err) {
 		return nil, ErrSpacefileNotFound
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to read spacefile file: %w", err)
 	}
 
 	// read raw contents from spacefile file
-	c, err := os.ReadFile(filepath)
+	c, err := os.ReadFile(spacefilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
 	}
@@ -112,7 +111,7 @@ func Parse(filepath string) (*Spacefile, error) {
 			continue
 		}
 
-		if _, err := os.Stat(path.Join(projectDir, micro.Src)); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(projectDir, micro.Src)); os.IsNotExist(err) {
 			return nil, fmt.Errorf("micro %s src %s not found", micro.Name, micro.Src)
 		}
 

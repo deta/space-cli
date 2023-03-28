@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -42,7 +42,7 @@ func CheckProjectInitialized(dirFlag string) PreRunFunc {
 	return CheckAll(CheckExists(dirFlag), func(cmd *cobra.Command, args []string) error {
 		dir, _ := cmd.Flags().GetString(dirFlag)
 
-		if _, err := os.Stat(path.Join(dir, ".space", "meta")); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(dir, ".space", "meta")); os.IsNotExist(err) {
 			return errors.New("project is not initialized. run `space new` to initialize")
 		}
 

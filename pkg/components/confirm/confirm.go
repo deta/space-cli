@@ -9,6 +9,7 @@ import (
 
 type Model struct {
 	Prompt    string
+	Hidden    bool
 	Confirm   bool
 	Cancelled bool
 }
@@ -35,15 +36,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y", "Y":
 			m.Confirm = true
+			m.Hidden = true
 			return m, tea.Quit
 		case "n", "N":
 			m.Confirm = false
+			m.Hidden = true
 			return m, tea.Quit
 		case "enter":
 			m.Confirm = true
+			m.Hidden = true
 			return m, tea.Quit
 		case "ctrl+c":
 			m.Cancelled = true
+			m.Hidden = true
 			return m, tea.Quit
 		}
 	}
@@ -51,7 +56,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return fmt.Sprintf("%s %s %s\n\n", styles.Question, styles.Bold(m.Prompt), styles.Subtle("y"))
+	if m.Hidden {
+		return ""
+	}
+	return fmt.Sprintf("\n%s %s\n\n", styles.Question, styles.Bold(m.Prompt))
 }
 
 func Run(i *Input) (bool, error) {

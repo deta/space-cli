@@ -76,7 +76,7 @@ func (m Model) View() string {
 		return ""
 	}
 	return fmt.Sprintf(
-		"%s\n\n%s\n\n%s\n\n",
+		"\n%s\n\n%s\n\n%s\n\n",
 		m.Prompt,
 		m.TextArea.View(),
 		styles.Subtle("Submit (ctrl+s), Cancel (ctrl+c)"),

@@ -43,12 +43,12 @@ func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
 	spaceReadmeNotes := "Don't commit this folder (.space) to git as it may contain security-sensitive data."
 	os.WriteFile(filepath.Join(spaceDir, "README"), []byte(spaceReadmeNotes), filePermMode)
 
-	return os.WriteFile(path.Join(spaceDir, projectMetaFile), marshalled, filePermMode)
+	return os.WriteFile(filepath.Join(spaceDir, projectMetaFile), marshalled, filePermMode)
 }
 
 // GetProjectMeta gets the project info stored
 func GetProjectMeta(projectDir string) (*ProjectMeta, error) {
-	contents, err := os.ReadFile(path.Join(projectDir, spaceDir, projectMetaFile))
+	contents, err := os.ReadFile(filepath.Join(projectDir, spaceDir, projectMetaFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, err
