@@ -1,0 +1,57 @@
+# space
+.space
+.spaceignore
+
+# version control
+.hg
+.git
+.gitmodules
+.gitignore
+.svn
+
+# js frameworks
+.next
+.nuxt
+
+# node
+node_modules
+.npmignore
+.cache
+.yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# python
+.venv
+venv
+__pycache__
+
+# coverage
+*.lcov
+.nyc_output
+.coverage
+.coverage.*
+
+# docker
+.dockerignore
+
+# env
+.env.local
+.env.*.local
+.env
+
+# ide
+.*.swp
+.vscode
+.history
+
+# system
+.DS_Store
+
+# other
+.lock-wscript
+config.gypi
+CVS
