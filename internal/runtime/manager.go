@@ -19,11 +19,9 @@ const (
 )
 
 var (
-	PythonSkipPattern = `__pycache__`
-	NodeSkipPattern   = `node_modules`
-	ignoreFile        = ".spaceignore"
-	spaceDir          = ".space"
-	projectMetaFile   = "meta"
+	spaceDir        = ".space"
+	projectMetaFile = "meta"
+	spaceignoreFile = ".spaceignore"
 )
 
 //go:embed .spaceignore
@@ -31,7 +29,7 @@ var defaultSpaceignore string
 
 // StoreProjectMeta stores project meta to disk
 func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
-	spaceDir := path.Join(projectDir, ".space")
+	spaceDir := path.Join(projectDir, spaceDir)
 	if _, err := os.Stat(spaceDir); os.IsNotExist(err) {
 		os.MkdirAll(spaceDir, dirPermMode)
 	}

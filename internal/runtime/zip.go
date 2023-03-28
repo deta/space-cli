@@ -26,7 +26,7 @@ func ZipDir(sourceDir string) ([]byte, int, error) {
 	}
 
 	lines := strings.Split(string(defaultSpaceignore), "\n")
-	spaceIgnorePath := filepath.Join(sourceDir, ".spaceignore")
+	spaceIgnorePath := filepath.Join(sourceDir, spaceignoreFile)
 	if _, err := os.Stat(spaceIgnorePath); err == nil {
 		bytes, err := os.ReadFile(spaceIgnorePath)
 		if err != nil {
