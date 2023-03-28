@@ -23,7 +23,7 @@ func newCmdDevTrigger() *cobra.Command {
 		Short:   "Trigger a micro action",
 		Aliases: []string{"t"},
 		Args:    cobra.ExactArgs(1),
-		PreRunE: shared.CheckExists("dir"),
+		PreRunE: shared.CheckProjectInitialized("dir"),
 		Run: func(cmd *cobra.Command, args []string) {
 			projectDir, _ := cmd.Flags().GetString("dir")
 

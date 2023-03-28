@@ -22,7 +22,7 @@ func newCmdDevProxy() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "proxy",
 		Short:   "Start the proxy server for your running micros",
-		PreRunE: shared.CheckExists("dir"),
+		PreRunE: shared.CheckProjectInitialized("dir"),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 

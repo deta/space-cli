@@ -51,7 +51,7 @@ func NewCmdDev() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "dev",
 		Short:   "Spin up a local development environment for your Space project",
-		PreRunE: shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
+		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
