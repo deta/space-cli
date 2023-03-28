@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/deta/pc-cli/cmd/shared"
@@ -23,20 +22,25 @@ func newCmdNew() *cobra.Command {
 		Use:   "new [flags]",
 		Short: "create new project",
 		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-
 			projectDir, _ := cmd.Flags().GetString("dir")
 			blankProject, _ := cmd.Flags().GetBool("blank")
 			projectName, _ := cmd.Flags().GetString("name")
 
 			if !cmd.Flags().Changed("name") {
-				projectName, err = selectProjectName(filepath.Base(projectDir))
+				abs, err := filepath.Abs(projectDir)
+				if err != nil {
+					shared.Logger.Printf("%sError getting absolute path of project directory: %s", styles.ErrorExclamation, err.Error())
+					os.Exit(1)
+				}
+
+				name := filepath.Base(abs)
+				projectName, err = selectProjectName(name)
 				if err != nil {
 					os.Exit(1)
 				}
 			}
 
-			if err := new(projectDir, projectName, blankProject); err != nil {
+			if err := newProject(projectDir, projectName, blankProject); err != nil {
 				os.Exit(1)
 			}
 		},
@@ -97,11 +101,11 @@ func createProject(name string) (*runtime.ProjectMeta, error) {
 	return &runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias}, nil
 }
 
-func new(projectDir, projectName string, blankProject bool) error {
+func newProject(projectDir, projectName string, blankProject bool) error {
 	var err error
 
 	// Create spacefile if it doesn't exist
-	spaceFilePath := path.Join(projectDir, "Spacefile")
+	spaceFilePath := filepath.Join(projectDir, "Spacefile")
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
 		if blankProject {
 			if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
@@ -116,13 +120,14 @@ func new(projectDir, projectName string, blankProject bool) error {
 			}
 
 			for _, micro := range autoDetectedMicros {
-				shared.Logger.Printf("Micro found in \"%s\"\n", styles.Code(fmt.Sprintf("%s/", micro.Src)))
+				shared.Logger.Printf("Micro found in \"%s\"\n", styles.Code(micro.Src))
 				shared.Logger.Printf("L engine: %s\n\n", styles.Blue(micro.Engine))
 			}
 
 			_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
 			if err != nil {
 				shared.Logger.Printf("failed to create project with detected micros: %s", err)
+				return err
 			}
 		}
 	}
@@ -130,7 +135,7 @@ func new(projectDir, projectName string, blankProject bool) error {
 	// add .space folder to gitignore
 	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
 		shared.Logger.Printf("failed to add .space to gitignore: %s", err)
-		os.Exit(1)
+		return err
 	}
 
 	// Create project
@@ -141,11 +146,12 @@ func new(projectDir, projectName string, blankProject bool) error {
 			return err
 		}
 		shared.Logger.Printf("failed to create project: %s", err)
+		return err
 	}
 
 	if err := runtime.StoreProjectMeta(projectDir, meta); err != nil {
 		shared.Logger.Printf("failed to save project meta, %s", err)
-		os.Exit(1)
+		return err
 	}
 
 	shared.Logger.Println(styles.Greenf("Project %s created successfully!", projectName))

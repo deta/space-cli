@@ -43,6 +43,13 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+func (m Model) Value() string {
+	if m.TextInput.Value() == "" {
+		return m.TextInput.Placeholder
+	}
+	return m.TextInput.Value()
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -120,5 +127,5 @@ func Run(i *Input) (string, error) {
 		return "", fmt.Errorf("cancelled")
 	}
 
-	return model.TextInput.Value(), nil
+	return model.Value(), nil
 }
