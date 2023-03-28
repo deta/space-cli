@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-
-	ignore "github.com/deta/pc-cli/pkg/ignore"
 )
 
 const (
@@ -31,87 +29,33 @@ var (
 	defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
 )
 
-// Manager runtime manager handles files management and other services
-type Manager struct {
-	rootDir         string            // working directory of the project
-	spacePath       string            // dir for storing project meta
-	projectMetaPath string            // path to info file about the project
-	skipPaths       *ignore.GitIgnore // skip patterns that need to be ignored for space push
-	ignorePath      string            // .spaceignore path
-}
-
-// NewManager returns a new manager for the root dir of the project
-// if initDirs is true, it creates dirs under root
-func NewManager(root *string, initDirs bool) (*Manager, error) {
-	var rootDir string
-	if root != nil {
-		rootDir = *root
-	} else {
-		wd, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		rootDir = wd
-	}
-
-	spacePath := filepath.Join(rootDir, spaceDir)
-	if initDirs {
-		err := os.MkdirAll(spacePath, dirPermMode)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	manager := &Manager{
-		rootDir:         rootDir,
-		spacePath:       spacePath,
-		projectMetaPath: filepath.Join(spacePath, projectMetaFile),
-		ignorePath:      filepath.Join(rootDir, ignoreFile),
-		skipPaths:       ignore.CompileIgnoreLines(defaultSkipPatterns...),
-	}
-
-	// not handling error as we don't want cli to crash if .spaceignore is not found
-	manager.handleIgnoreFile()
-
-	return manager, nil
-}
-
-// handleIgnoreFile build a slice of patterns to skip from .spaceignore file if it exists
-func (m *Manager) handleIgnoreFile() error {
-	contents, err := m.readFile(m.ignorePath)
-	if err != nil {
-		return err
-	}
-
-	lines, err := readLines(contents)
-	if err != nil {
-		return err
-	}
-
-	m.skipPaths = ignore.CompileIgnoreLines(append(defaultSkipPatterns, lines...)...)
-
-	return nil
-}
-
 // StoreProjectMeta stores project meta to disk
-func (m *Manager) StoreProjectMeta(p *ProjectMeta) error {
+func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
 	marshalled, err := json.Marshal(p)
 	if err != nil {
 		return err
 	}
 
 	spaceReadmeNotes := "Don't commit this folder (.space) to git as it may contain security-sensitive data."
-	ioutil.WriteFile(filepath.Join(m.spacePath, "README"), []byte(spaceReadmeNotes), filePermMode)
+	ioutil.WriteFile(filepath.Join(projectDir, spaceDir, "README"), []byte(spaceReadmeNotes), filePermMode)
 
-	return ioutil.WriteFile(m.projectMetaPath, marshalled, filePermMode)
+	return ioutil.WriteFile(filepath.Join(projectDir, spaceDir, projectMetaFile), marshalled, filePermMode)
+}
+
+func GetProjectID(projectDir string) (string, error) {
+	projectMeta, err := GetProjectMeta(projectDir)
+	if err != nil {
+		return "", err
+	}
+	return projectMeta.ID, nil
 }
 
 // GetProjectMeta gets the project info stored
-func (m *Manager) GetProjectMeta() (*ProjectMeta, error) {
-	contents, err := m.readFile(m.projectMetaPath)
+func GetProjectMeta(projectDir string) (*ProjectMeta, error) {
+	contents, err := os.ReadFile(filepath.Join(projectDir, spaceDir, projectMetaFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, err
 		}
 		return nil, err
 	}
@@ -124,8 +68,8 @@ func (m *Manager) GetProjectMeta() (*ProjectMeta, error) {
 	return projectMeta, nil
 }
 
-func (m *Manager) IsProjectInitialized() (bool, error) {
-	_, err := os.Stat(m.projectMetaPath)
+func IsProjectInitialized(projectDir string) (bool, error) {
+	_, err := os.Stat(filepath.Join(projectDir, spaceDir, projectMetaFile))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -136,8 +80,8 @@ func (m *Manager) IsProjectInitialized() (bool, error) {
 }
 
 // AddSpaceToGitignore add .space to .gitignore
-func (m *Manager) AddSpaceToGitignore() error {
-	gitignorePath := filepath.Join(m.rootDir, ".gitignore")
+func AddSpaceToGitignore(projectDir string) error {
+	gitignorePath := filepath.Join(projectDir, ".gitignore")
 	gitignoreExists := true
 
 	_, err := os.Stat(gitignorePath)
@@ -148,7 +92,7 @@ func (m *Manager) AddSpaceToGitignore() error {
 	}
 
 	if gitignoreExists {
-		contents, err := m.readFile(gitignorePath)
+		contents, err := os.ReadFile(gitignorePath)
 		if err != nil {
 			return fmt.Errorf("failed to append .space to .gitignore: %w", err)
 		}

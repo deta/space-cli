@@ -7,24 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 )
 
-func (m *Manager) shouldSkip(path string) (bool, error) {
-	// do not skip .spaceignore file
-	if regexp.MustCompile(ignoreFile).MatchString(path) {
-		return false, nil
-	}
-
-	// do not skip if skipPaths is empty
-	if m.skipPaths == nil {
-		return false, nil
-	}
-
-	return m.skipPaths.MatchesPath(path), nil
-}
-
-func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
+func ZipDir(sourceDir string) ([]byte, error) {
 	absDir, err := filepath.Abs(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path for dir %s to zip, %w", sourceDir, err)
@@ -46,8 +31,7 @@ func (m *Manager) ZipDir(sourceDir string) ([]byte, error) {
 			return err
 		}
 
-		// skip if shouldSkip according to skipPaths which are derived from .spaceignore
-		shouldSkip, err := m.shouldSkip(path)
+		shouldSkip, err := false, nil
 		if err != nil {
 			return err
 		}

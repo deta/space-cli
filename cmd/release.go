@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"os"
 
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
@@ -13,7 +14,6 @@ import (
 	"github.com/deta/pc-cli/pkg/components/confirm"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/pkg/components/text"
 	"github.com/deta/pc-cli/pkg/components/textarea"
 	"github.com/spf13/cobra"
 )
@@ -22,45 +22,109 @@ const (
 	ReleaseChannelExp = "experimental"
 )
 
-var (
-	releaseDir        string
-	revisionID        string
-	releaseProjectID  string
-	releaseVersion    string
-	releaseNotes      string
-	listedRelease     bool
-	useLatestRevision bool
+func newCmdRelease() *cobra.Command {
+	checkNonInteractive := func(cmd *cobra.Command, args []string) error {
+		if shared.IsOutputInteractive() {
+			return nil
+		}
 
-	releaseCmd = &cobra.Command{
+		// check if notes are provided
+		if cmd.Flags().Changed("notes") {
+			return fmt.Errorf("release notes must be provided in non-interactive mode")
+		}
+
+		if !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("latest") {
+			return fmt.Errorf("revision id or latest flag must be provided in non-interactive mode")
+		}
+
+		return nil
+	}
+
+	cmd := &cobra.Command{
 		Use:   "release [flags]",
 		Short: "create release for a project",
-		RunE:  release,
-	}
-)
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
 
-func init() {
-	releaseCmd.Flags().StringVarP(&releaseDir, "dir", "d", "./", "src of project to release")
-	releaseCmd.Flags().StringVarP(&releaseProjectID, "id", "i", "", "project id of an existing project")
-	releaseCmd.Flags().StringVarP(&revisionID, "rid", "r", "", "revision id for release")
-	releaseCmd.Flags().StringVarP(&releaseVersion, "version", "v", "", "version for the release")
-	releaseCmd.Flags().BoolVarP(&listedRelease, "listed", "l", false, "listed on discovery")
-	releaseCmd.Flags().BoolVarP(&useLatestRevision, "confirm", "c", false, "release latest revision")
-	releaseCmd.Flags().StringVarP(&releaseNotes, "notes", "n", "", "release notes")
-	releaseCmd.Flags().Lookup("notes").NoOptDefVal = "<RELEASE_NOTES>" //use this line
-	rootCmd.AddCommand(releaseCmd)
+			projectDir, _ := cmd.Flags().GetString("dir")
+			projectID, _ := cmd.Flags().GetString("id")
+			releaseNotes, _ := cmd.Flags().GetString("notes")
+			revisionID, _ := cmd.Flags().GetString("rid")
+			useLatestRevision, _ := cmd.Flags().GetBool("confirm")
+			listedRelease, _ := cmd.Flags().GetBool("listed")
+			releaseVersion, _ := cmd.Flags().GetString("version")
+
+			if !cmd.Flags().Changed("id") {
+				projectMeta, err := runtime.GetProjectMeta(projectDir)
+				if err != nil {
+					os.Exit(1)
+				}
+				projectID = projectMeta.ID
+			}
+
+			if !cmd.Flags().Changed("rid") {
+				if !cmd.Flags().Changed("confirm") {
+					useLatestRevision, err = confirm.Run(&confirm.Input{
+						Prompt: "Do you want to use the latest revision? (y/n)",
+					})
+					if err != nil {
+						os.Exit(1)
+					}
+				}
+
+				revision, err := selectRevision(projectID, useLatestRevision)
+				if err != nil {
+					os.Exit(1)
+				}
+				shared.Logger.Printf("Selected revision: %s", styles.Blue(revision.Tag))
+
+				revisionID = revision.ID
+
+			}
+
+			shared.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
+			if err := release(projectDir, projectID, revisionID, releaseVersion, listedRelease, releaseNotes); err != nil {
+				os.Exit(1)
+			}
+		},
+		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "notes", "versions"), checkNonInteractive),
+	}
+
+	cmd.Flags().StringP("dir", "d", "./", "src of project to release")
+	cmd.Flags().StringP("id", "i", "", "project id of an existing project")
+	cmd.Flags().String("rid", "", "revision id for release")
+	cmd.Flags().StringP("version", "v", "", "version for the release")
+	cmd.Flags().Bool("listed", false, "listed on discovery")
+	cmd.Flags().Bool("latest", false, "release latest revision")
+	cmd.Flags().StringP("notes", "n", "", "release notes")
+
+	cmd.MarkFlagsMutuallyExclusive("latest", "rid")
+
+	return cmd
 }
 
-func selectProjectID() (string, error) {
-	promptInput := text.Input{
-		Prompt:      "What is your Project ID?",
-		Placeholder: "",
-		Validator:   emptyPromptValidator,
+func selectRevision(projectID string, useLatestRevision bool) (revision *api.Revision, err error) {
+	r, err := shared.Client.GetRevisions(&api.GetRevisionsRequest{ID: projectID})
+	if err != nil {
+		if errors.Is(err, auth.ErrNoAccessTokenFound) {
+			shared.Logger.Println(shared.LoginInfo())
+			return nil, err
+		} else {
+			shared.Logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
+			return nil, err
+		}
+	}
+	revisions := r.Revisions
+
+	if len(r.Revisions) == 0 {
+		shared.Logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
+		return nil, err
 	}
 
-	return text.Run(&promptInput)
-}
-
-func selectRevision(revisions []*api.Revision) (*api.Revision, error) {
+	latestRevision := r.Revisions[0]
+	if useLatestRevision {
+		return latestRevision, nil
+	}
 	tags := []string{}
 	if len(revisions) > 5 {
 		revisions = revisions[:5]
@@ -88,93 +152,10 @@ func selectReleaseNotes() (string, error) {
 	return notes, err
 }
 
-func release(cmd *cobra.Command, args []string) error {
-	logger.Println()
-
-	// check space version
-	c := make(chan *checkVersionMsg, 1)
-	defer close(c)
-	go checkVersion(c)
-
-	releaseDir = filepath.Clean(releaseDir)
-
-	runtimeManager, err := runtime.NewManager(&releaseDir, true)
-	if err != nil {
-		return err
-	}
-
-	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
-	if err != nil {
-		return err
-	}
-
-	if isProjectInitialized {
-		projectMeta, err := runtimeManager.GetProjectMeta()
-		if err != nil {
-			return err
-		}
-		releaseProjectID = projectMeta.ID
-	} else if isFlagEmpty(releaseProjectID) {
-		logger.Printf("No project was found locally. You can still create a Release by providing a valid Project ID.\n\n")
-
-		releaseProjectID, err = selectProjectID()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get project id to release from text prompt, %w", err)
-		}
-	}
-
-	if isFlagEmpty(revisionID) {
-		r, err := client.GetRevisions(&api.GetRevisionsRequest{ID: releaseProjectID})
-		if err != nil {
-			if errors.Is(err, auth.ErrNoAccessTokenFound) {
-				logger.Println(LoginInfo())
-				return nil
-			} else {
-				logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
-				return nil
-			}
-		}
-
-		if len(r.Revisions) == 0 {
-			logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
-			return nil
-		}
-
-		latestRevision := r.Revisions[0]
-
-		if !useLatestRevision {
-			useLatestRevision, err = confirm.Run(&confirm.Input{
-				Prompt: fmt.Sprintf("Do you want to use the latest revision (%s)? (y/n)", latestRevision.Tag),
-			})
-			if err != nil {
-				return fmt.Errorf("problem while trying to get confirmation to use latest revision for this release from prompt, %w", err)
-			}
-		}
-
-		revisionID = latestRevision.ID
-
-		if !useLatestRevision {
-			selectedRevision, err := selectRevision(r.Revisions)
-			if err != nil {
-				return fmt.Errorf("problem while trying to get latest revision from prompt, %w", err)
-			}
-			revisionID = selectedRevision.ID
-		}
-	}
-
-	if releaseNotes == "<RELEASE_NOTES>" {
-		releaseNotes, err = selectReleaseNotes()
-		if err != nil {
-			return fmt.Errorf("problem while trying to get release notes from text area, %w", err)
-		}
-	} else if !isFlagEmpty(releaseNotes) {
-		logger.Printf("Using notes provided via arguments.\n\n")
-	}
-
-	logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
-	cr, err := client.CreateRelease(&api.CreateReleaseRequest{
+func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string) (err error) {
+	cr, err := shared.Client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
-		AppID:         releaseProjectID,
+		AppID:         projectID,
 		Version:       releaseVersion,
 		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
@@ -182,17 +163,18 @@ func release(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
-			logger.Println(LoginInfo())
+			shared.Logger.Println(shared.LoginInfo())
 			return nil
 		}
+		shared.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
 		return err
 	}
-	readCloser, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
+	readCloser, err := shared.Client.GetReleaseLogs(&api.GetReleaseLogsRequest{
 		ID: cr.ID,
 	})
 	if err != nil {
-		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		return nil
+		shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return err
 	}
 
 	defer readCloser.Close()
@@ -202,30 +184,27 @@ func release(cmd *cobra.Command, args []string) error {
 		fmt.Println(line)
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
-		return nil
+		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return err
 	}
 
-	r, err := client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
+	r, err := shared.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, releaseProjectID)))
-		return nil
+		shared.Logger.Printf(styles.Errorf("\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		return err
 	}
 
 	if r.Status == api.Complete {
-		logger.Println()
-		logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
-		logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
-		logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
+		shared.Logger.Println()
+		shared.Logger.Println(emoji.Rocket, "Lift off -- successfully created a new Release!")
+		shared.Logger.Println(emoji.Earth, "Your Release is available globally on 5 Deta Edges")
+		shared.Logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
 		if listedRelease {
-			logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
-		}
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			shared.Logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
 		}
 	} else {
-		logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
+		shared.Logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
+		return fmt.Errorf("release failed: %s", r.Status)
 	}
 
 	return nil
@@ -240,5 +219,5 @@ func getCreatingReleaseMsg(listed bool, latest bool) string {
 	if latest {
 		latestInfo = " with the latest Revision"
 	}
-	return fmt.Sprintf("%s Creating a%s Release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
+	return fmt.Sprintf("\n%s Creating a%s Release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
 }

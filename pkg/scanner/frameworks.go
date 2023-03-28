@@ -6,12 +6,12 @@ import (
 	"regexp"
 
 	"github.com/deta/pc-cli/pkg/util/fs"
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/pc-cli/types"
 )
 
 var NodeFrameworks = [...]NodeFramework{
 	{
-		Name: shared.React,
+		Name: types.React,
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"react-scripts":\s*".+?"[^}]*}`},
@@ -20,7 +20,7 @@ var NodeFrameworks = [...]NodeFramework{
 		},
 	},
 	{
-		Name: shared.Svelte,
+		Name: types.Svelte,
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"svelte":\s*".+?"[^}]*}`},
@@ -30,7 +30,7 @@ var NodeFrameworks = [...]NodeFramework{
 		},
 	},
 	{
-		Name: shared.Vue,
+		Name: types.Vue,
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"@vue\/cli-service":\s*".+?"[^}]*}`},
@@ -39,7 +39,7 @@ var NodeFrameworks = [...]NodeFramework{
 		},
 	},
 	{
-		Name: shared.SvelteKit,
+		Name: types.SvelteKit,
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"@sveltejs\/kit":\s*".+?"[^}]*}`},
@@ -48,7 +48,7 @@ var NodeFrameworks = [...]NodeFramework{
 		},
 	},
 	{
-		Name: shared.Next,
+		Name: types.Next,
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"next":\s*".+?"[^}]*}`},
@@ -57,7 +57,7 @@ var NodeFrameworks = [...]NodeFramework{
 		},
 	},
 	{
-		Name: shared.Nuxt,
+		Name: types.Nuxt,
 		Detectors: Detectors{
 			Matches: []Match{
 				{Path: "package.json", MatchContent: `"(dev)?(d|D)ependencies":\s*{[^}]*"nuxt3?(-edge)?":\s*".+?"[^}]*}`},
