@@ -39,7 +39,7 @@ func ZipDir(sourceDir string) ([]byte, int, error) {
 
 	files := make(map[string][]byte)
 	// go through the dir and read all the files
-	err = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(absDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
