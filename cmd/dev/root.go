@@ -115,7 +115,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	routeDir := filepath.Join(projectDir, ".space", "micros")
 	spacefile, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
-		shared.Logger.Printf("%s Failed to parse spacefile: %s", emoji.ErrorExclamation, err)
+		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 

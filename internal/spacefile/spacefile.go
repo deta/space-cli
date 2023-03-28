@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	// SpacefileName spacefile file name
+	// SpacefileName Spacefile name
 	SpacefileName = "Spacefile"
 )
 
 var (
-	ErrSpacefileNotFound = errors.New("spacefile file not found")
+	ErrSpacefileNotFound = errors.New("Spacefile not found")
 	ErrDuplicateMicros   = errors.New("micro names have to be unique")
 	ErrMultiplePrimary   = errors.New("multiple primary micros present")
 	ErrNoPrimaryMicro    = errors.New("no primary micro present")
@@ -68,18 +68,18 @@ func Open(spacefilePath string) (*Spacefile, error) {
 	if _, err := os.Stat(spacefilePath); os.IsNotExist(err) {
 		return nil, ErrSpacefileNotFound
 	} else if err != nil {
-		return nil, fmt.Errorf("failed to read spacefile file: %w", err)
+		return nil, fmt.Errorf("failed to read Spacefile: %w", err)
 	}
 
-	// read raw contents from spacefile file
+	// read raw contents from spacefile
 	c, err := os.ReadFile(spacefilePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
+		return nil, fmt.Errorf("failed to read contents of Spacefile: %w", err)
 	}
 
 	var v any
 	if err := yaml.Unmarshal(c, &v); err != nil {
-		return nil, fmt.Errorf("failed to parse spacefile file: %w", err)
+		return nil, fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 
 	// validate against schema
