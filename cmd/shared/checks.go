@@ -43,7 +43,7 @@ func CheckProjectInitialized(dirFlag string) PreRunFunc {
 		dir, _ := cmd.Flags().GetString(dirFlag)
 
 		if _, err := os.Stat(filepath.Join(dir, ".space", "meta")); os.IsNotExist(err) {
-			return errors.New("project is not initialized. run `space new` to initialize")
+			return errors.New("project is not initialized. run `space new` to initialize a new project")
 		}
 
 		return nil
