@@ -129,7 +129,7 @@ func Open(spacefilePath string) (*Spacefile, error) {
 	}
 
 	if !foundPrimaryMicro {
-		if len(spacefile.Micros) == 0 {
+		if len(spacefile.Micros) == 1 {
 			spacefile.Micros[0].Primary = true
 		} else {
 			return nil, ErrNoPrimaryMicro
