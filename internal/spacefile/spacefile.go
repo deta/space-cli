@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -20,37 +21,15 @@ const (
 	SpacefileName = "Spacefile"
 )
 
-func checkSpacefileCase(sourceDir string) (string, bool, error) {
-	files, err := ioutil.ReadDir(sourceDir)
-	if err != nil {
-		return "", false, err
-	}
-	for _, f := range files {
-		if strings.ToLower(f.Name()) == strings.ToLower(SpacefileName) {
-			if f.Name() != SpacefileName {
-				return f.Name(), false, nil
-			}
-			return f.Name(), true, nil
-		}
-	}
-	return "", false, ErrSpacefileNotFound
-}
-
 func Open(spacefilePath string) (*Spacefile, error) {
-	var exists bool
-	var err error
-
-	exists, err = fs.FileExists(spacefilePath, SpacefileName)
-	if err != nil {
+	if _, err := os.Stat(spacefilePath); os.IsNotExist(err) {
+		return nil, ErrSpacefileNotFound
+	} else if err != nil {
 		return nil, err
 	}
 
-	if !exists {
-		return nil, ErrSpacefileNotFound
-	}
-
 	// read raw contents from spacefile file
-	c, err := ioutil.ReadFile(filepath.Join(spacefilePath, SpacefileName))
+	c, err := ioutil.ReadFile(filepath.Join(spacefilePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
 	}
@@ -207,29 +186,6 @@ func (s *Spacefile) HasMicro(otherMicro *shared.Micro) bool {
 		}
 	}
 	return false
-}
-
-func IsSpacefilePresent(sourceDir string) (bool, error) {
-	var exists bool
-	var err error
-
-	exists, err = fs.FileExists(sourceDir, SpacefileName)
-	if err != nil {
-		return false, err
-	}
-
-	if !exists {
-		return false, nil
-	}
-
-	existingSpacefileName, correctCase, err := checkSpacefileCase(sourceDir)
-	if err != nil {
-		return false, err
-	}
-	if !correctCase {
-		return false, fmt.Errorf("'%s' must be called exactly %s: %w", existingSpacefileName, SpacefileName, ErrSpacefileWrongCase)
-	}
-	return true, nil
 }
 
 func ParseSpacefileUnmarshallTypeError(err *yaml.TypeError) string {
