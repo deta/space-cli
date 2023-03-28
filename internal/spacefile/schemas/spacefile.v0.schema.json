@@ -46,6 +46,11 @@
             "title": "Micro",
             "description": "Micro configuration",
             "type": "object",
+            "required": [
+                "engine",
+                "name",
+                "src"
+            ],
             "properties": {
                 "name": {
                     "description": "Name of the Micro",
