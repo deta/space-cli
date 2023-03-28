@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
-	"path"
 
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/spf13/cobra"
@@ -13,11 +12,25 @@ import (
 
 func newCmdExec() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "exec",
-		Short:  "executes a command in space context",
-		Args:   cobra.MinimumNArgs(1),
-		PreRun: execPreRun,
-		Run:    execRun,
+		Use:   "exec",
+		Short: "executes a command in space context",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			projectID, _ := cmd.Flags().GetString("project")
+			if !cmd.Flags().Changed("project") {
+				cwd, _ := os.Getwd()
+				projectID, err = runtime.GetProjectID(cwd)
+				if err != nil {
+					shared.Logger.Printf("project id not provided and could not be inferred from current working directory")
+					os.Exit(1)
+				}
+			}
+
+			if err := execRun(projectID, args); err != nil {
+				os.Exit(1)
+			}
+		},
 	}
 
 	cmd.Flags().String("project", "", "id of project to exec the command in")
@@ -26,35 +39,13 @@ func newCmdExec() *cobra.Command {
 	return cmd
 }
 
-func execPreRun(cmd *cobra.Command, args []string) {
-	if cmd.Flags().Changed("project") {
-		return
-	}
+func execRun(projectID string, args []string) error {
+	var err error
 
-	// if the project flag is not set, try to find the project id in the current directory
-	cwd, _ := os.Getwd()
-	metaPath := path.Join(cwd, ".space", "meta")
-	bytes, err := os.ReadFile(metaPath)
+	projectKey, err := shared.GenerateDataKeyIfNotExists(projectID)
 	if err != nil {
-		logger.Printf("%sproject flag is required when not in a space directory.", emoji.X)
-		os.Exit(1)
-	}
-
-	var meta runtime.ProjectMeta
-	if err := json.Unmarshal(bytes, &meta); err != nil {
-		logger.Printf("%sCould not parse project metadatas.", emoji.X)
-		os.Exit(1)
-	}
-
-	cmd.Flags().Set("project", meta.ID)
-}
-
-func execRun(cmd *cobra.Command, args []string) {
-	projectId, _ := cmd.Flags().GetString("project")
-	projectKey, err := generateDataKeyIfNotExists(projectId)
-	if err != nil {
-		logger.Printf("%sError generating data key: %s\n", emoji.ErrorExclamation, err.Error())
-		return
+		shared.Logger.Printf("%sError generating data key: %s\n", emoji.ErrorExclamation, err.Error())
+		return err
 	}
 
 	name := args[0]
@@ -70,5 +61,5 @@ func execRun(cmd *cobra.Command, args []string) {
 	command.Stderr = os.Stderr
 	command.Stdin = os.Stdin
 
-	command.Run()
+	return command.Run()
 }

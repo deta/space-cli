@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/pkg/components/emoji"
@@ -19,11 +20,36 @@ func newCmdLogin() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "login to space",
-		RunE:  login,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			withToken, _ := cmd.Flags().GetBool("with-token")
+
+			var accessToken string
+			if withToken {
+				input, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					shared.Logger.Println("failed to read access token from standard input")
+					os.Exit(1)
+				}
+
+				accessToken = strings.TrimSpace(string(input))
+			} else {
+				shared.Logger.Printf("To authenticate the Space CLI with your Space account, generate a new %s in your Space settings and paste it below:\n\n", styles.Code("access token"))
+				accessToken, err = inputAccessToken()
+				if err != nil {
+					os.Exit(1)
+				}
+			}
+
+			if err := login(accessToken); err != nil {
+				shared.Logger.Printf(styles.Errorf("%s Failed to login: %v", emoji.ErrorExclamation, err))
+				os.Exit(1)
+			}
+		},
 	}
 
 	cmd.Flags().StringP("with-token", "t", "", "Read token from standard input")
-	if !isOutputInteractive() {
+	if !shared.IsOutputInteractive() {
 		cmd.Flags().MarkHidden("with-token")
 	}
 
@@ -46,52 +72,26 @@ func inputAccessToken() (string, error) {
 	return text.Run(&promptInput)
 }
 
-func login(cmd *cobra.Command, args []string) (err error) {
-	// check space version
-	c := make(chan *checkVersionMsg, 1)
-	defer close(c)
-	go checkVersion(c)
-
-	withToken, _ := cmd.Flags().GetBool("with-token")
-
-	var accessToken string
-	if withToken {
-		input, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("failed to read access token from standard input")
-		}
-
-		accessToken = strings.TrimSpace(string(input))
-	} else {
-		logger.Printf("To authenticate the Space CLI with your Space account, generate a new %s in your Space settings and paste it below:\n\n", styles.Code("access token"))
-
-		accessToken, err = inputAccessToken()
-		if err != nil {
-			return err
-		}
-	}
-
-	_, err = client.GetSpace(&api.GetSpaceRequest{
+func login(accessToken string) (err error) {
+	// Check if the access token is valid
+	_, err = shared.Client.GetSpace(&api.GetSpaceRequest{
 		AccessToken: accessToken,
 	})
+
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidAccessToken) {
-			logger.Printf(styles.Errorf("%s Invalid access token. Please generate a valid token from your Space settings.", emoji.ErrorExclamation))
-			return nil
+			shared.Logger.Printf(styles.Errorf("%s Invalid access token. Please generate a valid token from your Space settings.", emoji.ErrorExclamation))
+			return fmt.Errorf("invalid access token")
 		}
-		logger.Printf(styles.Errorf("%s Failed to validate access token: %v", emoji.ErrorExclamation, err))
-		return nil
+		shared.Logger.Printf(styles.Errorf("%s Failed to validate access token: %v", emoji.ErrorExclamation, err))
+		return fmt.Errorf("failed to validate access token: %w", err)
 	}
 
 	err = auth.StoreAccessToken(accessToken)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to store access token: %w", err)
 	}
 
-	logger.Println(styles.Green("👍 Login Successful!"))
-	cm := <-c
-	if cm.err == nil && cm.isLower {
-		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", emoji.Rocket, styles.Code("space version upgrade")))
-	}
+	shared.Logger.Println(styles.Green("👍 Login Successful!"))
 	return nil
 }

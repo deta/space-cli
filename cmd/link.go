@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/runtime"
@@ -18,7 +19,27 @@ func newCmdLink() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "link [flags]",
 		Short: "link code to project",
-		Run:   link,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			projectDir, _ := cmd.Flags().GetString("dir")
+			projectID, _ := cmd.Flags().GetString("id")
+
+			if !cmd.Flags().Changed("id") {
+				shared.Logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
+
+				if projectID, err = selectLinkProjectID(); err != nil {
+					os.Exit(1)
+				}
+			}
+
+			if err := link(projectDir, projectID); err != nil {
+				os.Exit(1)
+			}
+		},
+		PreRunE: shared.CheckAll(
+			shared.CheckExists("dir"),
+			shared.CheckNotEmpty("id"),
+		),
 	}
 
 	cmd.Flags().StringP("id", "i", "", "project id of project to link")
@@ -42,58 +63,34 @@ func selectLinkProjectID() (string, error) {
 	return text.Run(&promptInput)
 }
 
-func link(cmd *cobra.Command, args []string) {
-	var err error
-
-	// check space version
-	c := make(chan *checkVersionMsg, 1)
-	defer close(c)
-	go checkVersion(c)
-
-	projectDir, _ := cmd.Flags().GetString("dir")
-
-	var projectID string
-	if cmd.Flags().Changed("id") {
-		projectID, _ = cmd.Flags().GetString("id")
-	} else {
-		logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
-
-		if projectID, err = selectLinkProjectID(); err != nil {
-			os.Exit(1)
-		}
-	}
-
+func link(projectDir string, projectID string) error {
 	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
-		logger.Println("failed to add .space to .gitignore, %w", err)
-		os.Exit(1)
+		shared.Logger.Println("failed to add .space to .gitignore, %w", err)
+		return err
 	}
 
-	projectRes, err := client.GetProject(&api.GetProjectRequest{ID: projectID})
+	projectRes, err := shared.Client.GetProject(&api.GetProjectRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			logger.Println(LoginInfo())
-			os.Exit(1)
+			shared.Logger.Println(shared.LoginInfo())
+			return err
 		}
 		if errors.Is(err, api.ErrProjectNotFound) {
-			logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
-			os.Exit(1)
+			shared.Logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
+			return err
 		}
 
-		logger.Println(styles.Errorf("%s Failed to link project, %s", emoji.ErrorExclamation, err.Error()))
-		os.Exit(1)
+		shared.Logger.Println(styles.Errorf("%s Failed to link project, %s", emoji.ErrorExclamation, err.Error()))
+		return err
 	}
 
 	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: projectRes.ID, Name: projectRes.Name, Alias: projectRes.Alias})
 	if err != nil {
-		logger.Printf("failed to link project: %s", err)
-		os.Exit(1)
+		shared.Logger.Printf("failed to link project: %s", err)
+		return err
 	}
 
-	logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))
-
-	logger.Println(projectNotes(projectRes.Name, projectRes.ID))
-	cm := <-c
-	if cm.err == nil && cm.isLower {
-		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-	}
+	shared.Logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))
+	shared.Logger.Println(shared.ProjectNotes(projectRes.Name, projectRes.ID))
+	return nil
 }

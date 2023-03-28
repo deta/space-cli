@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/internal/auth"
 	"github.com/deta/pc-cli/internal/discovery"
@@ -24,8 +25,28 @@ func newCmdPush() *cobra.Command {
 		Use:     "push [flags]",
 		Short:   "push code for project",
 		Args:    cobra.NoArgs,
-		PreRunE: CheckAll(CheckProjectInitialized("dir"), CheckNotEmpty("id", "tag")),
-		RunE:    push,
+		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "tag")),
+		Run: func(cmd *cobra.Command, args []string) {
+			projectDir, _ := cmd.Flags().GetString("dir")
+			projectID, _ := cmd.Flags().GetString("id")
+			if !cmd.Flags().Changed("id") {
+				var err error
+				projectID, err = runtime.GetProjectID(projectDir)
+				if err != nil {
+					shared.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
+					os.Exit(1)
+				}
+			}
+
+			pushTag, _ := cmd.Flags().GetString("tag")
+			openInBrowser, _ := cmd.Flags().GetBool("open")
+			skipLogs, _ := cmd.Flags().GetBool("skip-logs")
+
+			err := push(projectID, projectDir, pushTag, openInBrowser, skipLogs)
+			if err != nil {
+				os.Exit(1)
+			}
+		},
 	}
 
 	cmd.Flags().StringP("id", "i", "", "project id of project to push")
@@ -37,133 +58,115 @@ func newCmdPush() *cobra.Command {
 	return cmd
 }
 
-func push(cmd *cobra.Command, args []string) error {
-	// check space version
-	c := make(chan *checkVersionMsg, 1)
-	defer close(c)
-	go checkVersion(c)
-
-	projectDir, _ := cmd.Flags().GetString("dir")
-	projectID, _ := cmd.Flags().GetString("id")
-	pushTag, _ := cmd.Flags().GetString("tag")
-	openInBrowser, _ := cmd.Flags().GetBool("open")
-	skipLogs, _ := cmd.Flags().GetBool("skip-logs")
-
-	if !cmd.Flags().Changed("id") {
-		var err error
-		projectID, err = runtime.GetProjectID(projectDir)
-		if err != nil {
-			return err
-		}
-	}
-
+func push(projectID string, projectDir string, pushTag string, openInBrowser bool, skipLogs bool) error {
 	s, err := spacefile.Parse(path.Join(projectDir, "Spacefile"))
 	if err != nil {
+		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 
 	// push code & run build steps
 	zippedCode, nbFiles, err := runtime.ZipDir(projectDir)
 	if err != nil {
+		shared.Logger.Printf("%s Failed to zip project: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 
-	logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
-	build, err := client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag})
+	shared.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
+	build, err := shared.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag})
 	if err != nil {
-		logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
-		return nil
+		shared.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
+		return err
 	}
-	logger.Printf("%s Successfully started your build!", emoji.Check)
+	shared.Logger.Printf("%s Successfully started your build!", emoji.Check)
 
 	// push spacefile
 	raw, err := os.ReadFile(path.Join(projectDir, "Spacefile"))
 	if err != nil {
+		shared.Logger.Printf("%s Failed to read Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 
-	_, err = client.PushSpacefile(&api.PushSpacefileRequest{
+	_, err = shared.Client.PushSpacefile(&api.PushSpacefileRequest{
 		Manifest: raw,
 		BuildID:  build.ID,
 	})
 	if err != nil {
-		logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, err))
-		return nil
+		shared.Logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, err))
+		return fmt.Errorf("failed to push Spacefile: %w", err)
 	}
-	logger.Printf("%s Successfully pushed your Spacefile!", emoji.Check)
+	shared.Logger.Printf("%s Successfully pushed your Spacefile!", emoji.Check)
 
 	// // push spacefile icon
 	if icon, err := s.GetIcon(); err == nil {
-		if _, err := client.PushIcon(&api.PushIconRequest{
+		if _, err := shared.Client.PushIcon(&api.PushIconRequest{
 			Icon:        icon.Raw,
 			ContentType: icon.IconMeta.ContentType,
 			BuildID:     build.ID,
 		}); err != nil {
-			logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, err))
-			os.Exit(1)
+			shared.Logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, err))
+			return err
 		}
 	}
 
 	// push discovery file
 	if df, err := discovery.Open(projectDir); err == nil {
-		if _, err := client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
+		if _, err := shared.Client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
 			DiscoveryFile: df,
 			BuildID:       build.ID,
 		}); err != nil {
-			logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, err))
-			return nil
+			shared.Logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, err))
+			return err
 		}
-		logger.Printf("%s Successfully pushed your Discovery file!", emoji.Check)
+		shared.Logger.Printf("%s Successfully pushed your Discovery file!", emoji.Check)
 	} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
-		logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
-		return nil
+		shared.Logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
+		return err
 	} else if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-		logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+		shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+		return err
 	}
 
-	if _, err = client.PushCode(&api.PushCodeRequest{
+	if _, err = shared.Client.PushCode(&api.PushCodeRequest{
 		BuildID: build.ID, ZippedCode: zippedCode,
 	}); err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			logger.Println(LoginInfo())
-			return nil
+			shared.Logger.Println(shared.LoginInfo())
+			return err
 		}
+		shared.Logger.Printf("%s Failed to push code: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 
 	if skipLogs {
-		b, err := client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
+		b, err := shared.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 		if err != nil {
-			logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
-			return nil
+			shared.Logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+			return fmt.Errorf("failed to check if build was started: %w", err)
 		}
 
-		var url = fmt.Sprintf("%s/%s?event=bld-%s", builderUrl, projectID, b.Tag)
+		var url = fmt.Sprintf("%s/%s?event=bld-%s", shared.BuilderUrl, projectID, b.Tag)
 
-		logger.Println(styles.Greenf("\n%s Successfully pushed your code!", emoji.PartyPopper))
-		logger.Println("\nSkipped following build process, please check build status manually:")
-		logger.Println(styles.Codef(url))
+		shared.Logger.Println(styles.Greenf("\n%s Successfully pushed your code!", emoji.PartyPopper))
+		shared.Logger.Println("\nSkipped following build process, please check build status manually:")
+		shared.Logger.Println(styles.Codef(url))
 		if openInBrowser {
 			err = browser.OpenURL(url)
 
 			if err != nil {
-				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+				shared.Logger.Printf("%s Failed to open browser window", emoji.ErrorExclamation)
+				return err
 			}
 		}
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		return nil
 	}
 
 	// get build logs
-	readCloser, err := client.GetBuildLogs(&api.GetBuildLogsRequest{
+	readCloser, err := shared.Client.GetBuildLogs(&api.GetBuildLogsRequest{
 		BuildID: build.ID,
 	})
 	if err != nil {
-		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
-		return nil
+		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return err
 	}
 	defer readCloser.Close()
 	// stream build logs
@@ -173,36 +176,36 @@ func push(cmd *cobra.Command, args []string) error {
 		fmt.Println(line)
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
-		return nil
+		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return err
 	}
 
 	// check build status
-	b, err := client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
+	b, err := shared.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
-		return nil
+		shared.Logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		return err
 	}
 	if b.Status != api.Complete {
-		logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
-		return nil
+		shared.Logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
+		return err
 	}
 
 	// get promotion via build id (build id == revision id)
-	p, err := client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: build.ID})
+	p, err := shared.Client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: build.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
-		return nil
+		shared.Logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		return err
 	}
 
-	logger.Printf("\n%s Updating your Builder instance with the new revision...\n\n", emoji.Tools)
+	shared.Logger.Printf("\n%s Updating your Builder instance with the new revision...\n\n", emoji.Tools)
 
-	readCloserPromotion, err := client.GetReleaseLogs(&api.GetReleaseLogsRequest{
+	readCloserPromotion, err := shared.Client.GetReleaseLogs(&api.GetReleaseLogsRequest{
 		ID: p.ID,
 	})
 	if err != nil {
-		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		return nil
+		shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return err
 	}
 
 	defer readCloserPromotion.Close()
@@ -211,35 +214,35 @@ func push(cmd *cobra.Command, args []string) error {
 		// we don't want to print the logs to the terminal
 	}
 	if err := scannerPromotion.Err(); err != nil {
-		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
-		return nil
+		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return err
 	}
 
 	// check promotion status
-	p, err = client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: p.ID})
+	p, err = shared.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: p.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
-		return nil
+		shared.Logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		return err
 	}
 	if p.Status != api.Complete {
-		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
-		return nil
+		shared.Logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
+		return err
 	}
 
 	// get installation via promotion id (promotion id == release id)
-	i, err := client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
+	i, err := shared.Client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
 	if err != nil {
-		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
-		return nil
+		shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		shared.Logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		return err
 	}
 
-	readCloserInstallation, err := client.GetInstallationLogs(&api.GetInstallationLogsRequest{
+	readCloserInstallation, err := shared.Client.GetInstallationLogs(&api.GetInstallationLogsRequest{
 		ID: i.ID,
 	})
 	if err != nil {
-		logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		return nil
+		shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		return err
 	}
 
 	var instanceUrl string
@@ -255,39 +258,36 @@ func push(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if err := scannerInstallation.Err(); err != nil {
-		logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
-		return nil
+		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		return err
 	}
 
 	// check installation status
-	i, err = client.GetInstallation(&api.GetInstallationRequest{ID: i.ID})
+	i, err = shared.Client.GetInstallation(&api.GetInstallationRequest{ID: i.ID})
 	if err != nil {
-		logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", builderUrl, projectID)))
-		return nil
+		shared.Logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		return err
 	}
 	if i.Status != api.Complete {
-		logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
-		return nil
+		shared.Logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
+		return err
 	}
 
-	logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
+	shared.Logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
 
 	if instanceUrl != "" {
-		logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
+		shared.Logger.Printf("Builder instance: %s", styles.Code(instanceUrl))
 
 		if openInBrowser {
 			err = browser.OpenURL(instanceUrl)
 
 			if err != nil {
-				return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+				shared.Logger.Printf("%s Failed to open browser window", emoji.ErrorExclamation)
+				return err
 			}
 		}
 	}
 
-	cm := <-c
-	if cm.err == nil && cm.isLower {
-		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-	}
 	return nil
 
 }

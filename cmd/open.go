@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/deta/pc-cli/cmd/shared"
 	"github.com/deta/pc-cli/internal/runtime"
 	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -14,8 +15,8 @@ func newCmdOpen() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "open",
 		Short:   "open current project in browser",
-		PreRunE: CheckAll(CheckExists("dir"), CheckNotEmpty("id")),
-		RunE:    open,
+		PreRunE: shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
+		Run:     open,
 	}
 
 	cmd.Flags().StringP("id", "i", "", "project id of project to open")
@@ -24,11 +25,7 @@ func newCmdOpen() *cobra.Command {
 	return cmd
 }
 
-func open(cmd *cobra.Command, args []string) error {
-	// check space version
-	c := make(chan *checkVersionMsg, 1)
-	defer close(c)
-	go checkVersion(c)
+func open(cmd *cobra.Command, args []string) {
 
 	projectDir, _ := cmd.Flags().GetString("dir")
 	projectID, _ := cmd.Flags().GetString("id")
@@ -37,18 +34,15 @@ func open(cmd *cobra.Command, args []string) error {
 		var err error
 		projectID, err = runtime.GetProjectID(projectDir)
 		if err != nil {
-			return fmt.Errorf("%s Failed to get project id %w", emoji.ErrorExclamation, err)
+			shared.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
+			os.Exit(1)
 		}
 	}
 
-	logger.Printf("Opening project in default browser...\n")
-	if err := browser.OpenURL(fmt.Sprintf("%s/%s", builderUrl, projectID)); err != nil {
-		return fmt.Errorf("%s Failed to open browser window %w", emoji.ErrorExclamation, err)
+	shared.Logger.Printf("Opening project in default browser...\n")
+	if err := browser.OpenURL(fmt.Sprintf("%s/%s", shared.BuilderUrl, projectID)); err != nil {
+		shared.Logger.Printf("%s Failed to open browser window %s", emoji.ErrorExclamation, err)
+		os.Exit(1)
 	}
 
-	cm := <-c
-	if cm.err == nil && cm.isLower {
-		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-	}
-	return nil
 }

@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package cmd
+package version
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func upgradeWin(version string) error {
 		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))
 		cmd = fmt.Sprintf(`$v="%s"; %s`, version, cmd)
 	}
-	logger.Printf("%s...\n", msg)
+	shared.Logger.Printf("%s...\n", msg)
 
 	pshellCmd := exec.Command("powershell", cmd)
 

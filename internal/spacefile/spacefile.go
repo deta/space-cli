@@ -12,7 +12,7 @@ import (
 
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/pc-cli/types"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 
@@ -37,10 +37,10 @@ var spacefileSchema *jsonschema.Schema = jsonschema.MustCompileString("", spacef
 
 // Spacefile xx
 type Spacefile struct {
-	V       int             `yaml:"v"`
-	Icon    string          `yaml:"icon,omitempty"`
-	AppName string          `yaml:"app_name,omitempty"`
-	Micros  []*shared.Micro `yaml:"micros,omitempty"`
+	V       int            `yaml:"v"`
+	Icon    string         `yaml:"icon,omitempty"`
+	AppName string         `yaml:"app_name,omitempty"`
+	Micros  []*types.Micro `yaml:"micros,omitempty"`
 }
 
 // IconMeta xx
@@ -165,7 +165,7 @@ func (s *Spacefile) Save(sourceDir string) error {
 	return nil
 }
 
-func (s *Spacefile) AddMicros(newMicros []*shared.Micro) error {
+func (s *Spacefile) AddMicros(newMicros []*types.Micro) error {
 	for _, micro := range newMicros {
 		if err := s.AddMicro(micro); err != nil {
 			return fmt.Errorf("failed to add micro %s to spacefile, %w", micro.Name, err)
@@ -191,7 +191,7 @@ func (s *Spacefile) GetIcon() (*Icon, error) {
 	return &Icon{Raw: raw, IconMeta: iconMeta}, nil
 }
 
-func (s *Spacefile) AddMicro(newMicro *shared.Micro) error {
+func (s *Spacefile) AddMicro(newMicro *types.Micro) error {
 	// mark new micro as primary if it is the only one
 	if len(s.Micros) == 0 {
 		newMicro.Primary = true
@@ -210,14 +210,14 @@ func (s *Spacefile) AddMicro(newMicro *shared.Micro) error {
 	return nil
 }
 
-func CreateSpacefileWithMicros(sourceDir string, micros []*shared.Micro) (*Spacefile, error) {
+func CreateSpacefileWithMicros(sourceDir string, micros []*types.Micro) (*Spacefile, error) {
 	// mark one micro as primary
 	if len(micros) > 0 {
 		micros[0].Primary = true
 	}
 
 	s := new(Spacefile)
-	s.Micros = make([]*shared.Micro, len(micros))
+	s.Micros = make([]*types.Micro, len(micros))
 	copy(s.Micros, micros)
 
 	err := s.Save(sourceDir)
@@ -239,7 +239,7 @@ func CreateBlankSpacefile(sourceDir string) (*Spacefile, error) {
 	return s, nil
 }
 
-func (s *Spacefile) HasMicro(otherMicro *shared.Micro) bool {
+func (s *Spacefile) HasMicro(otherMicro *types.Micro) bool {
 	for _, micro := range s.Micros {
 		if micro.Name == otherMicro.Name && micro.Src == otherMicro.Src {
 			return true

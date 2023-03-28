@@ -1,8 +1,8 @@
 package scanner
 
-import "github.com/deta/pc-cli/shared"
+import "github.com/deta/pc-cli/types"
 
-type engineScanner func(dir string) (*shared.Micro, error)
+type engineScanner func(dir string) (*types.Micro, error)
 
 type Match struct {
 	Path         string

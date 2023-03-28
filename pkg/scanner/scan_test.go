@@ -1,10 +1,11 @@
 package scanner
 
 import (
-	"github.com/deta/pc-cli/shared"
+	"testing"
+
+	"github.com/deta/pc-cli/types"
 	"golang.org/x/exp/slices"
 	"gotest.tools/v3/assert"
-	"testing"
 )
 
 type ScanTestInfo struct {
@@ -15,16 +16,16 @@ type ScanTestInfo struct {
 
 var (
 	microsTestInfo = []ScanTestInfo{
-		{Name: "python", Path: "testdata/micros/python", ExpectedEngine: shared.Python39},
-		{Name: "go", Path: "testdata/micros/go", ExpectedEngine: shared.Custom},
-		{Name: "next", Path: "testdata/micros/next", ExpectedEngine: shared.Next},
-		{Name: "node", Path: "testdata/micros/node", ExpectedEngine: shared.Node16x},
-		{Name: "nuxt", Path: "testdata/micros/nuxt", ExpectedEngine: shared.Nuxt},
-		{Name: "react", Path: "testdata/micros/react", ExpectedEngine: shared.React},
-		{Name: "static", Path: "testdata/micros/static", ExpectedEngine: shared.Static},
-		{Name: "svelte", Path: "testdata/micros/svelte", ExpectedEngine: shared.Svelte},
-		{Name: "svelte-kit", Path: "testdata/micros/svelte-kit", ExpectedEngine: shared.SvelteKit},
-		{Name: "vue", Path: "testdata/micros/vue", ExpectedEngine: shared.Vue},
+		{Name: "python", Path: "testdata/micros/python", ExpectedEngine: types.Python39},
+		{Name: "go", Path: "testdata/micros/go", ExpectedEngine: types.Custom},
+		{Name: "next", Path: "testdata/micros/next", ExpectedEngine: types.Next},
+		{Name: "node", Path: "testdata/micros/node", ExpectedEngine: types.Node16x},
+		{Name: "nuxt", Path: "testdata/micros/nuxt", ExpectedEngine: types.Nuxt},
+		{Name: "react", Path: "testdata/micros/react", ExpectedEngine: types.React},
+		{Name: "static", Path: "testdata/micros/static", ExpectedEngine: types.Static},
+		{Name: "svelte", Path: "testdata/micros/svelte", ExpectedEngine: types.Svelte},
+		{Name: "svelte-kit", Path: "testdata/micros/svelte-kit", ExpectedEngine: types.SvelteKit},
+		{Name: "vue", Path: "testdata/micros/vue", ExpectedEngine: types.Vue},
 	}
 )
 
@@ -44,16 +45,16 @@ func TestScanMultiMicroProject(t *testing.T) {
 
 	expectedMicros := []string{"python", "go", "next", "node", "nuxt", "react", "static", "svelte", "svelte-kit", "vue"}
 	expectedMicrosToEngines := map[string]string{
-		"python":     shared.Python39,
-		"go":         shared.Custom,
-		"next":       shared.Next,
-		"node":       shared.Node16x,
-		"nuxt":       shared.Nuxt,
-		"react":      shared.React,
-		"static":     shared.Static,
-		"svelte":     shared.Svelte,
-		"svelte-kit": shared.SvelteKit,
-		"vue":        shared.Vue,
+		"python":     types.Python39,
+		"go":         types.Custom,
+		"next":       types.Next,
+		"node":       types.Node16x,
+		"nuxt":       types.Nuxt,
+		"react":      types.React,
+		"static":     types.Static,
+		"svelte":     types.Svelte,
+		"svelte-kit": types.SvelteKit,
+		"vue":        types.Vue,
 	}
 
 	sourceDir := "testdata/micros"

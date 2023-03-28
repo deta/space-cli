@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/deta/pc-cli/pkg/util/fs"
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/pc-cli/types"
 )
 
-func pythonScanner(dir string) (*shared.Micro, error) {
+func pythonScanner(dir string) (*types.Micro, error) {
 	// if any of the following files exist detect as python app
 	exists, err := fs.CheckIfAnyFileExists(dir, "requirements.txt", "Pipfile", "setup.py", "main.py")
 	if err != nil {
@@ -22,16 +22,16 @@ func pythonScanner(dir string) (*shared.Micro, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
 	}
-	m := &shared.Micro{
+	m := &types.Micro{
 		Name:   name,
 		Src:    dir,
-		Engine: shared.Python39,
+		Engine: types.Python39,
 	}
 
 	return m, nil
 }
 
-func nodeScanner(dir string) (*shared.Micro, error) {
+func nodeScanner(dir string) (*types.Micro, error) {
 	// if any of the following files exist detect as a node app
 	exists, err := fs.CheckIfAnyFileExists(dir, "package.json")
 	if err != nil {
@@ -46,10 +46,10 @@ func nodeScanner(dir string) (*shared.Micro, error) {
 		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
 	}
 
-	m := &shared.Micro{
+	m := &types.Micro{
 		Name:   name,
 		Src:    dir,
-		Engine: shared.Node16x,
+		Engine: types.Node16x,
 	}
 
 	framework, err := detectFramework(dir)
@@ -61,7 +61,7 @@ func nodeScanner(dir string) (*shared.Micro, error) {
 	return m, nil
 }
 
-func goScanner(dir string) (*shared.Micro, error) {
+func goScanner(dir string) (*types.Micro, error) {
 	exists, err := fs.CheckIfAnyFileExists(dir, "go.mod")
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func goScanner(dir string) (*shared.Micro, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
 	}
-	m := &shared.Micro{
+	m := &types.Micro{
 		Name:     name,
 		Src:      dir,
 		Engine:   "custom",
@@ -86,7 +86,7 @@ func goScanner(dir string) (*shared.Micro, error) {
 	return m, nil
 }
 
-func staticScanner(dir string) (*shared.Micro, error) {
+func staticScanner(dir string) (*types.Micro, error) {
 	// if any of the following files exist, detect as a static app
 	exists, err := fs.CheckIfAnyFileExists(dir, "index.html")
 	if err != nil {
@@ -100,10 +100,10 @@ func staticScanner(dir string) (*shared.Micro, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
 	}
-	m := &shared.Micro{
+	m := &types.Micro{
 		Name:   name,
 		Src:    dir,
-		Engine: shared.Static,
+		Engine: types.Static,
 	}
 	return m, nil
 }

@@ -289,7 +289,7 @@ type PushSpacefileResponse struct {
 	ID string `json:"build_id"`
 }
 
-// PushSpacefile pushes raw spacefile file content
+// PushSpacefile pushes raw spacefile content
 func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileResponse, error) {
 	i := &requestInput{
 		Root:        spaceRoot,
@@ -308,13 +308,13 @@ func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileRespo
 	}
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push spacefile file, %v", msg)
+		return nil, fmt.Errorf("failed to push spacefile, %v", msg)
 	}
 
 	var resp PushSpacefileResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push spacefile file %w", err)
+		return nil, fmt.Errorf("failed to push spacefile %w", err)
 	}
 
 	return &resp, nil
@@ -848,11 +848,13 @@ func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) 
 	return &resp, nil
 }
 
+type ProjectKey struct {
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+}
+
 type ListProjectResponse struct {
-	Keys []struct {
-		Name      string `json:"name"`
-		CreatedAt string `json:"created_at"`
-	} `json:"keys"`
+	Keys []ProjectKey `json:"keys"`
 }
 
 func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error) {

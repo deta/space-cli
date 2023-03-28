@@ -1,30 +1,37 @@
-package cmd
+package shared
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/deta/pc-cli/internal/api"
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/mattn/go-isatty"
 )
 
 const (
-	docsUrl          = "https://go.deta.dev/docs/space/alpha"
-	spacefileDocsUrl = "https://go.deta.dev/docs/spacefile/v0"
-	builderUrl       = "https://deta.space/builder"
+	DocsUrl          = "https://go.deta.dev/docs/space/alpha"
+	SpacefileDocsUrl = "https://go.deta.dev/docs/spacefile/v0"
+	BuilderUrl       = "https://deta.space/builder"
 )
 
-func projectNotes(projectName string, projectId string) string {
+var (
+	Client = api.NewDetaClient()
+	Logger = log.New(os.Stderr, "", 0)
+)
+
+func ProjectNotes(projectName string, projectId string) string {
 	return fmt.Sprintf(`
 %s
 
 %s Find your project in Builder: %s
 %s Use the %s to configure your app: %s
 %s Push your code to Space with %s`, styles.Bold("Next steps:"), emoji.Eyes,
-		styles.Bold(fmt.Sprintf("%s/%s", builderUrl, projectId)),
+		styles.Bold(fmt.Sprintf("%s/%s", BuilderUrl, projectId)),
 		emoji.Files,
-		styles.Code("Spacefile"), styles.Bold(spacefileDocsUrl),
+		styles.Code("Spacefile"), styles.Bold(SpacefileDocsUrl),
 		emoji.Swirl,
 		styles.Code("space push"))
 }
@@ -33,6 +40,6 @@ func LoginInfo() string {
 	return styles.Boldf("No auth token found. Run %s or provide access token to login.", styles.Code("space login"))
 }
 
-func isOutputInteractive() bool {
+func IsOutputInteractive() bool {
 	return isatty.IsTerminal(os.Stdout.Fd())
 }

@@ -1,7 +1,7 @@
 //go:build !windows
 // +build !windows
 
-package cmd
+package version
 
 func upgradeWin(version string) error {
 	return nil

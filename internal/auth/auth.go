@@ -3,10 +3,11 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"crypto/hmac"
 	"crypto/sha256"
@@ -23,6 +24,7 @@ const (
 	dirModePermReadWriteExecute = 0760
 	fileModePermReadWrite       = 0660
 	spaceProjectKeysPath        = ".detaspace/space_project_keys"
+	spaceVersionPath            = ".detaspace/space_latest_version"
 )
 
 var (
@@ -180,7 +182,7 @@ func GetProjectKey(projectId string) (string, error) {
 	defer f.Close()
 
 	var keys Keys
-	contents, _ := ioutil.ReadAll(f)
+	contents, _ := io.ReadAll(f)
 	json.Unmarshal(contents, &keys)
 
 	if key, ok := keys[projectId]; ok {
@@ -188,6 +190,60 @@ func GetProjectKey(projectId string) (string, error) {
 	}
 
 	return "", ErrNoProjectKeyFound
+}
+
+type Version struct {
+	Version   string `json:"version"`
+	UpdatedAt int64  `json:"updatedAt"`
+}
+
+func CacheLatestVersion(version string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	spaceDirPath := filepath.Join(home, spaceDir)
+	err = os.MkdirAll(spaceDirPath, 0760)
+	if err != nil {
+		return err
+	}
+
+	versionsFilePath := filepath.Join(home, spaceVersionPath)
+	content, err := json.Marshal(Version{
+		Version:   version,
+		UpdatedAt: int64(time.Now().Unix()),
+	})
+	if err != nil {
+		return err
+	}
+
+	os.WriteFile(versionsFilePath, content, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetLatestCachedVersion() (string, time.Time, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	versionsFilePath := filepath.Join(home, spaceVersionPath)
+	content, err := os.ReadFile(versionsFilePath)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	var version Version
+	if err = json.Unmarshal(content, &version); err != nil {
+		return "", time.Time{}, err
+	}
+
+	return version.Version, time.Unix(version.UpdatedAt, 0), nil
 }
 
 func StoreProjectKey(projectId string, projectKey string) error {
@@ -211,7 +267,7 @@ func StoreProjectKey(projectId string, projectKey string) error {
 	}
 
 	keysFilePath := filepath.Join(home, spaceProjectKeysPath)
-	err = ioutil.WriteFile(keysFilePath, marshalled, 0660)
+	err = os.WriteFile(keysFilePath, marshalled, 0660)
 	if err != nil {
 		return err
 	}
