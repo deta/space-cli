@@ -41,6 +41,11 @@ func validate(projectDir string) error {
 
 	if s.Icon == "" {
 		shared.Logger.Printf("\n%s No app icon specified.", styles.Blue("i"))
+	} else {
+		if err := spacefile.ValidateIcon(s.Icon); err != nil {
+			shared.Logger.Println(styles.Errorf("%s Detected some issues with your icon. Please fix them before pushing your code.", emoji.ErrorExclamation))
+			shared.Logger.Println(styles.Error(err.Error()))
+		}
 	}
 
 	shared.Logger.Println(styles.Greenf("\n%s Spacefile looks good!", emoji.Sparkles))

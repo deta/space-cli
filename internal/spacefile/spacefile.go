@@ -2,17 +2,22 @@ package spacefile
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	_ "embed"
 
 	"github.com/deta/pc-cli/pkg/components/emoji"
 	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/deta/pc-cli/pkg/util/fs"
 	"github.com/deta/pc-cli/shared"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,6 +25,38 @@ const (
 	// SpacefileName spacefile file name
 	SpacefileName = "Spacefile"
 )
+
+//go:embed schemas/spacefile.v0.schema.json
+var spacefileSchemaString string
+var spacefileSchema *jsonschema.Schema = jsonschema.MustCompileString("", spacefileSchemaString)
+
+var (
+	ErrSpacefileNotFound = errors.New("Spacefile not found")
+	ErrDuplicateMicros   = errors.New("micro names have to be unique")
+	ErrMultiplePrimary   = errors.New("multiple primary micros present")
+	ErrNoPrimaryMicro    = errors.New("no primary micro present")
+)
+
+// Spacefile xx
+type Spacefile struct {
+	V       int             `yaml:"v"`
+	Icon    string          `yaml:"icon,omitempty"`
+	AppName string          `yaml:"app_name,omitempty"`
+	Micros  []*shared.Micro `yaml:"micros,omitempty"`
+}
+
+func PrettyValidationErrors(ve *jsonschema.ValidationError) string {
+	if len(ve.Causes) == 0 {
+		return fmt.Sprintf("[%s] %s", ve.InstanceLocation, ve.Message)
+	}
+
+	lines := []string{}
+	for _, c := range ve.Causes {
+		lines = append(lines, PrettyValidationErrors(c))
+	}
+
+	return strings.Join(lines, "\n")
+}
 
 func Open(spacefilePath string) (*Spacefile, error) {
 	if _, err := os.Stat(spacefilePath); os.IsNotExist(err) {
@@ -34,24 +71,48 @@ func Open(spacefilePath string) (*Spacefile, error) {
 		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
 	}
 
+	var v any
+	if err := yaml.Unmarshal(c, &v); err != nil {
+		return nil, fmt.Errorf("failed to parse Spacefile: %w", err)
+	}
+
+	// validate against schema
+	if err := spacefileSchema.Validate(v); err != nil {
+		var ve *jsonschema.ValidationError
+		if errors.As(err, &ve) {
+			return nil, fmt.Errorf(PrettyValidationErrors(ve))
+		}
+	}
+
 	// parse raw spacefile file content
-	s := Spacefile{}
+	var spacefile Spacefile
 	dec := yaml.NewDecoder(bytes.NewReader(c))
 	dec.KnownFields(true)
 
-	err = dec.Decode(&s)
-	if err != nil {
+	if err = dec.Decode(&spacefile); err != nil {
 		return nil, err
 	}
 
-	if len(s.Micros) == 1 {
-		s.Micros[0].Primary = true
-	}
+	foundPrimaryMicro := false
+	micros := make(map[string]struct{})
+	for i, micro := range spacefile.Micros {
+		if _, ok := micros[micro.Name]; ok {
+			return nil, ErrDuplicateMicros
+		}
+		micros[micro.Name] = struct{}{}
 
-	for i, micro := range s.Micros {
 		if micro.Primary {
-			s.Micros[i].Path = "/"
+			if foundPrimaryMicro {
+				return nil, ErrMultiplePrimary
+			}
+
+			foundPrimaryMicro = true
+			spacefile.Micros[i].Path = "/"
 			continue
+		}
+
+		if _, err := os.Stat(filepath.Join(path.Dir(spacefilePath), micro.Src)); os.IsNotExist(err) {
+			return nil, fmt.Errorf("micro %s src %s not found", micro.Name, micro.Src)
 		}
 
 		if micro.Path != "" {
@@ -60,14 +121,22 @@ func Open(spacefilePath string) (*Spacefile, error) {
 			}
 			micro.Path = strings.TrimSuffix(micro.Path, "/")
 
-			s.Micros[i].Path = micro.Path
+			spacefile.Micros[i].Path = micro.Path
 			continue
 		}
 
-		s.Micros[i].Path = fmt.Sprintf("/%s", micro.Name)
+		spacefile.Micros[i].Path = fmt.Sprintf("/%s", micro.Name)
 	}
 
-	return &s, nil
+	if !foundPrimaryMicro {
+		if len(spacefile.Micros) == 0 {
+			spacefile.Micros[0].Primary = true
+		} else {
+			return nil, ErrNoPrimaryMicro
+		}
+	}
+
+	return &spacefile, nil
 }
 
 // OpenRaw returns the raw spacefile file content from sourceDir if it exists
