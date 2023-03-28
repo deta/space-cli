@@ -31,6 +31,12 @@ var (
 
 // StoreProjectMeta stores project meta to disk
 func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
+	if _, err := os.Stat(filepath.Join(projectDir, spaceDir)); os.IsNotExist(err) {
+		err = os.Mkdir(filepath.Join(projectDir, spaceDir), dirPermMode)
+		if err != nil {
+			return err
+		}
+	}
 	marshalled, err := json.Marshal(p)
 	if err != nil {
 		return err
