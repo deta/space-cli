@@ -69,8 +69,6 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 
 	shared.Logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!"))
 
-	shared.Logger.Printf("%s Successfully started your build!", emoji.Check)
-
 	// push code & run build steps
 	zippedCode, nbFiles, err := runtime.ZipDir(projectDir)
 	if err != nil {
