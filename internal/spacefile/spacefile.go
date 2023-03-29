@@ -81,12 +81,12 @@ func extractPresets(v any, microIndex int) (map[string]any, bool) {
 }
 
 func extractAction(v any, microIndex int, actionIndex int) (map[string]any, bool) {
-	presets, ok := extractPresets(v, microIndex)
+	micro, ok := extractMicro(v, microIndex)
 	if !ok {
 		return nil, false
 	}
 
-	actions, ok := presets["actions"].([]interface{})
+	actions, ok := micro["actions"].([]interface{})
 	if !ok {
 		return nil, false
 	}
