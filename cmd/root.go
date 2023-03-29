@@ -32,14 +32,16 @@ Complete documentation available at %s`, shared.DocsUrl),
 		DisableAutoGenTag: true,
 		Version:           spaceVersion,
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if isPrerelease(spaceVersion) || spaceVersion == "dev" {
+			if isPrerelease(spaceVersion) {
 				return
 			}
 
 			latestVersion, lastCheck, err := runtime.GetLatestCachedVersion()
-			if err != nil || time.Since(lastCheck) > 24*time.Hour {
+			if err != nil || time.Since(lastCheck) > 3*time.Hour {
+				shared.Logger.Println("\nChecking for new Space CLI version...")
 				res, err := shared.Client.GetLatestCLIVersion()
 				if err != nil {
+					shared.Logger.Println("Failed to check for new Space CLI version")
 					return
 				}
 
