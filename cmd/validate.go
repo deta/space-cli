@@ -37,7 +37,7 @@ func validate(projectDir string) error {
 	if err != nil {
 		shared.Logger.Println(styles.Errorf("\n%s Detected some issues with your Spacefile. Please fix them before pushing your code.", emoji.ErrorExclamation))
 		shared.Logger.Println()
-		shared.Logger.Println(styles.Error(err.Error()))
+		shared.Logger.Println(err.Error())
 		return err
 	}
 

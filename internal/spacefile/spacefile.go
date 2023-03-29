@@ -32,11 +32,11 @@ var spacefileSchemaString string
 var spacefileSchema *jsonschema.Schema = jsonschema.MustCompileString("", spacefileSchemaString)
 
 var (
-	ErrSpacefileNotFound  = errors.New("Spacefile not found")
-	ErrSpacefileStructure = errors.New("Spacefile structure is invalid")
-	ErrDuplicateMicros    = errors.New("micro names have to be unique")
-	ErrMultiplePrimary    = errors.New("multiple primary micros present")
-	ErrNoPrimaryMicro     = errors.New("no primary micro present")
+	ErrSpacefileNotFound = errors.New("Spacefile not found")
+	ErrInvalidSpacefile  = errors.New("unable to parse Spacefile")
+	ErrDuplicateMicros   = errors.New("micro names have to be unique")
+	ErrMultiplePrimary   = errors.New("multiple primary micros present")
+	ErrNoPrimaryMicro    = errors.New("no primary micro present")
 )
 
 // Spacefile xx
@@ -146,17 +146,26 @@ var (
 	presetsReg      = regexp.MustCompile(`\/micros\/(\d+)\/presets$`)
 	envReg          = regexp.MustCompile(`\/micros\/(\d+)\/presets\/env\/(\d+)$`)
 	apiKeyReg       = regexp.MustCompile(`\/micros\/(\d+)\/presets\/api_keys\/(\d+)$`)
+	numberReg       = regexp.MustCompile(`^\d+$`)
 )
 
 func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string) string {
+	// Skip the root error
 	if ve.KeywordLocation == "" {
 		return PrettyValidationErrors(ve.Causes[0], v, prefix)
 	}
 
 	// If there are no causes, just print the message
 	if len(ve.Causes) == 0 {
-		message := strings.Replace(ve.Message, "additionalProperties", "additional properties:", 1)
-		return fmt.Sprintf("%sL %s", prefix, message)
+		message := strings.Replace(ve.Message, "additionalProperties", "unknown field", 1)
+		parts := strings.Split(ve.InstanceLocation, "/")
+
+		leaf := parts[len(parts)-1]
+		if leaf == "" || numberReg.MatchString(leaf) {
+			return fmt.Sprintf("%sL %s", prefix, message)
+		}
+
+		return fmt.Sprintf("%sL %s -> %s", prefix, leaf, message)
 	}
 
 	var rows []string
@@ -247,7 +256,7 @@ func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 
 	var v any
 	if err := yaml.Unmarshal(content, &v); err != nil {
-		return nil, ErrSpacefileStructure
+		return nil, ErrInvalidSpacefile
 	}
 
 	// validate against schema
@@ -260,7 +269,7 @@ func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 
 	var spacefile Spacefile
 	if err := yaml.Unmarshal(content, &spacefile); err != nil {
-		return nil, ErrSpacefileStructure
+		return nil, ErrInvalidSpacefile
 	}
 
 	foundPrimaryMicro := false
