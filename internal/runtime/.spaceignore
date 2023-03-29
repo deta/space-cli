@@ -9,9 +9,15 @@
 .gitignore
 .svn
 
+# build
+build
+dist
+
 # js frameworks
 .next
 .nuxt
+.svelte-kit
+.astro
 
 # node
 node_modules
@@ -28,6 +34,9 @@ lerna-debug.log*
 .venv
 venv
 __pycache__
+
+# rust
+target
 
 # coverage
 *.lcov
