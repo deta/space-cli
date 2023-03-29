@@ -162,7 +162,11 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string
 	var rows []string
 	if matches := microReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
 		i, _ := strconv.Atoi(matches[1])
-		micro, _ := extractMicro(v, i)
+		micro, ok := extractMicro(v, i)
+		if !ok {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Micro at index "+matches[1]))
+		}
+
 		if name, ok := micro["name"].(string); ok {
 			rows = append(rows, fmt.Sprintf("%sL Micro '%s'", prefix, name))
 		} else {
@@ -179,7 +183,11 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string
 	} else if matches := actionReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
 		i, _ := strconv.Atoi(matches[1])
 		j, _ := strconv.Atoi(matches[2])
-		action, _ := extractAction(v, i, j)
+		action, ok := extractAction(v, i, j)
+		if !ok {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Action at index "+matches[2]))
+		}
+
 		if name, ok := action["name"].(string); ok {
 			rows = append(rows, fmt.Sprintf("%sL Action '%s'", prefix, name))
 		} else {
@@ -188,7 +196,11 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string
 	} else if matches := envReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
 		i, _ := strconv.Atoi(matches[1])
 		j, _ := strconv.Atoi(matches[2])
-		env, _ := extractEnv(v, i, j)
+		env, ok := extractEnv(v, i, j)
+		if !ok {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Env at index "+matches[2]))
+		}
+
 		if name, ok := env["name"].(string); ok {
 			rows = append(rows, fmt.Sprintf("%sL Env '%s'", prefix, name))
 		} else {
@@ -197,7 +209,11 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string
 	} else if matches := apiKeyReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
 		i, _ := strconv.Atoi(matches[1])
 		j, _ := strconv.Atoi(matches[2])
-		apiKey, _ := extractApiKey(v, i, j)
+		apiKey, ok := extractApiKey(v, i, j)
+		if !ok {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L API Key at index "+matches[2]))
+		}
+
 		if name, ok := apiKey["name"].(string); ok {
 			rows = append(rows, fmt.Sprintf("%sL API Key '%s'", prefix, name))
 		} else {
