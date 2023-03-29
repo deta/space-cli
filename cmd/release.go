@@ -179,6 +179,7 @@ func release(cmd *cobra.Command, args []string) error {
 		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
 		Channel:       ReleaseChannelExp, // always experimental release for now
+		Client:        "cli",
 	})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
