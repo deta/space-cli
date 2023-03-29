@@ -1,0 +1,17 @@
+v: 0
+micros:
+  - name: go-app
+    src: .
+    engine: custom
+    primary: true
+    commands:
+      - go get
+      - go build main.go
+    include:
+      - main
+      - static
+    run: ./main
+  - name: python-app
+    src: .
+    engine: python3.9
+    primary: true

@@ -1,0 +1,8 @@
+v: 0
+micros:
+  - name: micro-1
+    src: .
+    engine: svelte
+  - name: micro-2
+    src: .
+    engine: svelte

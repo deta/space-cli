@@ -61,7 +61,7 @@ func newCmdPush() *cobra.Command {
 func push(projectID string, projectDir string, pushTag string, openInBrowser bool, skipLogs bool) error {
 	shared.Logger.Printf("Validating your Spacefile...")
 
-	s, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
+	s, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
 		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
