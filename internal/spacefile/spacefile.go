@@ -58,7 +58,7 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError) string {
 	return strings.Join(lines, "\n")
 }
 
-func Open(spacefilePath string) (*Spacefile, error) {
+func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 	if _, err := os.Stat(spacefilePath); os.IsNotExist(err) {
 		return nil, ErrSpacefileNotFound
 	} else if err != nil {
@@ -66,22 +66,27 @@ func Open(spacefilePath string) (*Spacefile, error) {
 	}
 
 	// read raw contents from spacefile file
-	c, err := ioutil.ReadFile(filepath.Join(spacefilePath))
+	content, err := ioutil.ReadFile(filepath.Join(spacefilePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
 	}
 
-	if err := ValidateSpacefileStructure(c); err != nil {
-		return nil, err
+	var v any
+	if err := yaml.Unmarshal(content, &v); err != nil {
+		return nil, fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 
-	// parse raw spacefile file content
-	var spacefile Spacefile
-	dec := yaml.NewDecoder(bytes.NewReader(c))
-	dec.KnownFields(true)
+	// validate against schema
+	if err := spacefileSchema.Validate(v); err != nil {
+		var ve *jsonschema.ValidationError
+		if errors.As(err, &ve) {
+			return nil, fmt.Errorf(PrettyValidationErrors(ve))
+		}
+	}
 
-	if err = dec.Decode(&spacefile); err != nil {
-		return nil, err
+	var spacefile Spacefile
+	if err := yaml.Unmarshal(content, &spacefile); err != nil {
+		return nil, fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 
 	foundPrimaryMicro := false
@@ -128,23 +133,6 @@ func Open(spacefilePath string) (*Spacefile, error) {
 	}
 
 	return &spacefile, nil
-}
-
-func ValidateSpacefileStructure(bytes []byte) error {
-	var v any
-	if err := yaml.Unmarshal(bytes, &v); err != nil {
-		return fmt.Errorf("failed to parse Spacefile: %w", err)
-	}
-
-	// validate against schema
-	if err := spacefileSchema.Validate(v); err != nil {
-		var ve *jsonschema.ValidationError
-		if errors.As(err, &ve) {
-			return fmt.Errorf(PrettyValidationErrors(ve))
-		}
-	}
-
-	return nil
 }
 
 // OpenRaw returns the raw spacefile file content from sourceDir if it exists

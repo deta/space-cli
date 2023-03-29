@@ -33,7 +33,7 @@ func newCmdValidate() *cobra.Command {
 func validate(projectDir string) error {
 	shared.Logger.Printf("\n%s Validating Spacefile...", emoji.Package)
 
-	s, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
+	s, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
 		shared.Logger.Println(styles.Errorf("\n%s Detected some issues with your Spacefile. Please fix them before pushing your code.", emoji.ErrorExclamation))
 		shared.Logger.Println()

@@ -37,7 +37,7 @@ func newCmdDevTrigger() *cobra.Command {
 }
 
 func devTrigger(projectDir string, actionID string) (err error) {
-	spacefile, err := spacefile.Open(filepath.Join(projectDir, "Spacefile"))
+	spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
 		shared.Logger.Printf("%s failed to parse Spacefile: %s", emoji.X, err.Error())
 	}
