@@ -48,9 +48,9 @@ func newCmdLogin() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("with-token", "t", "", "Read token from standard input")
+	cmd.Flags().BoolP("with-token", "t", false, "Read token from standard input")
 	if !shared.IsOutputInteractive() {
-		cmd.Flags().MarkHidden("with-token")
+		cmd.MarkFlagRequired("with-token")
 	}
 
 	return cmd
