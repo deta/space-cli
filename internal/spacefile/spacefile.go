@@ -219,8 +219,10 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string
 		} else {
 			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L API Key at index "+matches[2]))
 		}
-	} else {
+	} else if ve.InstanceLocation == "" {
 		rows = append(rows, fmt.Sprintf("%s%s", prefix, "Spacefile"))
+	} else {
+		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L "+ve.InstanceLocation))
 	}
 
 	for _, c := range ve.Causes {
