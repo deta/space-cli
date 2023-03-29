@@ -213,7 +213,7 @@ func release(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// if no file is found we prompt the user for the required fields
 		if errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-			logger.Println(styles.Errorf("\n%s No Discovery file found\n", emoji.ErrorExclamation))
+			logger.Println(styles.Errorf("%s No Discovery file found\n", emoji.ErrorExclamation))
 			logger.Printf("Please give your app a friendly name and add a short description so others know what this app does.\n\n")
 
 			name, err := text.Run(&text.Input{
