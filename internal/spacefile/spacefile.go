@@ -32,10 +32,11 @@ var spacefileSchemaString string
 var spacefileSchema *jsonschema.Schema = jsonschema.MustCompileString("", spacefileSchemaString)
 
 var (
-	ErrSpacefileNotFound = errors.New("Spacefile not found")
-	ErrDuplicateMicros   = errors.New("micro names have to be unique")
-	ErrMultiplePrimary   = errors.New("multiple primary micros present")
-	ErrNoPrimaryMicro    = errors.New("no primary micro present")
+	ErrSpacefileNotFound  = errors.New("Spacefile not found")
+	ErrSpacefileStructure = errors.New("Spacefile structure is invalid")
+	ErrDuplicateMicros    = errors.New("micro names have to be unique")
+	ErrMultiplePrimary    = errors.New("multiple primary micros present")
+	ErrNoPrimaryMicro     = errors.New("no primary micro present")
 )
 
 // Spacefile xx
@@ -46,41 +47,171 @@ type Spacefile struct {
 	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
-func PrettyValidationErrors(ve *jsonschema.ValidationError, prefix string, spacefile *Spacefile) string {
-	// Skip the root error
+func extractMicro(v any, index int) (map[string]any, bool) {
+	spacefile, ok := v.(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	micros, ok := spacefile["micros"].([]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	micro, ok := micros[index].(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	return micro, true
+}
+
+func extractPresets(v any, microIndex int) (map[string]any, bool) {
+	micro, ok := extractMicro(v, microIndex)
+	if !ok {
+		return nil, false
+	}
+
+	presets, ok := micro["presets"].(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	return presets, true
+}
+
+func extractAction(v any, microIndex int, actionIndex int) (map[string]any, bool) {
+	presets, ok := extractPresets(v, microIndex)
+	if !ok {
+		return nil, false
+	}
+
+	actions, ok := presets["actions"].([]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	action, ok := actions[actionIndex].(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	return action, true
+}
+
+func extractEnv(v any, microIndex int, envIndex int) (map[string]any, bool) {
+	presets, ok := extractPresets(v, microIndex)
+	if !ok {
+		return nil, false
+	}
+
+	envs, ok := presets["env"].([]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	env, ok := envs[envIndex].(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	return env, true
+}
+
+func extractApiKey(v any, microIndex int, apiKeyIndex int) (map[string]any, bool) {
+	presets, ok := extractPresets(v, microIndex)
+	if !ok {
+		return nil, false
+	}
+
+	apiKeys, ok := presets["api_keys"].([]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	apiKey, ok := apiKeys[apiKeyIndex].(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	return apiKey, true
+}
+
+var (
+	microReg        = regexp.MustCompile(`\/micros\/(\d+)$`)
+	actionReg       = regexp.MustCompile(`\/micros\/(\d+)\/actions\/(\d+)$`)
+	commandsReg     = regexp.MustCompile(`\/micros\/(\d+)\/commands$`)
+	includeReg      = regexp.MustCompile(`\/micros\/(\d+)\/include$`)
+	publicRoutesReg = regexp.MustCompile(`\/micros\/(\d+)\/public_routes$`)
+	presetsReg      = regexp.MustCompile(`\/micros\/(\d+)\/presets$`)
+	envReg          = regexp.MustCompile(`\/micros\/(\d+)\/presets\/env\/(\d+)$`)
+	apiKeyReg       = regexp.MustCompile(`\/micros\/(\d+)\/presets\/api_keys\/(\d+)$`)
+)
+
+func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string) string {
 	if ve.KeywordLocation == "" {
-		return PrettyValidationErrors(ve.Causes[0], prefix, spacefile)
+		return PrettyValidationErrors(ve.Causes[0], v, prefix)
 	}
 
 	// If there are no causes, just print the message
 	if len(ve.Causes) == 0 {
-		return fmt.Sprintf("%sL %s", prefix, ve.Message)
+		message := strings.Replace(ve.Message, "additionalProperties", "additional properties:", 1)
+		return fmt.Sprintf("%sL %s", prefix, message)
 	}
 
-	lines := []string{}
-	if strings.HasPrefix(ve.InstanceLocation, "/micros") {
-		re := regexp.MustCompile(`/micros/(\d+)`)
-		matches := re.FindStringSubmatch(ve.InstanceLocation)
-		if len(matches) == 2 {
-			index := matches[1]
-			i, err := strconv.Atoi(index)
-			if err == nil {
-				micro := spacefile.Micros[i]
-				if micro.Name == "" {
-					lines = append(lines, fmt.Sprintf("%sL micro at index %s", prefix, index))
-				} else {
-					lines = append(lines, fmt.Sprintf("%sL micro '%s'", prefix, micro.Name))
-				}
-			}
+	var rows []string
+	if matches := microReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
+		i, _ := strconv.Atoi(matches[1])
+		micro, _ := extractMicro(v, i)
+		if name, ok := micro["name"].(string); ok {
+			rows = append(rows, fmt.Sprintf("%sL Micro '%s'", prefix, name))
+		} else {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Micro at index "+matches[1]))
 		}
-	} else if ve.KeywordLocation == "/$ref" {
-		lines = append(lines, "Spacefile")
-	}
-	for _, c := range ve.Causes {
-		lines = append(lines, PrettyValidationErrors(c, prefix+"  ", spacefile))
+	} else if matches := presetsReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
+		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Presets"))
+	} else if matches := publicRoutesReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
+		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Public Routes"))
+	} else if matches := commandsReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
+		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Commands"))
+	} else if matches := includeReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
+		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Include"))
+	} else if matches := actionReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
+		i, _ := strconv.Atoi(matches[1])
+		j, _ := strconv.Atoi(matches[2])
+		action, _ := extractAction(v, i, j)
+		if name, ok := action["name"].(string); ok {
+			rows = append(rows, fmt.Sprintf("%sL Action '%s'", prefix, name))
+		} else {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Action at index "+matches[2]))
+		}
+	} else if matches := envReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
+		i, _ := strconv.Atoi(matches[1])
+		j, _ := strconv.Atoi(matches[2])
+		env, _ := extractEnv(v, i, j)
+		if name, ok := env["name"].(string); ok {
+			rows = append(rows, fmt.Sprintf("%sL Env '%s'", prefix, name))
+		} else {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Env at index "+matches[2]))
+		}
+	} else if matches := apiKeyReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
+		i, _ := strconv.Atoi(matches[1])
+		j, _ := strconv.Atoi(matches[2])
+		apiKey, _ := extractApiKey(v, i, j)
+		if name, ok := apiKey["name"].(string); ok {
+			rows = append(rows, fmt.Sprintf("%sL API Key '%s'", prefix, name))
+		} else {
+			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L API Key at index "+matches[2]))
+		}
+	} else {
+		rows = append(rows, fmt.Sprintf("%s%s", prefix, "Spacefile"))
 	}
 
-	return strings.Join(lines, "\n")
+	for _, c := range ve.Causes {
+		rows = append(rows, PrettyValidationErrors(c, v, prefix+"  "))
+	}
+
+	return strings.Join(rows, "\n")
 }
 
 func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
@@ -96,22 +227,22 @@ func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
 	}
 
-	var spacefile Spacefile
-	if err := yaml.Unmarshal(content, &spacefile); err != nil {
-		return nil, fmt.Errorf("failed to parse Spacefile")
-	}
-
 	var v any
 	if err := yaml.Unmarshal(content, &v); err != nil {
-		return nil, fmt.Errorf("failed to parse Spacefile")
+		return nil, ErrSpacefileStructure
 	}
 
 	// validate against schema
 	if err := spacefileSchema.Validate(v); err != nil {
 		var ve *jsonschema.ValidationError
 		if errors.As(err, &ve) {
-			return nil, fmt.Errorf(PrettyValidationErrors(ve, "", &spacefile))
+			return nil, fmt.Errorf(PrettyValidationErrors(ve, v, ""))
 		}
+	}
+
+	var spacefile Spacefile
+	if err := yaml.Unmarshal(content, &spacefile); err != nil {
+		return nil, ErrSpacefileStructure
 	}
 
 	foundPrimaryMicro := false
