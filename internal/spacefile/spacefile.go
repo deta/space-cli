@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	_ "embed"
@@ -45,14 +46,38 @@ type Spacefile struct {
 	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
-func PrettyValidationErrors(ve *jsonschema.ValidationError) string {
+func PrettyValidationErrors(ve *jsonschema.ValidationError, prefix string, spacefile *Spacefile) string {
+	// Skip the root error
+	if ve.KeywordLocation == "" {
+		return PrettyValidationErrors(ve.Causes[0], prefix, spacefile)
+	}
+
+	// If there are no causes, just print the message
 	if len(ve.Causes) == 0 {
-		return fmt.Sprintf("[%s] %s", ve.InstanceLocation, ve.Message)
+		return fmt.Sprintf("%sL %s", prefix, ve.Message)
 	}
 
 	lines := []string{}
+	if strings.HasPrefix(ve.InstanceLocation, "/micros") {
+		re := regexp.MustCompile(`/micros/(\d+)`)
+		matches := re.FindStringSubmatch(ve.InstanceLocation)
+		if len(matches) == 2 {
+			index := matches[1]
+			i, err := strconv.Atoi(index)
+			if err == nil {
+				micro := spacefile.Micros[i]
+				if micro.Name == "" {
+					lines = append(lines, fmt.Sprintf("%sL micro at index %s", prefix, index))
+				} else {
+					lines = append(lines, fmt.Sprintf("%sL micro '%s'", prefix, micro.Name))
+				}
+			}
+		}
+	} else if ve.KeywordLocation == "/$ref" {
+		lines = append(lines, "Spacefile")
+	}
 	for _, c := range ve.Causes {
-		lines = append(lines, PrettyValidationErrors(c))
+		lines = append(lines, PrettyValidationErrors(c, prefix+"  ", spacefile))
 	}
 
 	return strings.Join(lines, "\n")
@@ -71,22 +96,22 @@ func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
 	}
 
+	var spacefile Spacefile
+	if err := yaml.Unmarshal(content, &spacefile); err != nil {
+		return nil, fmt.Errorf("failed to parse Spacefile")
+	}
+
 	var v any
 	if err := yaml.Unmarshal(content, &v); err != nil {
-		return nil, fmt.Errorf("failed to parse Spacefile: %w", err)
+		return nil, fmt.Errorf("failed to parse Spacefile")
 	}
 
 	// validate against schema
 	if err := spacefileSchema.Validate(v); err != nil {
 		var ve *jsonschema.ValidationError
 		if errors.As(err, &ve) {
-			return nil, fmt.Errorf(PrettyValidationErrors(ve))
+			return nil, fmt.Errorf(PrettyValidationErrors(ve, "", &spacefile))
 		}
-	}
-
-	var spacefile Spacefile
-	if err := yaml.Unmarshal(content, &spacefile); err != nil {
-		return nil, fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 
 	foundPrimaryMicro := false

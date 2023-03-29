@@ -5,6 +5,69 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "build space docs",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/scripts/generate-docs.go",
+        },
+        {
+            "name": "space new",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "new"
+            ]
+        },
+        {
+            "name": "space link",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "link",
+                "--id=a0wrQNbiw9h2"
+            ]
+        },
+        {
+            "name": "space validate",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "validate",
+                "-d=${input:appFolder}"
+            ]
+        },
+        {
+            "name": "space push",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "push",
+                "-d=${input:appFolder}"
+            ]
+        },
+        {
+            "name": "space release",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "release",
+                "-d=starters/python-app",
+                "--notes='Release notes'",
+                "--latest"
+            ]
+        },
+        {
             "name": "space dev",
             "type": "go",
             "request": "launch",
