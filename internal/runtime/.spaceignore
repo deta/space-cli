@@ -33,6 +33,7 @@ lerna-debug.log*
 # python
 .venv
 venv
+virtualenv
 __pycache__
 
 # rust
@@ -51,6 +52,7 @@ target
 .env.local
 .env.*.local
 .env
+.envrc
 
 # ide
 .*.swp
