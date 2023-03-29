@@ -22,11 +22,8 @@ var (
 
 	NodeSkipPattern = `node_modules`
 
-	ignoreFile      = ".spaceignore"
 	spaceDir        = ".space"
 	projectMetaFile = "meta"
-
-	defaultSkipPatterns = []string{PythonSkipPattern, NodeSkipPattern}
 )
 
 // StoreProjectMeta stores project meta to disk

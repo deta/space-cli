@@ -72,13 +72,13 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 	shared.Logger.Printf("%s Successfully started your build!", emoji.Check)
 
 	// push code & run build steps
-	zippedCode, err := runtime.ZipDir(projectDir)
+	zippedCode, nbFiles, err := runtime.ZipDir(projectDir)
 	if err != nil {
 		shared.Logger.Printf("%s Failed to zip project: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 
-	shared.Logger.Printf("\n%s Pushing your code & running build process...\n", emoji.Package)
+	shared.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
 	build, err := shared.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag})
 	if err != nil {
 		shared.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
