@@ -103,8 +103,6 @@ func createProject(name string) (*runtime.ProjectMeta, error) {
 }
 
 func newProject(projectDir, projectName string, blankProject bool) error {
-	var err error
-
 	// Create spacefile if it doesn't exist
 	spaceFilePath := filepath.Join(projectDir, "Spacefile")
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
@@ -125,9 +123,8 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 				shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
 			}
 
-			if ok, err := confirm.Run(&confirm.Input{
-				Prompt: fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName),
-			}); err != nil {
+			shared.Logger.Println()
+			if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
 				return err
 			} else if !ok {
 				if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
@@ -166,7 +163,7 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 		return err
 	}
 
-	shared.Logger.Println(styles.Greenf("Project %s created successfully!", projectName))
+	shared.Logger.Println(styles.Greenf("\nProject %s created successfully!", projectName))
 	shared.Logger.Println(shared.ProjectNotes(projectName, meta.ID))
 
 	return nil

@@ -10,7 +10,6 @@ import (
 type Model struct {
 	Cursor    int
 	Chosen    bool
-	Hidden    bool
 	Cancelled bool
 	Prompt    string
 	Choices   []string
@@ -34,15 +33,21 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+func (m Model) Selection() string {
+	if m.Cursor >= len(m.Choices) {
+		return ""
+	}
+	return m.Choices[m.Cursor]
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			m.Hidden = true
+			m.Chosen = true
 			return m, tea.Quit
 		case tea.KeyCtrlC:
-			m.Hidden = true
 			m.Cancelled = true
 			return m, tea.Quit
 		}
@@ -52,22 +57,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	if m.Hidden {
-		return ""
+	if m.Chosen {
+		return fmt.Sprintf("%s %s %s\n", styles.Question, styles.Bold(m.Prompt), m.Selection())
 	}
 
-	c := m.Cursor
-
-	tpl := fmt.Sprintf("\n%s %s  \n\n", styles.Question, styles.Bold(m.Prompt))
-
+	tpl := fmt.Sprintf("%s %s  \n", styles.Question, styles.Bold(m.Prompt))
 	tpl += "%s\n"
 	choices := ""
 	for i, choice := range m.Choices {
-		if i == len(m.Choices)-1 {
-			choices += RenderChoice(choice, c == i)
-		} else {
-			choices += fmt.Sprintf("%s\n", RenderChoice(choice, c == i))
-		}
+		choices += fmt.Sprintf("\n%s", RenderChoice(choice, m.Cursor == i))
 	}
 
 	return fmt.Sprintf(tpl, choices)
@@ -102,20 +100,25 @@ func RenderChoice(choice string, chosen bool) string {
 	return fmt.Sprintf("  %s", choice)
 }
 
-func Run(i *Input) (*Model, error) {
-	program := tea.NewProgram(initialModel(i))
+func Run(prompt string, choices ...string) (string, error) {
+	program := tea.NewProgram(initialModel(&Input{
+		Prompt:  prompt,
+		Choices: choices,
+	}))
 
 	m, err := program.Run()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if m, ok := m.(Model); ok {
-		if m.Cancelled {
-			return nil, fmt.Errorf("cancelled")
-		}
-		return &m, nil
+	model, ok := m.(Model)
+	if !ok {
+		return "", err
 	}
 
-	return nil, err
+	if model.Cancelled {
+		return "", fmt.Errorf("cancelled")
+	}
+
+	return model.Selection(), nil
 }

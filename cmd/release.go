@@ -52,9 +52,7 @@ func newCmdRelease() *cobra.Command {
 
 			if !cmd.Flags().Changed("rid") {
 				if !cmd.Flags().Changed("confirm") {
-					useLatestRevision, err = confirm.Run(&confirm.Input{
-						Prompt: "Do you want to use the latest revision?",
-					})
+					useLatestRevision, err = confirm.Run("Do you want to use the latest revision?")
 					if err != nil {
 						os.Exit(1)
 					}
@@ -64,7 +62,7 @@ func newCmdRelease() *cobra.Command {
 				if err != nil {
 					os.Exit(1)
 				}
-				shared.Logger.Printf("Selected revision: %s", styles.Blue(revision.Tag))
+				shared.Logger.Printf("\nSelected revision: %s", styles.Blue(revision.Tag))
 
 				revisionID = revision.ID
 
@@ -90,7 +88,7 @@ func newCmdRelease() *cobra.Command {
 	return cmd
 }
 
-func selectRevision(projectID string, useLatestRevision bool) (revision *api.Revision, err error) {
+func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, error) {
 	r, err := shared.Client.GetRevisions(&api.GetRevisionsRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
@@ -116,19 +114,22 @@ func selectRevision(projectID string, useLatestRevision bool) (revision *api.Rev
 	if len(revisions) > 5 {
 		revisions = revisions[:5]
 	}
+
+	revisionMap := make(map[string]*api.Revision)
 	for _, revision := range revisions {
+		revisionMap[revision.Tag] = revision
 		tags = append(tags, revision.Tag)
 	}
 
-	m, err := choose.Run(&choose.Input{
-		Prompt:  fmt.Sprintf("Choose a revision %s:", styles.Subtle("(most recent revisions)")),
-		Choices: tags,
-	})
+	tag, err := choose.Run(
+		fmt.Sprintf("Choose a revision %s:", styles.Subtle("(most recent revisions)")),
+		tags...,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return revisions[m.Cursor], nil
+	return revisionMap[tag], nil
 }
 
 func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string) (err error) {

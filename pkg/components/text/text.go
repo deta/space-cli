@@ -10,7 +10,6 @@ import (
 
 type Model struct {
 	TextInput     textinput.Model
-	Hidden        bool
 	Cancelled     bool
 	Prompt        string
 	ValidationMsg string
@@ -68,13 +67,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.ValidationMsg = fmt.Sprintf("❗ Error: %s", err.Error())
 					return m, nil
 				}
+				m.ValidationMsg = ""
 			}
-			m.Hidden = true
 			return m, tea.Quit
 
 		case tea.KeyCtrlC:
 			m.Cancelled = true
-			m.Hidden = true
 			return m, tea.Quit
 		}
 	}
@@ -84,9 +82,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	if m.Hidden {
-		return ""
-	}
 	var s string
 	if m.TextInput.EchoMode == textinput.EchoPassword {
 		s = fmt.Sprintf(
@@ -98,14 +93,14 @@ func (m Model) View() string {
 		)
 	} else {
 		s = fmt.Sprintf(
-			"%s %s %s\n\n",
+			"%s %s %s\n",
 			styles.Question,
 			styles.Bold(m.Prompt),
 			m.TextInput.View(),
 		)
 	}
 	if m.ValidationMsg != "" {
-		s += m.ValidationMsg
+		s += "\n" + m.ValidationMsg
 	}
 	return s
 }
