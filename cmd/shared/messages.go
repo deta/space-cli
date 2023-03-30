@@ -2,24 +2,11 @@ package shared
 
 import (
 	"fmt"
-	"log"
 	"os"
 
-	"github.com/deta/space/internal/api"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/mattn/go-isatty"
-)
-
-const (
-	DocsUrl          = "https://go.deta.dev/docs/space/alpha"
-	SpacefileDocsUrl = "https://go.deta.dev/docs/spacefile/v0"
-	BuilderUrl       = "https://deta.space/builder"
-)
-
-var (
-	Client = api.NewDetaClient({ version: spaceVersion, platform: platform })
-	Logger = log.New(os.Stderr, "", 0)
 )
 
 func ProjectNotes(projectName string, projectId string) string {
