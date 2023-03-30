@@ -2,15 +2,16 @@ package confirm
 
 import (
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/pc-cli/pkg/components/styles"
 )
 
 type Model struct {
-	Prompt  string
-	Confirm bool
+	Prompt    string
+	Hidden    bool
+	Confirm   bool
+	Cancelled bool
 }
 
 type Input struct {
@@ -35,33 +36,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y", "Y":
 			m.Confirm = true
+			m.Hidden = true
 			return m, tea.Quit
 		case "n", "N":
 			m.Confirm = false
+			m.Hidden = true
 			return m, tea.Quit
 		case "enter":
 			m.Confirm = true
+			m.Hidden = true
 			return m, tea.Quit
 		case "ctrl+c":
-			os.Exit(1)
+			m.Cancelled = true
+			m.Hidden = true
+			return m, tea.Quit
 		}
 	}
 	return m, cmd
 }
 
 func (m Model) View() string {
-	return fmt.Sprintf("%s %s %s\n\n", styles.Question, styles.Bold(m.Prompt), styles.Subtle("y"))
+	if m.Hidden {
+		return ""
+	}
+	return fmt.Sprintf("\n%s %s\n\n", styles.Question, styles.Bold(m.Prompt))
 }
 
 func Run(i *Input) (bool, error) {
 	program := tea.NewProgram(initialModel(i))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return false, err
 	}
 
 	if m, ok := m.(Model); ok {
+		if m.Cancelled {
+			return false, fmt.Errorf("cancelled")
+		}
 		return m.Confirm, nil
 	}
 

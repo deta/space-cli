@@ -2,35 +2,73 @@ package cmd
 
 import (
 	"fmt"
-	"log"
-	"os"
+	"strings"
+	"time"
 
-	"github.com/deta/pc-cli/internal/api"
+	"github.com/deta/pc-cli/cmd/dev"
+	"github.com/deta/pc-cli/cmd/shared"
+	"github.com/deta/pc-cli/cmd/version"
+	"github.com/deta/pc-cli/internal/runtime"
+	"github.com/deta/pc-cli/pkg/components/styles"
 	"github.com/spf13/cobra"
 )
 
 var (
-	rootCmd = &cobra.Command{
+	spaceVersion string = "dev"
+	platform     string
+)
+
+func NewSpaceCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "space",
 		Short: "Deta Space CLI for mananging Deta Space projects",
 		Long: fmt.Sprintf(`Deta Space command line interface for managing Deta Space projects.
-Complete documentation available at %s`, docsUrl),
+Complete documentation available at %s`, shared.DocsUrl),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Usage()
 		},
 		// no usage shown on errors
 		SilenceUsage:      false,
 		DisableAutoGenTag: true,
+		Version:           spaceVersion,
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			if isPrerelease(spaceVersion) {
+				return
+			}
+
+			latestVersion, lastCheck, err := runtime.GetLatestCachedVersion()
+			if err != nil || time.Since(lastCheck) > 69*time.Minute {
+				shared.Logger.Println("\nChecking for new Space CLI version...")
+				res, err := shared.Client.GetLatestCLIVersion()
+				if err != nil {
+					shared.Logger.Println("Failed to check for new Space CLI version")
+					return
+				}
+
+				runtime.CacheLatestVersion(res.Tag)
+				latestVersion = res.Tag
+			}
+
+			if spaceVersion != latestVersion {
+				shared.Logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			}
+		},
 	}
 
-	client = api.NewDetaClient()
+	cmd.AddCommand(newCmdLogin())
+	cmd.AddCommand(newCmdLink())
+	cmd.AddCommand(newCmdPush())
+	cmd.AddCommand(newCmdExec())
+	cmd.AddCommand(dev.NewCmdDev())
+	cmd.AddCommand(newCmdNew())
+	cmd.AddCommand(version.NewCmdVersion(spaceVersion, platform))
+	cmd.AddCommand(newCmdOpen())
+	cmd.AddCommand(newCmdValidate())
+	cmd.AddCommand(newCmdRelease())
 
-	logger = log.New(os.Stderr, "", 0)
-)
+	return cmd
+}
 
-// Execute xx
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+func isPrerelease(version string) bool {
+	return len(strings.Split(version, "-")) > 1
 }
