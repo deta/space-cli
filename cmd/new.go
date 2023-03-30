@@ -11,6 +11,7 @@ import (
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/internal/spacefile"
+	"github.com/deta/space/pkg/components/confirm"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/deta/space/pkg/components/text"
 	"github.com/deta/space/pkg/scanner"
@@ -102,12 +103,10 @@ func createProject(name string) (*runtime.ProjectMeta, error) {
 }
 
 func newProject(projectDir, projectName string, blankProject bool) error {
-	var err error
-
 	// Create spacefile if it doesn't exist
 	spaceFilePath := filepath.Join(projectDir, "Spacefile")
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
-		if blankProject {
+		if blankProject || !shared.IsOutputInteractive() {
 			if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
 				shared.Logger.Printf("failed to create blank project: %s", err)
 				return err
@@ -120,14 +119,24 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 			}
 
 			for _, micro := range autoDetectedMicros {
-				shared.Logger.Printf("Micro found in \"%s\"\n", styles.Code(micro.Src))
-				shared.Logger.Printf("L engine: %s\n\n", styles.Blue(micro.Engine))
+				shared.Logger.Printf("\nMicro found in \"%s\"", styles.Code(micro.Src))
+				shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
 			}
 
-			_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
-			if err != nil {
-				shared.Logger.Printf("failed to create project with detected micros: %s", err)
+			shared.Logger.Println()
+			if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
 				return err
+			} else if !ok {
+				if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
+					shared.Logger.Printf("failed to create blank project: %s", err)
+					return err
+				}
+			} else {
+				_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
+				if err != nil {
+					shared.Logger.Printf("failed to create project with detected micros: %s", err)
+					return err
+				}
 			}
 		}
 	}
@@ -154,7 +163,7 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 		return err
 	}
 
-	shared.Logger.Println(styles.Greenf("Project %s created successfully!", projectName))
+	shared.Logger.Println(styles.Greenf("\nProject %s created successfully!", projectName))
 	shared.Logger.Println(shared.ProjectNotes(projectName, meta.ID))
 
 	return nil

@@ -9,8 +9,8 @@ import (
 
 type Model struct {
 	Prompt    string
-	Hidden    bool
 	Confirm   bool
+	Quitting  bool
 	Cancelled bool
 }
 
@@ -18,9 +18,9 @@ type Input struct {
 	Prompt string
 }
 
-func initialModel(i *Input) Model {
+func initialModel(input string) Model {
 	return Model{
-		Prompt: i.Prompt,
+		Prompt: input,
 	}
 }
 
@@ -36,19 +36,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y", "Y":
 			m.Confirm = true
-			m.Hidden = true
+			m.Quitting = true
 			return m, tea.Quit
 		case "n", "N":
 			m.Confirm = false
-			m.Hidden = true
+			m.Quitting = true
 			return m, tea.Quit
 		case "enter":
 			m.Confirm = true
-			m.Hidden = true
+			m.Quitting = true
 			return m, tea.Quit
 		case "ctrl+c":
 			m.Cancelled = true
-			m.Hidden = true
+			m.Quitting = true
 			return m, tea.Quit
 		}
 	}
@@ -56,26 +56,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	if m.Hidden {
-		return ""
+	input := "(Y/n)"
+	if m.Quitting && m.Confirm {
+		input = "y"
+	} else if m.Quitting && !m.Confirm {
+		input = "n"
 	}
-	return fmt.Sprintf("\n%s %s\n\n", styles.Question, styles.Bold(m.Prompt))
+
+	return fmt.Sprintf("%s %s %s\n", styles.Question, styles.Bold(m.Prompt), styles.Subtle(input))
 }
 
-func Run(i *Input) (bool, error) {
-	program := tea.NewProgram(initialModel(i))
+func Run(input string) (bool, error) {
+	program := tea.NewProgram(initialModel(input))
 
 	m, err := program.Run()
 	if err != nil {
 		return false, err
 	}
 
-	if m, ok := m.(Model); ok {
-		if m.Cancelled {
-			return false, fmt.Errorf("cancelled")
-		}
-		return m.Confirm, nil
+	model, ok := m.(Model)
+	if !ok {
+		return false, err
 	}
 
-	return false, err
+	if model.Cancelled {
+		return false, fmt.Errorf("cancelled")
+	}
+	return model.Confirm, nil
 }
