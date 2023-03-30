@@ -140,7 +140,6 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
 		Channel:       ReleaseChannelExp, // always experimental release for now
-		Client:        "cli",
 	})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {

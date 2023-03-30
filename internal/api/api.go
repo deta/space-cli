@@ -115,7 +115,6 @@ type CreateReleaseRequest struct {
 	Description   string `json:"description"`
 	Channel       string `json:"channel"`
 	DiscoveryList bool   `json:"discovery_list"`
-	Client        string `json:"client"`
 }
 
 type CreateReleaseResponse struct {

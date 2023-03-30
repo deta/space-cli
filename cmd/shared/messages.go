@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	Client = api.NewDetaClient()
+	Client = api.NewDetaClient({ version: spaceVersion, platform: platform })
 	Logger = log.New(os.Stderr, "", 0)
 )
 
