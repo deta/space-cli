@@ -22,28 +22,17 @@ const (
 )
 
 func newCmdRelease() *cobra.Command {
-	checkNonInteractive := func(cmd *cobra.Command, args []string) error {
-		if shared.IsOutputInteractive() {
-			return nil
-		}
-
-		// check if notes are provided
-		if cmd.Flags().Changed("notes") {
-			return fmt.Errorf("release notes must be provided in non-interactive mode")
-		}
-
-		if !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("latest") {
-			return fmt.Errorf("revision id or latest flag must be provided in non-interactive mode")
-		}
-
-		return nil
-	}
-
 	cmd := &cobra.Command{
-		Use:   "release [flags]",
-		Short: "create release for a project",
+		Use:     "release [flags]",
+		Short:   "create release for a project",
+		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "version")),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
+
+			if !shared.IsOutputInteractive() && !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("latest") {
+				shared.Logger.Printf("revision id or latest flag must be provided in non-interactive mode")
+				os.Exit(1)
+			}
 
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")
@@ -86,7 +75,6 @@ func newCmdRelease() *cobra.Command {
 				os.Exit(1)
 			}
 		},
-		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "notes", "versions"), checkNonInteractive),
 	}
 
 	cmd.Flags().StringP("dir", "d", "./", "src of project to release")
