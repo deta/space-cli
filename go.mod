@@ -1,4 +1,4 @@
-module github.com/deta/pc-cli
+module github.com/deta/space
 
 go 1.19
 

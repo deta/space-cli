@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/deta/pc-cli/pkg/writer"
+	"github.com/deta/space/pkg/writer"
 	"mvdan.cc/sh/v3/shell"
 )
 

@@ -3,8 +3,8 @@ package shared
 import (
 	"fmt"
 
-	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/space/internal/api"
+	"github.com/deta/space/internal/auth"
 )
 
 func GenerateDataKeyIfNotExists(projectID string) (string, error) {

@@ -1,7 +1,7 @@
 package emoji
 
 import (
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/pkg/components/styles"
 )
 
 var (

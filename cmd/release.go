@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/deta/pc-cli/cmd/shared"
-	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/auth"
-	"github.com/deta/pc-cli/internal/runtime"
-	"github.com/deta/pc-cli/pkg/components/choose"
-	"github.com/deta/pc-cli/pkg/components/confirm"
-	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/api"
+	"github.com/deta/space/internal/auth"
+	"github.com/deta/space/internal/runtime"
+	"github.com/deta/space/pkg/components/choose"
+	"github.com/deta/space/pkg/components/confirm"
+	"github.com/deta/space/pkg/components/emoji"
+	"github.com/deta/space/pkg/components/styles"
 	"github.com/spf13/cobra"
 )
 

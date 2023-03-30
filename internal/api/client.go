@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/space/internal/auth"
 )
 
 type DetaClient struct {

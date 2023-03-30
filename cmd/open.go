@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/deta/pc-cli/cmd/shared"
-	"github.com/deta/pc-cli/internal/runtime"
-	"github.com/deta/pc-cli/pkg/components/emoji"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/runtime"
+	"github.com/deta/space/pkg/components/emoji"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
