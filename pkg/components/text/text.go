@@ -2,21 +2,19 @@ package text
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/space/pkg/components/styles"
 )
 
-type errMsg error
-
 type Model struct {
-	TextInput textinput.Model
-	Prompt    string
-	quitting  bool
-	Err       error
-	Validator func(value string) error
+	TextInput     textinput.Model
+	Hidden        bool
+	Cancelled     bool
+	Prompt        string
+	ValidationMsg string
+	Validator     func(value string) error
 }
 
 type Input struct {
@@ -37,13 +35,19 @@ func initialModel(i *Input) Model {
 	return Model{
 		TextInput: ti,
 		Prompt:    i.Prompt,
-		Err:       nil,
 		Validator: i.Validator,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
 	return nil
+}
+
+func (m Model) Value() string {
+	if m.TextInput.Value() == "" {
+		return m.TextInput.Placeholder
+	}
+	return m.TextInput.Value()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -61,20 +65,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				err := m.Validator(value)
 				if err != nil {
-					m.Err = err
+					m.ValidationMsg = fmt.Sprintf("❗ Error: %s", err.Error())
 					return m, nil
 				}
 			}
-			m.quitting = true
-			m.Err = nil
+			m.Hidden = true
 			return m, tea.Quit
 
 		case tea.KeyCtrlC:
-			os.Exit(1)
+			m.Cancelled = true
+			m.Hidden = true
+			return m, tea.Quit
 		}
-	case errMsg:
-		m.Err = msg
-		return m, nil
 	}
 
 	m.TextInput, cmd = m.TextInput.Update(msg)
@@ -82,10 +84,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	if m.Hidden {
+		return ""
+	}
 	var s string
 	if m.TextInput.EchoMode == textinput.EchoPassword {
 		s = fmt.Sprintf(
-			"%s %s (%s) %s\n\n",
+			"%s %s (%s) %s\n",
 			styles.Question,
 			styles.Bold(m.Prompt),
 			fmt.Sprintf("%d chars", len(m.TextInput.Value())),
@@ -99,8 +104,8 @@ func (m Model) View() string {
 			m.TextInput.View(),
 		)
 	}
-	if m.Err != nil {
-		s += styles.Error(fmt.Sprintf("❗ Error: %s", m.Err.Error()))
+	if m.ValidationMsg != "" {
+		s += m.ValidationMsg
 	}
 	return s
 }
@@ -108,17 +113,19 @@ func (m Model) View() string {
 func Run(i *Input) (string, error) {
 	program := tea.NewProgram(initialModel(i))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return "", err
 	}
 
-	if m, ok := m.(Model); ok {
-		if m.TextInput.Value() == "" {
-			return i.Placeholder, nil
-		}
-		return m.TextInput.Value(), nil
+	model, ok := m.(Model)
+	if !ok {
+		return "", fmt.Errorf("invalid model type")
 	}
 
-	return "", err
+	if model.Cancelled {
+		return "", fmt.Errorf("cancelled")
+	}
+
+	return model.Value(), nil
 }
