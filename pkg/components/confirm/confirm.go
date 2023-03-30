@@ -2,24 +2,25 @@ package confirm
 
 import (
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/pkg/components/styles"
 )
 
 type Model struct {
-	Prompt  string
-	Confirm bool
+	Prompt    string
+	Confirm   bool
+	Quitting  bool
+	Cancelled bool
 }
 
 type Input struct {
 	Prompt string
 }
 
-func initialModel(i *Input) Model {
+func initialModel(input string) Model {
 	return Model{
-		Prompt: i.Prompt,
+		Prompt: input,
 	}
 }
 
@@ -35,35 +36,51 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y", "Y":
 			m.Confirm = true
+			m.Quitting = true
 			return m, tea.Quit
 		case "n", "N":
 			m.Confirm = false
+			m.Quitting = true
 			return m, tea.Quit
 		case "enter":
 			m.Confirm = true
+			m.Quitting = true
 			return m, tea.Quit
 		case "ctrl+c":
-			os.Exit(1)
+			m.Cancelled = true
+			m.Quitting = true
+			return m, tea.Quit
 		}
 	}
 	return m, cmd
 }
 
 func (m Model) View() string {
-	return fmt.Sprintf("%s %s %s\n\n", styles.Question, styles.Bold(m.Prompt), styles.Subtle("y"))
+	input := "(Y/n)"
+	if m.Quitting && m.Confirm {
+		input = "y"
+	} else if m.Quitting && !m.Confirm {
+		input = "n"
+	}
+
+	return fmt.Sprintf("%s %s %s\n", styles.Question, styles.Bold(m.Prompt), styles.Subtle(input))
 }
 
-func Run(i *Input) (bool, error) {
-	program := tea.NewProgram(initialModel(i))
+func Run(input string) (bool, error) {
+	program := tea.NewProgram(initialModel(input))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
 		return false, err
 	}
 
-	if m, ok := m.(Model); ok {
-		return m.Confirm, nil
+	model, ok := m.(Model)
+	if !ok {
+		return false, err
 	}
 
-	return false, err
+	if model.Cancelled {
+		return false, fmt.Errorf("cancelled")
+	}
+	return model.Confirm, nil
 }

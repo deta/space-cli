@@ -1,23 +1,24 @@
 //go:build windows
 // +build windows
 
-package cmd
+package version
 
 import (
 	"fmt"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/pkg/components/styles"
 	"os/exec"
 )
 
-func upgradeWin() error {
+func upgradeWin(version string) error {
 	msg := "Upgrading Space CLI"
 	cmd := "iwr https://get.deta.dev/space-cli.ps1 -useb | iex"
 
-	if versionFlag != "" {
-		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(versionFlag))
-		cmd = fmt.Sprintf(`$v="%s"; %s`, versionFlag, cmd)
+	if version != "" {
+		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))
+		cmd = fmt.Sprintf(`$v="%s"; %s`, version, cmd)
 	}
-	logger.Printf("%s...\n", msg)
+	shared.Logger.Printf("%s...\n", msg)
 
 	pshellCmd := exec.Command("powershell", cmd)
 

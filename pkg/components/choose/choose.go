@@ -2,18 +2,17 @@ package choose
 
 import (
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/pkg/components/styles"
 )
 
 type Model struct {
-	Cursor   int
-	Chosen   bool
-	Quitting bool
-	Prompt   string
-	Choices  []string
+	Cursor    int
+	Chosen    bool
+	Cancelled bool
+	Prompt    string
+	Choices   []string
 }
 
 type Input struct {
@@ -23,16 +22,22 @@ type Input struct {
 
 func initialModel(i *Input) Model {
 	return Model{
-		Cursor:   0,
-		Chosen:   false,
-		Quitting: false,
-		Prompt:   i.Prompt,
-		Choices:  i.Choices,
+		Cursor:  0,
+		Chosen:  false,
+		Prompt:  i.Prompt,
+		Choices: i.Choices,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
 	return nil
+}
+
+func (m Model) Selection() string {
+	if m.Cursor >= len(m.Choices) {
+		return ""
+	}
+	return m.Choices[m.Cursor]
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -41,10 +46,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEnter:
 			m.Chosen = true
-			m.Quitting = true
 			return m, tea.Quit
 		case tea.KeyCtrlC:
-			os.Exit(1)
+			m.Cancelled = true
+			return m, tea.Quit
 		}
 	}
 
@@ -52,8 +57,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	if m.Chosen {
+		return fmt.Sprintf("%s %s %s\n", styles.Question, styles.Bold(m.Prompt), m.Selection())
+	}
 
-	return choicesView(m)
+	tpl := fmt.Sprintf("%s %s  \n", styles.Question, styles.Bold(m.Prompt))
+	tpl += "%s\n"
+	choices := ""
+	for i, choice := range m.Choices {
+		choices += fmt.Sprintf("\n%s", RenderChoice(choice, m.Cursor == i))
+	}
+
+	return fmt.Sprintf(tpl, choices)
 }
 
 // Update loop for the first view where you're choosing a task.
@@ -78,28 +93,6 @@ func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// sub-view functions
-func choicesView(m Model) string {
-	c := m.Cursor
-
-	tpl := fmt.Sprintf("%s %s  \n\n", styles.Question, styles.Bold(m.Prompt))
-
-	tpl += "%s\n"
-	choices := ""
-	for i, choice := range m.Choices {
-		if i == len(m.Choices)-1 {
-			choices += RenderChoice(choice, c == i)
-		} else {
-			choices += fmt.Sprintf("%s\n", RenderChoice(choice, c == i))
-		}
-	}
-
-	if m.Quitting && m.Chosen {
-		tpl += fmt.Sprintf("\n%s Selected %s\n\n", styles.SelectTag, styles.Pink(m.Choices[m.Cursor]))
-	}
-	return fmt.Sprintf(tpl, choices)
-}
-
 func RenderChoice(choice string, chosen bool) string {
 	if chosen {
 		return fmt.Sprintf("%s %s", styles.SelectTag, choice)
@@ -107,17 +100,25 @@ func RenderChoice(choice string, chosen bool) string {
 	return fmt.Sprintf("  %s", choice)
 }
 
-func Run(i *Input) (*Model, error) {
-	program := tea.NewProgram(initialModel(i))
+func Run(prompt string, choices ...string) (string, error) {
+	program := tea.NewProgram(initialModel(&Input{
+		Prompt:  prompt,
+		Choices: choices,
+	}))
 
-	m, err := program.StartReturningModel()
+	m, err := program.Run()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if m, ok := m.(Model); ok {
-		return &m, nil
+	model, ok := m.(Model)
+	if !ok {
+		return "", err
 	}
 
-	return nil, err
+	if model.Cancelled {
+		return "", fmt.Errorf("cancelled")
+	}
+
+	return model.Selection(), nil
 }

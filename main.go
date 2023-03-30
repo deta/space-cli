@@ -1,9 +1,15 @@
 package main
 
 import (
-	"github.com/deta/pc-cli/cmd"
+	"os"
+
+	"github.com/deta/space/cmd"
 )
 
 func main() {
-	cmd.Execute()
+	cmd := cmd.NewSpaceCmd()
+	err := cmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }

@@ -6,322 +6,165 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/auth"
-	"github.com/deta/pc-cli/internal/runtime"
-	"github.com/deta/pc-cli/internal/spacefile"
-	"github.com/deta/pc-cli/pkg/components/confirm"
-	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/pkg/components/text"
-	"github.com/deta/pc-cli/pkg/scanner"
-	"github.com/deta/pc-cli/pkg/util/fs"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/api"
+	"github.com/deta/space/internal/auth"
+	"github.com/deta/space/internal/runtime"
+	"github.com/deta/space/internal/spacefile"
+	"github.com/deta/space/pkg/components/confirm"
+	"github.com/deta/space/pkg/components/styles"
+	"github.com/deta/space/pkg/components/text"
+	"github.com/deta/space/pkg/scanner"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
-var (
-	projectName string
-	projectDir  string
-	blank       bool
-
-	newCmd = &cobra.Command{
+func newCmdNew() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "new [flags]",
 		Short: "create new project",
-		RunE:  new,
-	}
-)
+		Run: func(cmd *cobra.Command, args []string) {
+			projectDir, _ := cmd.Flags().GetString("dir")
+			blankProject, _ := cmd.Flags().GetBool("blank")
+			projectName, _ := cmd.Flags().GetString("name")
 
-func init() {
-	newCmd.Flags().StringVarP(&projectName, "name", "n", "", "project name")
-	newCmd.Flags().StringVarP(&projectDir, "dir", "d", "./", "src of project to release")
-	newCmd.Flags().BoolVarP(&blank, "blank", "b", false, "create blank project")
-	rootCmd.AddCommand(newCmd)
+			if !cmd.Flags().Changed("name") {
+				abs, err := filepath.Abs(projectDir)
+				if err != nil {
+					shared.Logger.Printf("%sError getting absolute path of project directory: %s", styles.ErrorExclamation, err.Error())
+					os.Exit(1)
+				}
+
+				name := filepath.Base(abs)
+				projectName, err = selectProjectName(name)
+				if err != nil {
+					os.Exit(1)
+				}
+			}
+
+			if err := newProject(projectDir, projectName, blankProject); err != nil {
+				os.Exit(1)
+			}
+		},
+		PreRunE: shared.CheckAll(
+			shared.CheckExists("dir"),
+			func(cmd *cobra.Command, args []string) error {
+				if cmd.Flags().Changed("name") {
+					name, _ := cmd.Flags().GetString("name")
+					return validateProjectName(name)
+				}
+
+				return nil
+			}),
+	}
+
+	cmd.Flags().StringP("name", "n", "", "project name")
+	cmd.Flags().StringP("dir", "d", "./", "src of project to release")
+	cmd.MarkFlagDirname("dir")
+	cmd.Flags().BoolP("blank", "b", false, "create blank project")
+
+	if !shared.IsOutputInteractive() {
+		cmd.MarkFlagRequired("name")
+	}
+
+	return cmd
 }
 
-func projectNameValidator(projectName string) error {
-
+func validateProjectName(projectName string) error {
 	if len(projectName) < 4 {
-		return fmt.Errorf("project name \"%s\" must be at least 4 characters long", projectName)
+		return fmt.Errorf("project name must be at least 4 characters long")
 	}
 
 	if len(projectName) > 16 {
-		return fmt.Errorf("project name \"%s\" must be at most 16 characters long", projectName)
+		return fmt.Errorf("project name must be at most 16 characters long")
 	}
 
 	return nil
 }
 
 func selectProjectName(placeholder string) (string, error) {
-
 	promptInput := text.Input{
 		Prompt:      "What is your project's name?",
 		Placeholder: placeholder,
-		Validator:   projectNameValidator,
+		Validator:   validateProjectName,
 	}
 
 	return text.Run(&promptInput)
 }
 
-func createProject(name string, runtimeManager *runtime.Manager) error {
-	res, err := client.CreateProject(&api.CreateProjectRequest{
+func createProject(name string) (*runtime.ProjectMeta, error) {
+	res, err := shared.Client.CreateProject(&api.CreateProjectRequest{
 		Name: name,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = runtimeManager.StoreProjectMeta(&runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias})
-	if err != nil {
-		return fmt.Errorf("failed to write project id to .space/meta, %w", err)
-	}
-
-	return nil
+	return &runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias}, nil
 }
 
-func new(cmd *cobra.Command, args []string) error {
-	logger.Println()
-
-	// check space version
-	c := make(chan *checkVersionMsg, 1)
-	defer close(c)
-	go checkVersion(c)
-
-	var err error
-
-	projectDir = filepath.Clean(projectDir)
-
-	runtimeManager, err := runtime.NewManager(&projectDir, true)
-	if err != nil {
-		return err
-	}
-
-	isProjectInitialized, err := runtimeManager.IsProjectInitialized()
-	if err != nil {
-		return err
-	}
-
-	if isProjectInitialized {
-		logger.Println(styles.Error("A project already exists in this directory. You can use"),
-			styles.Code("space push"), styles.Error("to create a Revision."))
-		return nil
-	}
-
-	if isFlagEmpty(projectName) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		absWd, err := filepath.Abs(wd)
-		if err != nil {
-			return err
-		}
-		projectName = filepath.Base(absWd)
-
-		projectName, err = selectProjectName(projectName)
-		if err != nil {
-			return fmt.Errorf("problem while trying to get project's name through prompt, %w", err)
-		}
-	}
-
-	isEmpty, err := fs.IsEmpty(projectDir)
-	if err != nil {
-		return fmt.Errorf("problem while trying to check contents of dir %s, %w", projectDir, err)
-	}
-
-	// create blank project if blank flag provided or if project folder is empty
-	if blank || isEmpty {
-
-		logger.Printf("%s No Spacefile found, trying to auto-detect configuration ...\n", emoji.Package)
-		logger.Printf("%s Empty directory detected, creating %s from scratch ...\n", emoji.Package, styles.Pink(projectName))
-
-		_, err = spacefile.CreateBlankSpacefile(projectDir)
-		if err != nil {
-			return fmt.Errorf("failed to create blank project, %w", err)
-		}
-
-		err = createProject(projectName, runtimeManager)
-		if err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, err) {
-				logger.Println(LoginInfo())
-				return nil
+func newProject(projectDir, projectName string, blankProject bool) error {
+	// Create spacefile if it doesn't exist
+	spaceFilePath := filepath.Join(projectDir, "Spacefile")
+	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
+		if blankProject || !shared.IsOutputInteractive() {
+			if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
+				shared.Logger.Printf("failed to create blank project: %s", err)
+				return err
 			}
-			return err
-		}
-
-		logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
-		projectInfo, err := runtimeManager.GetProjectMeta()
-		if err != nil {
-			return fmt.Errorf("failed to retrieve project info")
-		}
-		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		err = runtimeManager.AddSpaceToGitignore()
-		if err != nil {
-			logger.Println(SpaceGitignoreInfo())
-		}
-		return nil
-	}
-
-	/*
-		// prompt to start from template
-		if isEmpty {
-			// TODO: select template
-			// TODO: download template files
-			// TODO: improve successfull create project logs
-		}
-	*/
-
-	isSpacefilePresent, err := spacefile.IsSpacefilePresent(projectDir)
-	if err != nil {
-		return fmt.Errorf("problem while trying to check for spacefile file in dir %s, %w", projectDir, err)
-	}
-
-	// Spacefile exists
-	if isSpacefilePresent {
-		logger.Printf("%s Spacefile found locally, validating Spacefile ...\n\n", emoji.Package)
-		s, err := spacefile.Open(projectDir)
-		if err != nil {
-			if te, ok := err.(*yaml.TypeError); ok {
-				logger.Println(spacefile.ParseSpacefileUnmarshallTypeError(te))
-				return nil
-			}
-			logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
-			return nil
-		}
-
-		// validate spacefile before creating new project with the existing spacefile
-		spacefileErrors := spacefile.ValidateSpacefile(s, projectDir)
-
-		if len(spacefileErrors) > 0 {
-			logValidationErrors(s, spacefileErrors)
-			logger.Println(styles.Errorf("Please fix the issues with your Spacefile before creating %s.\n", styles.Pink(projectName)))
-			logger.Printf("The Spacefile documentation is here: %s", styles.Bold(spacefileDocsUrl))
-
-			return nil
 		} else {
-			logger.Printf("%s Nice, your Spacefile looks good!\n", emoji.PointDown)
-		}
-
-		logger.Printf("%s Creating project %s with your Spacefile ...\n", emoji.Package, styles.Pink(projectName))
-
-		err = createProject(projectName, runtimeManager)
-		if err != nil {
-			if errors.Is(auth.ErrNoAccessTokenFound, err) {
-				logger.Println(LoginInfo())
-				return nil
-			}
-			return err
-		}
-
-		logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
-		projectInfo, err := runtimeManager.GetProjectMeta()
-		if err != nil {
-			return fmt.Errorf("failed to retrieve project info")
-		}
-		logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-
-		cm := <-c
-		if cm.err == nil && cm.isLower {
-			logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
-		}
-		err = runtimeManager.AddSpaceToGitignore()
-		if err != nil {
-			logger.Println(SpaceGitignoreInfo())
-		}
-		return nil
-	}
-
-	// no Spacefile present, auto-detect micros
-	logger.Printf("%s No Spacefile found, trying to auto-detect configuration ...", emoji.Package)
-
-	autoDetectedMicros, err := scanner.Scan(projectDir)
-	if err != nil {
-		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks for project %s, %w", projectName, err)
-	}
-
-	if len(autoDetectedMicros) > 0 {
-		// prompt user for confirmation to create project with detected configuration
-		logger.Printf("%s Space detected the following configuration:\n\n", emoji.PointDown)
-		logDetectedMicros(autoDetectedMicros)
-
-		create, err := confirm.Run(&confirm.Input{
-			Prompt: fmt.Sprintf("Do you want to bootstrap %s with this configuration?", styles.Pink(projectName)),
-		})
-		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to create project with the auto-detected configuration from confirm prompt, %w", err)
-		}
-
-		// create project with detected config
-		if create {
-			logger.Printf("%s Bootstrapping %s ...\n", emoji.Package, styles.Pink(projectName))
-
-			_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
+			autoDetectedMicros, err := scanner.Scan(projectDir)
 			if err != nil {
-				return fmt.Errorf("failed to create project with detected micros, %w", err)
-			}
-
-			err = createProject(projectName, runtimeManager)
-			if err != nil {
-				if errors.Is(auth.ErrNoAccessTokenFound, err) {
-					logger.Println(LoginInfo())
-					return nil
-				}
+				shared.Logger.Printf("problem while trying to auto detect runtimes/frameworks for project %s: %s", projectName, err)
 				return err
 			}
 
-			logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
-			projectInfo, err := runtimeManager.GetProjectMeta()
-			if err != nil {
-				return fmt.Errorf("failed to retrieve project info")
+			for _, micro := range autoDetectedMicros {
+				shared.Logger.Printf("\nMicro found in \"%s\"", styles.Code(micro.Src))
+				shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
 			}
-			logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
 
-			cm := <-c
-			if cm.err == nil && cm.isLower {
-				logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+			shared.Logger.Println()
+			if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
+				return err
+			} else if !ok {
+				if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
+					shared.Logger.Printf("failed to create blank project: %s", err)
+					return err
+				}
+			} else {
+				_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
+				if err != nil {
+					shared.Logger.Printf("failed to create project with detected micros: %s", err)
+					return err
+				}
 			}
-			err = runtimeManager.AddSpaceToGitignore()
-			if err != nil {
-				logger.Println(SpaceGitignoreInfo())
-			}
-			return nil
 		}
 	}
 
-	// don't create project with detected config, create blank project, point to docs
-	logger.Printf("%s Creating %s from scratch ...\n", emoji.Package, styles.Pink(projectName))
-
-	_, err = spacefile.CreateBlankSpacefile(projectDir)
-	if err != nil {
-		return fmt.Errorf("failed to create blank project, %w", err)
-	}
-
-	err = createProject(projectName, runtimeManager)
-	if err != nil {
-		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			logger.Println(LoginInfo())
-			return nil
-		}
+	// add .space folder to gitignore
+	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
+		shared.Logger.Printf("failed to add .space to gitignore: %s", err)
 		return err
 	}
 
-	logger.Println(styles.Greenf("%s Project", emoji.Check), styles.Pink(projectName), styles.Green("created successfully!"))
-	projectInfo, err := runtimeManager.GetProjectMeta()
+	// Create project
+	meta, err := createProject(projectName)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve project info")
+		if errors.Is(auth.ErrNoAccessTokenFound, err) {
+			shared.Logger.Println(shared.LoginInfo())
+			return err
+		}
+		shared.Logger.Printf("failed to create project: %s", err)
+		return err
 	}
-	logger.Println(projectNotes(projectInfo.Name, projectInfo.ID))
-	cm := <-c
-	if cm.err == nil && cm.isLower {
-		logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+
+	if err := runtime.StoreProjectMeta(projectDir, meta); err != nil {
+		shared.Logger.Printf("failed to save project meta, %s", err)
+		return err
 	}
-	err = runtimeManager.AddSpaceToGitignore()
-	if err != nil {
-		logger.Println(SpaceGitignoreInfo())
-	}
+
+	shared.Logger.Println(styles.Greenf("\nProject %s created successfully!", projectName))
+	shared.Logger.Println(shared.ProjectNotes(projectName, meta.ID))
+
 	return nil
 }

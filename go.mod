@@ -1,4 +1,4 @@
-module github.com/deta/pc-cli
+module github.com/deta/space
 
 go 1.19
 
@@ -7,8 +7,9 @@ require (
 	github.com/charmbracelet/bubbletea v0.23.1
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
+	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
+	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/spf13/cobra v1.6.1
-	github.com/withfig/autocomplete-tools/integrations/cobra v1.2.1
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.3.0
@@ -27,7 +28,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mattn/go-isatty v0.0.16
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
@@ -36,7 +37,6 @@ require (
 	github.com/muesli/termenv v0.13.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/image v0.5.0
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/term v0.3.0
 	golang.org/x/text v0.7.0 // indirect

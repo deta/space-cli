@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/space/shared"
 )
 
 func Scan(sourceDir string) ([]*shared.Micro, error) {

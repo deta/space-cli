@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/deta/pc-cli/pkg/util/fs"
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/space/pkg/util/fs"
+	"github.com/deta/space/shared"
 )
 
 var NodeFrameworks = [...]NodeFramework{

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/space/internal/auth"
 )
 
 const (
@@ -849,11 +849,13 @@ func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) 
 	return &resp, nil
 }
 
+type ProjectKey struct {
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+}
+
 type ListProjectResponse struct {
-	Keys []struct {
-		Name      string `json:"name"`
-		CreatedAt string `json:"created_at"`
-	} `json:"keys"`
+	Keys []ProjectKey `json:"keys"`
 }
 
 func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error) {

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deta/pc-cli/pkg/util/fs"
+	"github.com/deta/space/pkg/util/fs"
 )
 
 const (
