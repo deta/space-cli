@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/deta/pc-cli/internal/auth"
+	"github.com/deta/space/internal/auth"
 )
 
 const (

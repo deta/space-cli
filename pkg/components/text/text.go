@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/pkg/components/styles"
 )
 
 type errMsg error

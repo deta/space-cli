@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deta/pc-cli/cmd/dev"
-	"github.com/deta/pc-cli/cmd/shared"
-	"github.com/deta/pc-cli/cmd/version"
-	"github.com/deta/pc-cli/internal/runtime"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/cmd/dev"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/version"
+	"github.com/deta/space/internal/runtime"
+	"github.com/deta/space/pkg/components/styles"
 	"github.com/spf13/cobra"
 )
 

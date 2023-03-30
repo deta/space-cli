@@ -3,8 +3,8 @@ package scanner
 import (
 	"fmt"
 
-	"github.com/deta/pc-cli/pkg/util/fs"
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/space/pkg/util/fs"
+	"github.com/deta/space/shared"
 )
 
 func pythonScanner(dir string) (*shared.Micro, error) {

@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/internal/api"
+	"github.com/deta/space/pkg/components/emoji"
+	"github.com/deta/space/pkg/components/styles"
 	"github.com/mattn/go-isatty"
 )
 

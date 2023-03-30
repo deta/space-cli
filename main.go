@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/deta/pc-cli/cmd"
+	"github.com/deta/space/cmd"
 )
 
 func main() {

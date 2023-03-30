@@ -10,10 +10,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/deta/pc-cli/cmd/shared"
-	"github.com/deta/pc-cli/internal/spacefile"
-	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/spacefile"
+	"github.com/deta/space/pkg/components/emoji"
+	"github.com/deta/space/pkg/components/styles"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )

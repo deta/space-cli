@@ -7,12 +7,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/deta/pc-cli/cmd/shared"
-	"github.com/deta/pc-cli/internal/api"
-	"github.com/deta/pc-cli/internal/auth"
-	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
-	"github.com/deta/pc-cli/pkg/components/text"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/api"
+	"github.com/deta/space/internal/auth"
+	"github.com/deta/space/pkg/components/emoji"
+	"github.com/deta/space/pkg/components/styles"
+	"github.com/deta/space/pkg/components/text"
 	"github.com/spf13/cobra"
 )
 

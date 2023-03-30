@@ -1,6 +1,6 @@
 package scanner
 
-import "github.com/deta/pc-cli/shared"
+import "github.com/deta/space/shared"
 
 type engineScanner func(dir string) (*shared.Micro, error)
 

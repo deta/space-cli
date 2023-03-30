@@ -3,7 +3,7 @@ package scanner
 import (
 	"testing"
 
-	"github.com/deta/pc-cli/shared"
+	"github.com/deta/space/shared"
 	"golang.org/x/exp/slices"
 	"gotest.tools/v3/assert"
 )

@@ -9,11 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deta/pc-cli/cmd/shared"
-	"github.com/deta/pc-cli/internal/spacefile"
-	"github.com/deta/pc-cli/pkg/components/emoji"
-	"github.com/deta/pc-cli/pkg/components/styles"
-	types "github.com/deta/pc-cli/shared"
+	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/spacefile"
+	"github.com/deta/space/pkg/components/emoji"
+	"github.com/deta/space/pkg/components/styles"
+	types "github.com/deta/space/shared"
 	"github.com/spf13/cobra"
 )
 

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/deta/pc-cli/cmd"
+	"github.com/deta/space/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
