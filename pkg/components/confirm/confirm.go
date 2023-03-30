@@ -59,7 +59,7 @@ func (m Model) View() string {
 	if m.Hidden {
 		return ""
 	}
-	return fmt.Sprintf("\n%s %s > Y/n", styles.Question, styles.Bold(m.Prompt))
+	return fmt.Sprintf("\n%s %s %s", styles.Question, styles.Bold(m.Prompt), styles.Subtle("(Y/n)"))
 }
 
 func Run(i *Input) (bool, error) {
