@@ -53,6 +53,7 @@ func newCmdPush() *cobra.Command {
 	cmd.Flags().StringP("dir", "d", "./", "src of project to push")
 	cmd.MarkFlagDirname("dir")
 	cmd.Flags().StringP("tag", "t", "", "tag to identify this push")
+	cmd.Flags().Bool("open", false, "open builder instance/project in browser after push")
 	cmd.Flags().BoolP("skip-logs", "", false, "skip following logs after push")
 
 	return cmd
@@ -76,7 +77,6 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 		return err
 	}
 
-	shared.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
 	build, err := shared.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag})
 	if err != nil {
 		shared.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
@@ -142,6 +142,8 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 		return err
 	}
 
+	shared.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
+
 	if skipLogs {
 		b, err := shared.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 		if err != nil {
@@ -162,6 +164,8 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 				return err
 			}
 		}
+
+		return nil
 	}
 
 	// get build logs
