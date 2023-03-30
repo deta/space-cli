@@ -53,7 +53,7 @@ func newCmdRelease() *cobra.Command {
 			if !cmd.Flags().Changed("rid") {
 				if !cmd.Flags().Changed("confirm") {
 					useLatestRevision, err = confirm.Run(&confirm.Input{
-						Prompt: "Do you want to use the latest revision? (y/n)",
+						Prompt: "Do you want to use the latest revision? (Y/n)",
 					})
 					if err != nil {
 						os.Exit(1)
