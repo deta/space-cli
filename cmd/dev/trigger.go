@@ -33,6 +33,8 @@ func newCmdDevTrigger() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringP("dir", "d", ".", "project directory")
+
 	return cmd
 }
 
