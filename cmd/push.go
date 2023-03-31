@@ -30,7 +30,7 @@ Space will automatically update your Builder instance with the new revision.
 
 If you don't want to follow the logs of the build and update, pass the --skip-logs argument which will exit the process as soon as the build is started instead of waiting for it to finish.
 
-Tip: you can use the .spaceignore file to exclude certain files and directories from being uploaded during push.
+Tip: Use the .spaceignore file to exclude certain files and directories from being uploaded during push.
 `,
 		Args:    cobra.NoArgs,
 		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "tag")),

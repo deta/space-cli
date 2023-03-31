@@ -21,7 +21,7 @@ func newCmdDevTrigger() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trigger <action>",
 		Short: "Trigger a micro action",
-		Long: `You can use space trigger to manually trigger action.
+		Long: `Manually trigger an action.
 Make sure that the corresponding micro is running before triggering the action.`,
 		Aliases: []string{"t"},
 		Args:    cobra.ExactArgs(1),

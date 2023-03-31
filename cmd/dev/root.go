@@ -53,7 +53,7 @@ func NewCmdDev() *cobra.Command {
 		Short: "Spin up a local development environment for your Space project",
 		Long: `Spin up a local development environment for your Space project.
 
-The cli will start one process for each of your micros, then expose a single enpoints for your space app.`,
+The cli will start one process for each of your micros, then expose a single enpoint for your Space app.`,
 
 		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
 		Run: func(cmd *cobra.Command, args []string) {

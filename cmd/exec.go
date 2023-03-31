@@ -16,7 +16,7 @@ func newCmdExec() *cobra.Command {
 		Short: "Run a command in the context of your project",
 		Long: `Run a command in the context of your project.
 
-The project key will be automatically injected into command env.`,
+The data key will be automatically injected into the command's environment.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
