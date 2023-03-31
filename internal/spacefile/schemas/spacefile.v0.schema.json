@@ -134,6 +134,10 @@
                 "serve": {
                     "description": "Directory path relative to the Micro's src that should be served",
                     "type": "string"
+                },
+                "public": {
+                    "description": "Use public to specify whether a Micro should be available to the public. If public is set to false, the Micro will not be available to the public and will only be accessible to the app's owner.",
+                    "type": "boolean"
                 }
             },
             "not": {
