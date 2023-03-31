@@ -16,8 +16,9 @@ import (
 func NewSpaceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "space",
-		Short: "Deta Space CLI for mananging Deta Space projects",
+		Short: "Deta Space CLI",
 		Long: fmt.Sprintf(`Deta Space command line interface for managing Deta Space projects.
+
 Complete documentation available at %s`, shared.DocsUrl),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Usage()

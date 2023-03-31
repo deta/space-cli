@@ -22,8 +22,16 @@ import (
 
 func newCmdPush() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "push [flags]",
-		Short:   "push code for project",
+		Use:   "push [flags]",
+		Short: "Push your changes to Space and create a new revision.",
+		Long: `Push your changes to Space and create a new revision.
+
+Space will automatically update your Builder instance with the new revision.
+
+If you don't want to follow the logs of the build and update, pass the --skip-logs argument which will exit the process as soon as the build is started instead of waiting for it to finish.
+
+Tip: Use the .spaceignore file to exclude certain files and directories from being uploaded during push.
+`,
 		Args:    cobra.NoArgs,
 		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "tag")),
 		Run: func(cmd *cobra.Command, args []string) {

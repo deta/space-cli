@@ -19,8 +19,10 @@ import (
 
 func newCmdDevTrigger() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "trigger <action>",
-		Short:   "Trigger a micro action",
+		Use:   "trigger <action>",
+		Short: "Trigger a micro action",
+		Long: `Manually trigger an action.
+Make sure that the corresponding micro is running before triggering the action.`,
 		Aliases: []string{"t"},
 		Args:    cobra.ExactArgs(1),
 		PreRunE: shared.CheckProjectInitialized("dir"),

@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	DocsUrl          = "https://go.deta.dev/docs/space/alpha"
-	SpacefileDocsUrl = "https://go.deta.dev/docs/spacefile/v0"
+	DocsUrl          = "https://deta.space/docs"
+	SpacefileDocsUrl = "https://deta.space/docs/en/reference/spacefile"
 	BuilderUrl       = "https://deta.space/builder"
 )
 

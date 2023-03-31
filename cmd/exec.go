@@ -13,8 +13,11 @@ import (
 func newCmdExec() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "exec",
-		Short: "executes a command in space context",
-		Args:  cobra.MinimumNArgs(1),
+		Short: "Run a command in the context of your project",
+		Long: `Run a command in the context of your project.
+
+The data key will be automatically injected into the command's environment.`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			projectID, _ := cmd.Flags().GetString("project")
