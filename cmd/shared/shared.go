@@ -16,6 +16,6 @@ const (
 var (
 	SpaceVersion string = "dev"
 	Platform     string
-	Client       = api.NewDetaClient(api.ClientConfig{Version: SpaceVersion, Platform: Platform})
+	Client       = api.NewDetaClient(SpaceVersion, Platform)
 	Logger       = log.New(os.Stderr, "", 0)
 )

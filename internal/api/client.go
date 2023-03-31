@@ -18,19 +18,16 @@ const (
 )
 
 type DetaClient struct {
-	Client *http.Client
-	Config ClientConfig
-}
-
-type ClientConfig struct {
+	Client   *http.Client
 	Version  string
 	Platform string
 }
 
-func NewDetaClient(config ClientConfig) *DetaClient {
+func NewDetaClient(version string, platform string) *DetaClient {
 	return &DetaClient{
-		Client: &http.Client{},
-		Config: config,
+		Client:   &http.Client{},
+		Version:  version,
+		Platform: platform,
 	}
 }
 
@@ -88,7 +85,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		req.Header.Set(k, v)
 	}
 
-	clientHeader := fmt.Sprintf("cli/%s %s", d.Config.Version, d.Config.Platform)
+	clientHeader := fmt.Sprintf("cli/%s %s", d.Version, d.Platform)
 	req.Header.Set(SpaceClientHeader, clientHeader)
 
 	// query params
