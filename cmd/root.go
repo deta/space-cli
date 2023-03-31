@@ -13,11 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	spaceVersion string = "dev"
-	platform     string
-)
-
 func NewSpaceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "space",
@@ -30,9 +25,9 @@ Complete documentation available at %s`, shared.DocsUrl),
 		// no usage shown on errors
 		SilenceUsage:      false,
 		DisableAutoGenTag: true,
-		Version:           spaceVersion,
+		Version:           shared.SpaceVersion,
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if isPrerelease(spaceVersion) {
+			if isPrerelease(shared.SpaceVersion) {
 				return
 			}
 
@@ -49,7 +44,7 @@ Complete documentation available at %s`, shared.DocsUrl),
 				latestVersion = res.Tag
 			}
 
-			if spaceVersion != latestVersion {
+			if shared.SpaceVersion != latestVersion {
 				shared.Logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
 			}
 		},
@@ -61,7 +56,7 @@ Complete documentation available at %s`, shared.DocsUrl),
 	cmd.AddCommand(newCmdExec())
 	cmd.AddCommand(dev.NewCmdDev())
 	cmd.AddCommand(newCmdNew())
-	cmd.AddCommand(version.NewCmdVersion(spaceVersion, platform))
+	cmd.AddCommand(version.NewCmdVersion(shared.SpaceVersion, shared.Platform))
 	cmd.AddCommand(newCmdOpen())
 	cmd.AddCommand(newCmdValidate())
 	cmd.AddCommand(newCmdRelease())

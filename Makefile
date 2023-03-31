@@ -5,28 +5,28 @@ MAC_PLATFORM = x86_64-darwin
 MAC_ARM_PLATFORM = arm64-darwin
 WINDOWS_PLATFORM = x86_64-windows
 
-LDFLAGS := -X github.com/deta/space/cmd.spaceVersion=$(SPACE_VERSION) $(LDFLAGS)
+LDFLAGS := -X github.com/deta/space/cmd/shared.SpaceVersion=$(SPACE_VERSION) $(LDFLAGS)
 
 .PHONY: build clean
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd.platform=$(LINUX_PLATFORM)" -o build/space
+	GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd/shared.Platform=$(LINUX_PLATFORM)" -o build/space
 	cd build && zip -FSr space-$(LINUX_PLATFORM).zip space
 
 build-linux-arm:
-	GOOS=linux GOARCH=arm64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd.platform=$(LINUX_ARM_PLATFORM)" -o build/space
+	GOOS=linux GOARCH=arm64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd/shared.Platform=$(LINUX_ARM_PLATFORM)" -o build/space
 	cd build && zip -FSr space-$(LINUX_ARM_PLATFORM).zip space
 
 build-win:
-	GOOS=windows GOARCH=amd64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd.platform=$(WINDOWS_PLATFORM)" -o build/space.exe
+	GOOS=windows GOARCH=amd64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd/shared.Platform=$(WINDOWS_PLATFORM)" -o build/space.exe
 	cd build && zip -FSr space-$(WINDOWS_PLATFORM).zip space.exe
 
 build-mac:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd.platform=$(MAC_PLATFORM)" -o build/space
+	GOOS=darwin GOARCH=amd64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd/shared.Platform=$(MAC_PLATFORM)" -o build/space
 	cd build && zip -FSr space-$(MAC_PLATFORM).zip space
 
 build-mac-arm:
-	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd.platform=$(MAC_ARM_PLATFORM)" -o build/space
+	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags="$(LDFLAGS) -X github.com/deta/space/cmd/shared.Platform=$(MAC_ARM_PLATFORM)" -o build/space
 	cd build && zip -FSr space-$(MAC_ARM_PLATFORM).zip space
 
 build: build-linux build-win build-mac build-mac-arm build-linux-arm

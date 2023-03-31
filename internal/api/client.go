@@ -13,13 +13,21 @@ import (
 	"github.com/deta/space/internal/auth"
 )
 
+const (
+	SpaceClientHeader = "X-Space-Client"
+)
+
 type DetaClient struct {
-	Client *http.Client
+	Client   *http.Client
+	Version  string
+	Platform string
 }
 
-func NewDetaClient() *DetaClient {
+func NewDetaClient(version string, platform string) *DetaClient {
 	return &DetaClient{
-		Client: &http.Client{},
+		Client:   &http.Client{},
+		Version:  version,
+		Platform: platform,
 	}
 }
 
@@ -76,6 +84,9 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	for k, v := range i.Headers {
 		req.Header.Set(k, v)
 	}
+
+	clientHeader := fmt.Sprintf("cli/%s %s", d.Version, d.Platform)
+	req.Header.Set(SpaceClientHeader, clientHeader)
 
 	// query params
 	q := req.URL.Query()
