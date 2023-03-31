@@ -88,3 +88,20 @@ func TestEmptyProject(t *testing.T) {
 
 	assert.Equal(t, 0, len(micros), "detected micros in empty project")
 }
+
+func TestCleanMicroName(t *testing.T) {
+	cases := []struct {
+		path     string
+		expected string
+	}{
+		{path: "my.app", expected: "my-app"},
+		{path: "python", expected: "python"},
+		{path: "I'm a micro", expected: "I-m-a-micro"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			assert.Equal(t, cleanMicroName(c.path), c.expected)
+		})
+	}
+}
