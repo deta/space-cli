@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "Spacefile": "yaml"
+    },
+    "yaml.schemas": {
+        "internal/spacefile/schemas/spacefile.json": [
+            "Spacefile"
+        ]
+    }
+}
