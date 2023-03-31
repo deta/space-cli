@@ -8,56 +8,55 @@ import (
 	"strings"
 
 	"github.com/deta/space/cmd/shared"
+	detaruntime "github.com/deta/space/internal/runtime"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/spf13/cobra"
 )
 
-func newCmdVersionUpgrade(version string) *cobra.Command {
+func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "upgrade",
 		Short:   "Upgrade Space CLI version",
 		Example: versionUpgradeExamples(),
 		Run: func(cmd *cobra.Command, args []string) {
-			version, _ := cmd.Flags().GetString("version")
-			latestVersion, err := shared.Client.GetLatestCLIVersion()
-			if err != nil {
-				shared.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
-				os.Exit(1)
-			}
+			targetVersion, _ := cmd.Flags().GetString("version")
+			if cmd.Flags().Changed("version") {
+				targetVersion := strings.TrimPrefix(targetVersion, "v")
 
-			upgradingTo := latestVersion.Tag
-			if version != "" {
-				if !strings.HasPrefix(version, "v") {
-					version = fmt.Sprintf("v%s", version)
-				}
-
-				versionExists, err := shared.Client.CheckCLIVersionTag(version)
+				versionExists, err := shared.Client.CheckCLIVersionTag(targetVersion)
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Failed to check if version exists. Please check version and try again.", emoji.X))
 					os.Exit(1)
 				}
 				if !versionExists {
-					shared.Logger.Println(styles.Errorf("%s not found.", styles.Code(version)))
+					shared.Logger.Println(styles.Errorf("%s not found.", styles.Code(targetVersion)))
+					os.Exit(1)
+				}
+			} else {
+				latestVersion, err := shared.Client.GetLatestCLIVersion()
+				if err != nil {
+					shared.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
 					os.Exit(1)
 				}
 
-				upgradingTo = version
+				targetVersion = latestVersion.Tag
 			}
-			if version == upgradingTo {
-				shared.Logger.Println(styles.Boldf("Space CLI version already %s, no upgrade required", styles.Code(upgradingTo)))
+
+			if currentVersion == targetVersion {
+				shared.Logger.Println(styles.Boldf("Space CLI version already %s, no upgrade required", styles.Code(targetVersion)))
 				return
 			}
 
 			switch runtime.GOOS {
 			case "linux", "darwin":
-				err := upgradeUnix(version)
+				err := upgradeUnix(targetVersion)
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
 					os.Exit(1)
 				}
 			case "windows":
-				err := upgradeWin(version)
+				err := upgradeWin(targetVersion)
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
 					os.Exit(1)
@@ -66,6 +65,8 @@ func newCmdVersionUpgrade(version string) *cobra.Command {
 				shared.Logger.Println(styles.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS))
 				os.Exit(1)
 			}
+
+			detaruntime.CacheLatestVersion(targetVersion)
 		},
 		Args: cobra.NoArgs,
 	}
