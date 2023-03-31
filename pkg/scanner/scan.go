@@ -3,6 +3,7 @@ package scanner
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/deta/space/shared"
 )
@@ -63,11 +64,18 @@ func scanDir(dir string) (*shared.Micro, error) {
 	return nil, nil
 }
 
+var nonAlphaNumeric = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+
+func cleanMicroName(name string) string {
+	return nonAlphaNumeric.ReplaceAllString(name, "-")
+}
+
 func getMicroNameFromPath(dir string) (string, error) {
 	absPath, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Base(absPath), nil
+	base := filepath.Base(absPath)
+	return cleanMicroName(base), nil
 }
