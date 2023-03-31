@@ -27,7 +27,7 @@ const (
 	SpacefileName = "Spacefile"
 )
 
-//go:embed schemas/spacefile.v0.schema.json
+//go:embed schemas/spacefile.json
 var spacefileSchemaString string
 var spacefileSchema *jsonschema.Schema = jsonschema.MustCompileString("", spacefileSchemaString)
 
