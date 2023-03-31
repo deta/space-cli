@@ -20,8 +20,11 @@ import (
 
 func newCmdDevProxy() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "proxy",
-		Short:   "Start the proxy server for your running micros",
+		Use:   "proxy",
+		Short: "Start a reverse proxy for your micros",
+		Long: `Start a reverse proxy for your micros
+
+The micros will be automatically discovered and proxied to.`,
 		PreRunE: shared.CheckProjectInitialized("dir"),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error

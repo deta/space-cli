@@ -49,8 +49,12 @@ var (
 
 func NewCmdDev() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dev",
-		Short:   "Spin up a local development environment for your Space project",
+		Use:   "dev",
+		Short: "Spin up a local development environment for your Space project",
+		Long: `Spin up a local development environment for your Space project.
+
+The cli will start one process for each of your micros, then expose a single enpoints for your space app.`,
+
 		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error

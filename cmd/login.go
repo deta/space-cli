@@ -19,7 +19,7 @@ import (
 func newCmdLogin() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "login to space",
+		Short: "Login to space",
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			withToken, _ := cmd.Flags().GetBool("with-token")

@@ -14,7 +14,7 @@ import (
 func newCmdOpen() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "open",
-		Short:   "open current project in browser",
+		Short:   "Open your local project in the Builder UI",
 		PreRunE: shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
 		Run:     open,
 	}

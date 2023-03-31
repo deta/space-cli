@@ -18,7 +18,7 @@ import (
 func newCmdLink() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "link [flags]",
-		Short: "link code to project",
+		Short: "Link a directory with a existing project",
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			projectDir, _ := cmd.Flags().GetString("dir")

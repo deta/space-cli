@@ -19,7 +19,7 @@ import (
 
 func newCmdDevUp() *cobra.Command {
 	devUpCmd := &cobra.Command{
-		Short:   "Start a local server for a specific micro",
+		Short:   "Start a single micro for local development",
 		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
 		Use:     "up <micro>",
 		Run: func(cmd *cobra.Command, args []string) {
