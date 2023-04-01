@@ -125,5 +125,6 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 		return nil
 	}
 
+	shared.Logger.Printf("micro %s not found", microName)
 	return fmt.Errorf("micro %s not found", microName)
 }
