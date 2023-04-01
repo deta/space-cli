@@ -37,7 +37,6 @@ The data key will be automatically injected into the command's environment.`,
 	}
 
 	cmd.Flags().String("project", "", "id of project to exec the command in")
-	cmd.MarkFlagRequired("project")
 
 	return cmd
 }
