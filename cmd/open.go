@@ -16,7 +16,8 @@ func newCmdOpen() *cobra.Command {
 		Use:     "open",
 		Short:   "Open your local project in the Builder UI",
 		PreRunE: shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
-		Run:     open,
+
+		Run: open,
 	}
 
 	cmd.Flags().StringP("id", "i", "", "project id of project to open")

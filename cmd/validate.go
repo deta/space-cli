@@ -15,8 +15,9 @@ import (
 
 func newCmdValidate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "validate [flags]",
-		Short: "Validate your Spacefile and check for errors",
+		Use:      "validate [flags]",
+		Short:    "Validate your Spacefile and check for errors",
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			if err := validate(projectDir); err != nil {

@@ -20,8 +20,9 @@ import (
 
 func newCmdNew() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "new [flags]",
-		Short: "Create new project",
+		Use:      "new [flags]",
+		Short:    "Create new project",
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			blankProject, _ := cmd.Flags().GetBool("blank")

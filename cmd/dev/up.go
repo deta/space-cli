@@ -19,9 +19,10 @@ import (
 
 func newCmdDevUp() *cobra.Command {
 	devUpCmd := &cobra.Command{
-		Short:   "Start a single micro for local development",
-		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
-		Use:     "up <micro>",
+		Short:    "Start a single micro for local development",
+		Use:      "up <micro>",
+		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 

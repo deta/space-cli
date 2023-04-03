@@ -56,7 +56,8 @@ func NewCmdDev() *cobra.Command {
 
 The cli will start one process for each of your micros, then expose a single enpoint for your Space app.`,
 
-		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
+		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 

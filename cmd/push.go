@@ -32,8 +32,9 @@ If you don't want to follow the logs of the build and update, pass the --skip-lo
 
 Tip: Use the .spaceignore file to exclude certain files and directories from being uploaded during push.
 `,
-		Args:    cobra.NoArgs,
-		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "tag")),
+		Args:     cobra.NoArgs,
+		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "tag")),
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")

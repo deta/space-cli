@@ -23,9 +23,10 @@ const (
 
 func newCmdRelease() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "release [flags]",
-		Short:   "Create a new release from a revision",
-		PreRunE: shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "version")),
+		Use:      "release [flags]",
+		Short:    "Create a new release from a revision",
+		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "version")),
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 

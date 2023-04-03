@@ -17,7 +17,8 @@ func newCmdExec() *cobra.Command {
 		Long: `Run a command in the context of your project.
 
 The data key will be automatically injected into the command's environment.`,
-		Args: cobra.MinimumNArgs(1),
+		Args:     cobra.MinimumNArgs(1),
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			projectID, _ := cmd.Flags().GetString("project")
