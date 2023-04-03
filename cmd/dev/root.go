@@ -197,7 +197,14 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		wg.Add(1)
 		go func(command *exec.Cmd) {
 			defer wg.Done()
-			command.Run()
+			err := command.Run()
+			if err != nil {
+				if errors.Is(err, exec.ErrNotFound) {
+					shared.Logger.Printf("%s Command not found: %s", emoji.ErrorExclamation, command.Args[0])
+					return
+				}
+				shared.Logger.Printf("Command `%s` exited", command.String())
+			}
 		}(command)
 	}
 
@@ -217,7 +224,9 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		shared.Logger.Printf("\n\nShutting down...\n\n")
 
 		for _, command := range commands {
-			command.Process.Signal(syscall.SIGTERM)
+			if command.Process != nil {
+				command.Process.Signal(syscall.SIGTERM)
+			}
 		}
 		server.Shutdown(context.Background())
 	}()
