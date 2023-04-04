@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
+	"time"
 
 	"github.com/adrg/frontmatter"
 	"github.com/deta/space/cmd/shared"
@@ -85,24 +87,9 @@ func newCmdRelease() *cobra.Command {
 
 			if len(res.Releases) > 0 {
 				latestRelease := res.Releases[0]
-				if latestRelease.Discovery.ContentRaw != "" && latestRelease.Discovery.ContentRaw != discoveryData.ContentRaw {
-					shared.Logger.Println("\nWarning: your local Discovery data is different from the latest release's Discovery data.")
-
-					updateLocalDiscovery, err := confirm.Run("Do you want to update your local Discovery.md file with the data from the latest release?")
-					if err != nil {
-						shared.Logger.Println("Aborted releasing this app.")
-						os.Exit(1)
-					}
-
-					if !updateLocalDiscovery {
-						continueReleasing, err := confirm.Run("Are you sure you want to continue releasing the app with the local Discovery data?")
-						if err != nil || !continueReleasing {
-							shared.Logger.Println("Aborted releasing this app.")
-							os.Exit(1)
-						}
-					} else {
-						// update local Discovery.md file
-					}
+				err := compareDiscoveryData(discoveryData, latestRelease, projectDir)
+				if err != nil {
+					os.Exit(1)
 				}
 			}
 
@@ -184,6 +171,45 @@ func validateAppDescription(value string) error {
 	return validatePromptValue(value, 4, 69)
 }
 
+func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryFrontmatter, latestRelease *api.Release, projectDir string) error {
+	if latestRelease.Discovery.ContentRaw != "" && !reflect.DeepEqual(latestRelease.Discovery, discoveryData) {
+		modTime, err := discovery.GetDiscoveryFileLastChanged(projectDir)
+		if err != nil {
+			shared.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
+			return err
+		}
+
+		parsedTime, err := time.Parse(time.RFC3339, latestRelease.ReleasedAt)
+		if err != nil {
+			shared.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
+			return err
+		}
+
+		if modTime.Before(parsedTime) {
+			shared.Logger.Println("\nWarning: your local Discovery data is different from the latest release's Discovery data.\n")
+
+			updateLocalDiscovery, err := confirm.Run("Do you want to update your local Discovery.md file with the data from the latest release?")
+			if err != nil {
+				shared.Logger.Println("Aborted releasing this app.")
+				return err
+			}
+
+			if updateLocalDiscovery {
+				discoveryData = latestRelease.Discovery
+				discovery.CreateDiscoveryFile(projectDir, *discoveryData)
+			} else {
+				continueReleasing, err := confirm.Run("Are you sure you want to continue releasing the app with the local Discovery data?")
+				if err != nil || !continueReleasing {
+					shared.Logger.Println("Aborted releasing this app.")
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryFrontmatter, error) {
 	discoveryData := &sharedTypes.DiscoveryFrontmatter{}
 
@@ -213,7 +239,7 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryFrontmatter, err
 			}
 			discoveryData.Tagline = tagline
 
-			discovery.CreateDiscoveryFile("Discovery.md", *discoveryData)
+			discovery.CreateDiscoveryFile(projectDir, *discoveryData)
 		} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
 			shared.Logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
 			return nil, err
@@ -364,5 +390,5 @@ func getCreatingReleaseMsg(listed bool, latest bool) string {
 	if latest {
 		latestInfo = " with the latest revision"
 	}
-	return fmt.Sprintf("\n%s Creating a%s 4elease%s ...\n\n", emoji.Package, listedInfo, latestInfo)
+	return fmt.Sprintf("\n%s Creating a%s release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
 }

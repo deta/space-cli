@@ -831,10 +831,10 @@ func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error)
 }
 
 type Release struct {
-	ID        string                       `json:"id"`
-	Tag       string                       `json:"tag"`
-	CreatedAt string                       `json:"created_at"`
-	Discovery *shared.DiscoveryFrontmatter `json:"discovery"`
+	ID         string                       `json:"id"`
+	Tag        string                       `json:"tag"`
+	ReleasedAt string                       `json:"released_at"`
+	Discovery  *shared.DiscoveryFrontmatter `json:"discovery"`
 }
 
 type fetchReleasesResponse struct {

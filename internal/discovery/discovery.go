@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/adrg/frontmatter"
 	cmdShared "github.com/deta/space/cmd/shared"
@@ -78,8 +79,22 @@ func Open(sourceDir string) ([]byte, error) {
 	return c, nil
 }
 
-func CreateDiscoveryFile(filename string, discovery shared.DiscoveryFrontmatter) error {
-	f, err := os.Create(filename)
+func GetDiscoveryFileLastChanged(sourceDir string) (time.Time, error) {
+	p := filepath.Join(sourceDir, DiscoveryFilename)
+	file, err := os.Stat(p)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	modifiedtime := file.ModTime()
+
+	return modifiedtime, nil
+}
+
+func CreateDiscoveryFile(sourceDir string, discovery shared.DiscoveryFrontmatter) error {
+	p := filepath.Join(sourceDir, DiscoveryFilename)
+	f, err := os.Create(p)
 	if err != nil {
 		f.Close()
 		return err
@@ -89,6 +104,7 @@ func CreateDiscoveryFile(filename string, discovery shared.DiscoveryFrontmatter)
 	fmt.Fprintln(f, "---")
 	fmt.Fprint(f, string(js))
 	fmt.Fprintln(f, "---")
+	fmt.Fprintln(f, discovery.ContentRaw)
 
 	err = f.Close()
 	if err != nil {
