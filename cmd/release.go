@@ -216,8 +216,7 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryFrontmatter, err
 	df, err := discovery.Open(projectDir)
 	if err != nil {
 		if errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-			shared.Logger.Println(styles.Errorf("%s No Discovery file found\n", emoji.ErrorExclamation))
-			shared.Logger.Printf("Please give your app a friendly name and add a short description so others know what this app does.\n\n")
+			shared.Logger.Printf("\nPlease give your app a friendly name and add a short description so others know what this app does.\n\n")
 
 			name, err := text.Run(&text.Input{
 				Prompt:      "App Name (max 12 chars)",
@@ -239,7 +238,13 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryFrontmatter, err
 			}
 			discoveryData.Tagline = tagline
 
-			discovery.CreateDiscoveryFile(projectDir, *discoveryData)
+			err = discovery.CreateDiscoveryFile(projectDir, *discoveryData)
+			if err != nil {
+				shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+				return nil, err
+			}
+
+			shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
 		} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
 			shared.Logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
 			return nil, err
