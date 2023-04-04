@@ -133,7 +133,7 @@ func MigrateAppNameToDiscovery(projectDir string, s *spacefile.Spacefile) {
 	}
 
 	discoveryData.AppName = s.AppName
-	err = CreateDiscoveryFile("Discovery.md", *discoveryData)
+	err = CreateDiscoveryFile(DiscoveryFilename, *discoveryData)
 	if err != nil {
 		cmdShared.Logger.Println(styles.Errorf("\n%s Failed to create Discovery file, %v", emoji.ErrorExclamation, err))
 		cmdShared.Logger.Println(styles.Error("\nPlease manually move the app_name from the Spacefile to the Discovery.md file before pushing."))
@@ -144,7 +144,7 @@ func MigrateAppNameToDiscovery(projectDir string, s *spacefile.Spacefile) {
 
 	err = s.Save(projectDir)
 	if err != nil {
-		cmdShared.Logger.Println(styles.Errorf("\n%s failed to modify spacefile in %s, %w", emoji.ErrorExclamation, projectDir, err))
+		cmdShared.Logger.Println(styles.Errorf("\n%s failed to modify spacefile in %s, %v", emoji.ErrorExclamation, projectDir, err))
 		return
 	}
 }

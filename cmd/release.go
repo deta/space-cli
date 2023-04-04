@@ -186,7 +186,7 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryFrontmatter, lates
 		}
 
 		if modTime.Before(parsedTime) {
-			shared.Logger.Println("\nWarning: your local Discovery data is different from the latest release's Discovery data.\n")
+			shared.Logger.Print("\nWarning: your local Discovery data is different from the latest release's Discovery data.\n\n")
 
 			updateLocalDiscovery, err := confirm.Run("Do you want to update your local Discovery.md file with the data from the latest release?")
 			if err != nil {
