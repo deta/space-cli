@@ -103,26 +103,19 @@ func createProject(name string) (*runtime.ProjectMeta, error) {
 }
 
 func createSpacefile(projectDir string, projectName string, blankProject bool) error {
-	if blankProject || !shared.IsOutputInteractive() {
-		if _, err := spacefile.CreateBlankSpacefile(projectDir); err != nil {
-			shared.Logger.Printf("failed to create blank project: %s", err)
-			return err
-		}
-		return nil
+	if blankProject {
+		_, err := spacefile.CreateBlankSpacefile(projectDir)
+		return err
 	}
 
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
-		shared.Logger.Printf("problem while trying to auto detect runtimes/frameworks for project %s: %s", projectName, err)
 		return err
 	}
 
 	if len(autoDetectedMicros) == 0 {
-		if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
-			shared.Logger.Printf("failed to create blank project: %s", err)
-			return err
-		}
-		return nil
+		_, err := spacefile.CreateBlankSpacefile(projectDir)
+		return err
 	}
 
 	for _, micro := range autoDetectedMicros {
@@ -130,24 +123,21 @@ func createSpacefile(projectDir string, projectName string, blankProject bool) e
 		shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
 	}
 
+	if !shared.IsOutputInteractive() {
+		_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
+		return err
+	}
+
 	shared.Logger.Println()
 	if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
 		return err
 	} else if !ok {
-		if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
-			shared.Logger.Printf("failed to create blank project: %s", err)
-			return err
-		}
-
-		return nil
+		_, err := spacefile.CreateBlankSpacefile(projectDir)
+		return err
 	}
 
 	_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
-	if err != nil {
-		shared.Logger.Printf("failed to create project with detected micros: %s", err)
-		return err
-	}
-	return nil
+	return err
 }
 
 func newProject(projectDir, projectName string, blankProject bool) error {
@@ -156,6 +146,7 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
 		err := createSpacefile(projectDir, projectName, blankProject)
 		if err != nil {
+			shared.Logger.Printf("failed to create spacefile: %s", err)
 			return err
 		}
 	}
