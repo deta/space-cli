@@ -102,42 +102,61 @@ func createProject(name string) (*runtime.ProjectMeta, error) {
 	return &runtime.ProjectMeta{ID: res.ID, Name: res.Name, Alias: res.Alias}, nil
 }
 
+func createSpacefile(projectDir string, projectName string, blankProject bool) error {
+	if blankProject || !shared.IsOutputInteractive() {
+		if _, err := spacefile.CreateBlankSpacefile(projectDir); err != nil {
+			shared.Logger.Printf("failed to create blank project: %s", err)
+			return err
+		}
+		return nil
+	}
+
+	autoDetectedMicros, err := scanner.Scan(projectDir)
+	if err != nil {
+		shared.Logger.Printf("problem while trying to auto detect runtimes/frameworks for project %s: %s", projectName, err)
+		return err
+	}
+
+	if len(autoDetectedMicros) == 0 {
+		if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
+			shared.Logger.Printf("failed to create blank project: %s", err)
+			return err
+		}
+		return nil
+	}
+
+	for _, micro := range autoDetectedMicros {
+		shared.Logger.Printf("\nMicro found in \"%s\"", styles.Code(micro.Src))
+		shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
+	}
+
+	shared.Logger.Println()
+	if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
+		return err
+	} else if !ok {
+		if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
+			shared.Logger.Printf("failed to create blank project: %s", err)
+			return err
+		}
+
+		return nil
+	}
+
+	_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
+	if err != nil {
+		shared.Logger.Printf("failed to create project with detected micros: %s", err)
+		return err
+	}
+	return nil
+}
+
 func newProject(projectDir, projectName string, blankProject bool) error {
 	// Create spacefile if it doesn't exist
 	spaceFilePath := filepath.Join(projectDir, "Spacefile")
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
-		if blankProject || !shared.IsOutputInteractive() {
-			if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
-				shared.Logger.Printf("failed to create blank project: %s", err)
-				return err
-			}
-		} else {
-			autoDetectedMicros, err := scanner.Scan(projectDir)
-			if err != nil {
-				shared.Logger.Printf("problem while trying to auto detect runtimes/frameworks for project %s: %s", projectName, err)
-				return err
-			}
-
-			for _, micro := range autoDetectedMicros {
-				shared.Logger.Printf("\nMicro found in \"%s\"", styles.Code(micro.Src))
-				shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
-			}
-
-			shared.Logger.Println()
-			if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
-				return err
-			} else if !ok {
-				if _, err = spacefile.CreateBlankSpacefile(projectDir); err != nil {
-					shared.Logger.Printf("failed to create blank project: %s", err)
-					return err
-				}
-			} else {
-				_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
-				if err != nil {
-					shared.Logger.Printf("failed to create project with detected micros: %s", err)
-					return err
-				}
-			}
+		err := createSpacefile(projectDir, projectName, blankProject)
+		if err != nil {
+			return err
 		}
 	}
 
