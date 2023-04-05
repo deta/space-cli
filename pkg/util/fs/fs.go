@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func UnzipTemplates(rootZip []byte, dest string, rootDir string) error {
@@ -119,4 +120,16 @@ func CheckIfAnyFileExists(dir string, filenames ...string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func GetFileLastChanged(name string) (time.Time, error) {
+	file, err := os.Stat(name)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	modifiedtime := file.ModTime()
+
+	return modifiedtime, nil
 }

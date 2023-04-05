@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/deta/space/pkg/components/text"
+	"github.com/deta/space/pkg/util/fs"
 	sharedTypes "github.com/deta/space/shared"
 	"github.com/spf13/cobra"
 )
@@ -171,9 +173,10 @@ func validateAppDescription(value string) error {
 	return validatePromptValue(value, 4, 69)
 }
 
-func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryFrontmatter, latestRelease *api.Release, projectDir string) error {
+func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestRelease *api.Release, projectDir string) error {
 	if latestRelease.Discovery.ContentRaw != "" && !reflect.DeepEqual(latestRelease.Discovery, discoveryData) {
-		modTime, err := discovery.GetDiscoveryFileLastChanged(projectDir)
+		p := filepath.Join(projectDir, discovery.DiscoveryFilename)
+		modTime, err := fs.GetFileLastChanged(p)
 		if err != nil {
 			shared.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
 			return err
@@ -210,8 +213,8 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryFrontmatter, lates
 	return nil
 }
 
-func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryFrontmatter, error) {
-	discoveryData := &sharedTypes.DiscoveryFrontmatter{}
+func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
+	discoveryData := &sharedTypes.DiscoveryData{}
 
 	df, err := discovery.Open(projectDir)
 	if err != nil {
@@ -311,7 +314,7 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 	return revisionMap[tag], nil
 }
 
-func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *sharedTypes.DiscoveryFrontmatter) (err error) {
+func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *sharedTypes.DiscoveryData) (err error) {
 	cr, err := shared.Client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         projectID,

@@ -136,7 +136,7 @@ type Micro struct {
 	Dev          string   `yaml:"dev,omitempty"`
 }
 
-type DiscoveryFrontmatter struct {
+type DiscoveryData struct {
 	AppName    string `yaml:"app_name,omitempty" json:"app_name"`
 	Title      string `yaml:"title,omitempty" json:"title"`
 	Tagline    string `yaml:"tagline,omitempty" json:"tagline"`

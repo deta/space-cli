@@ -831,10 +831,10 @@ func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error)
 }
 
 type Release struct {
-	ID         string                       `json:"id"`
-	Tag        string                       `json:"tag"`
-	ReleasedAt string                       `json:"released_at"`
-	Discovery  *shared.DiscoveryFrontmatter `json:"discovery"`
+	ID         string                `json:"id"`
+	Tag        string                `json:"tag"`
+	ReleasedAt string                `json:"released_at"`
+	Discovery  *shared.DiscoveryData `json:"discovery"`
 }
 
 type fetchReleasesResponse struct {
@@ -881,7 +881,7 @@ func (c *DetaClient) GetLatestReleaseByApp(appID string) (*GetReleasesResponse, 
 	return &GetReleasesResponse{Releases: releases}, nil
 }
 
-func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryFrontmatter) error {
+func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryData) error {
 	i := &requestInput{
 		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/promotions/%s/discovery", version, PromotionID),
