@@ -339,6 +339,10 @@ func MicroCommand(micro *types.Micro, directory, projectKey string, port int) (*
 		"DETA_SPACE_APP_MICRO_TYPE": micro.Type(),
 	}
 
+	if types.IsPythonEngine(micro.Engine) {
+		environ["UVICORN_PORT"] = fmt.Sprintf("%d", port)
+	}
+
 	if micro.Presets != nil {
 		for _, env := range micro.Presets.Env {
 			// If the env is already set by the user, don't override it
