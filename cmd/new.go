@@ -110,7 +110,7 @@ func createSpacefile(projectDir string, projectName string, blankProject bool) e
 
 	autoDetectedMicros, err := scanner.Scan(projectDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("problem while trying to auto detect runtimes/frameworks for project %s: %s", projectName, err)
 	}
 
 	if len(autoDetectedMicros) == 0 {
