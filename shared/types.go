@@ -213,6 +213,10 @@ func IsFrontendEngine(engine string) bool {
 	return ok
 }
 
+func IsPythonEngine(engine string) bool {
+	return engine == Python38 || engine == Python39
+}
+
 func IsFullstackEngine(engine string) bool {
 	_, ok := supportedFullstackEngines[engine]
 	return ok
