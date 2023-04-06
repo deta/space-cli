@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -82,30 +83,9 @@ func newCmdRelease() *cobra.Command {
 				}
 			}
 
-			var discoveryData *sharedTypes.DiscoveryData
-			discoveryPath := filepath.Join(projectDir, "Discovery.md")
-			if _, err := os.Stat(discoveryPath); err == nil {
-				discoveryData, err = getDiscoveryData(projectDir)
-				if err != nil {
-					os.Exit(1)
-				}
-			} else if os.IsNotExist(err) {
-				if !shared.IsOutputInteractive() {
-					shared.Logger.Printf("%s Error: %s", emoji.ErrorExclamation, "Discovery.md file is required in non-interactive mode")
-					os.Exit(1)
-				}
-				discoveryData, err = promptForDiscoveryData(discoveryPath)
-				if err != nil {
-					shared.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
-				}
-				err = discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
-				if err != nil {
-					shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
-					os.Exit(1)
-				}
-
-				shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
-			} else {
+			discoveryData, err := getDiscoveryData(projectDir)
+			if err != nil {
+				shared.Logger.Printf("Failed to get discovery data: %v", err)
 				os.Exit(1)
 			}
 
@@ -263,22 +243,41 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestReleas
 }
 
 func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
-	discoveryData := &sharedTypes.DiscoveryData{}
+	discoveryPath := filepath.Join(projectDir, "Discovery.md")
+	if _, err := os.Stat(discoveryPath); os.IsNotExist(err) {
+		if !shared.IsOutputInteractive() {
+			return &sharedTypes.DiscoveryData{}, nil
+		}
+		discoveryData, err := promptForDiscoveryData(discoveryPath)
+		if err != nil {
+			shared.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
+		}
+		err = discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
+		if err != nil {
+			shared.Logger.Printf("%s Failed to create Discovery.md file, %v", emoji.ErrorExclamation, err)
+			os.Exit(1)
+		}
 
-	df, err := discovery.Open(projectDir)
+		shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
+
+		return discoveryData, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	df, err := os.ReadFile(discoveryPath)
 	if err != nil {
 		return nil, err
 	}
 
-	dfstr := string(df)
-	rest, err := frontmatter.Parse(strings.NewReader(dfstr), &discoveryData)
+	discoveryData := &sharedTypes.DiscoveryData{}
+	rest, err := frontmatter.Parse(bytes.NewReader(df), &discoveryData)
 	if err != nil {
 		shared.Logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
 		return nil, err
 	}
 
 	discoveryData.ContentRaw = string(rest)
-
 	if discoveryData.AppName == "" {
 		spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, spacefile.SpacefileName))
 		if err != nil {
