@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/alessio/shellescape v1.4.1
+	github.com/adrg/frontmatter v0.2.0
 	github.com/charmbracelet/bubbles v0.14.0
 	github.com/charmbracelet/bubbletea v0.23.1
 	github.com/charmbracelet/lipgloss v0.6.0
@@ -13,6 +14,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.3.0
 	mvdan.cc/sh/v3 v3.6.0
@@ -21,7 +23,6 @@ require (
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect

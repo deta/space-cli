@@ -16,6 +16,7 @@ import (
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/internal/discovery"
 	"github.com/deta/space/internal/runtime"
+	"github.com/deta/space/internal/spacefile"
 	"github.com/deta/space/pkg/components/choose"
 	"github.com/deta/space/pkg/components/confirm"
 	"github.com/deta/space/pkg/components/emoji"
@@ -81,9 +82,30 @@ func newCmdRelease() *cobra.Command {
 				}
 			}
 
-			discoveryData, err := getDiscoveryData(projectDir)
-			if err != nil {
-				shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+			var discoveryData *sharedTypes.DiscoveryData
+			discoveryPath := filepath.Join(projectDir, "Discovery.md")
+			if _, err := os.Stat(discoveryPath); err == nil {
+				discoveryData, err = getDiscoveryData(projectDir)
+				if err != nil {
+					os.Exit(1)
+				}
+			} else if os.IsNotExist(err) {
+				if !shared.IsOutputInteractive() {
+					shared.Logger.Printf("%s Error: %s", emoji.ErrorExclamation, "Discovery.md file is required in non-interactive mode")
+					os.Exit(1)
+				}
+				discoveryData, err = promptForDiscoveryData(discoveryPath)
+				if err != nil {
+					shared.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
+				}
+				err = discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
+				if err != nil {
+					shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
+					os.Exit(1)
+				}
+
+				shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
+			} else {
 				os.Exit(1)
 			}
 
@@ -153,6 +175,33 @@ func confirmReleasing(listedRelease bool) (bool, error) {
 	return continueReleasing, nil
 }
 
+func promptForDiscoveryData(target string) (*sharedTypes.DiscoveryData, error) {
+	discoveryData := &sharedTypes.DiscoveryData{}
+
+	shared.Logger.Printf("\nPlease give your app a friendly name and add a short description so others know what this app does.\n\n")
+	name, err := text.Run(&text.Input{
+		Prompt:      "App Name (max 12 chars)",
+		Placeholder: "",
+		Validator:   validateAppName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("problem while trying to get title from text prompt, %w", err)
+	}
+	discoveryData.AppName = name
+
+	tagline, err := text.Run(&text.Input{
+		Prompt:      "Short Description (max 69 chars)",
+		Placeholder: "",
+		Validator:   validateAppDescription,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("problem while trying to get tagline from text prompt, %w", err)
+	}
+	discoveryData.Tagline = tagline
+
+	return discoveryData, nil
+}
+
 func validatePromptValue(value string, min int, max int) error {
 	if len(value) < min {
 		return fmt.Errorf("must be at least %v characters long", min)
@@ -218,53 +267,28 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
 
 	df, err := discovery.Open(projectDir)
 	if err != nil {
-		if errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-			shared.Logger.Printf("\nPlease give your app a friendly name and add a short description so others know what this app does.\n\n")
+		return nil, err
+	}
 
-			name, err := text.Run(&text.Input{
-				Prompt:      "App Name (max 12 chars)",
-				Placeholder: "",
-				Validator:   validateAppName,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("problem while trying to get title from text prompt, %w", err)
-			}
-			discoveryData.AppName = name
+	dfstr := string(df)
+	rest, err := frontmatter.Parse(strings.NewReader(dfstr), &discoveryData)
+	if err != nil {
+		shared.Logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
+		return nil, err
+	}
 
-			tagline, err := text.Run(&text.Input{
-				Prompt:      "Short Description (max 69 chars)",
-				Placeholder: "",
-				Validator:   validateAppDescription,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("problem while trying to get tagline from text prompt, %w", err)
-			}
-			discoveryData.Tagline = tagline
+	discoveryData.ContentRaw = string(rest)
 
-			err = discovery.CreateDiscoveryFile(projectDir, *discoveryData)
-			if err != nil {
-				shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
-				return nil, err
-			}
-
-			shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
-		} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
-			shared.Logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
-			return nil, err
-		} else {
-			shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
-			return nil, err
-		}
-	} else {
-		dfstr := string(df)
-
-		rest, err := frontmatter.Parse(strings.NewReader(dfstr), &discoveryData)
+	if discoveryData.AppName == "" {
+		spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, spacefile.SpacefileName))
 		if err != nil {
-			shared.Logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
 			return nil, err
 		}
 
-		discoveryData.ContentRaw = string(rest)
+		shared.Logger.Printf("\nNo app name found in Discovery file. Using the app name from your Spacefile: %s", styles.Code(spacefile.AppName))
+		shared.Logger.Printf("Using the app name from your Spacefile is deprecated and will be removed in a future version.\n\n")
+
+		discoveryData.AppName = spacefile.AppName
 	}
 
 	return discoveryData, nil

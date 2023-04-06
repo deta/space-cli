@@ -11,10 +11,8 @@ import (
 	"github.com/deta/space/cmd/shared"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
-	"github.com/deta/space/internal/discovery"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/internal/spacefile"
-	"github.com/deta/space/pkg/components/confirm"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/pkg/browser"
@@ -76,23 +74,6 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 	if err != nil {
 		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
-	}
-
-	// migrate app name from spacefile to discovery file if present
-	if s.AppName != "" {
-		shared.Logger.Printf("\n%s The %s field was recently moved from the Spacefile to the Discovery.md file.\n\n", emoji.ErrorExclamation, styles.Code("app_name"))
-
-		migrateAppName, err := confirm.Run(fmt.Sprintf("Do you want to move %s from your Spacefile to the Discovery.md file automatically? (y/n)", styles.Code("app_name")))
-		if err != nil {
-			return fmt.Errorf("problem while trying to get confirmation to migrate app_name, %w", err)
-		}
-
-		if !migrateAppName {
-			shared.Logger.Println(styles.Errorf("Please manually move the app_name field from the Spacefile to the Discovery.md file before pushing."))
-			return nil
-		}
-
-		discovery.MigrateAppNameToDiscovery(projectDir, s)
 	}
 
 	shared.Logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!"))
