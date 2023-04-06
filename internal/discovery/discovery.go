@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/deta/space/pkg/util/fs"
 	"github.com/deta/space/shared"
 	"gopkg.in/yaml.v2"
 )
@@ -39,38 +37,6 @@ func checkDiscoveryFileCase(sourceDir string) (string, bool, error) {
 		}
 	}
 	return "", false, ErrDiscoveryFileNotFound
-}
-
-// Open open discovery file
-func Open(sourceDir string) ([]byte, error) {
-	var exists bool
-	var err error
-
-	exists, err = fs.FileExists(sourceDir, DiscoveryFilename)
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists {
-		return nil, ErrDiscoveryFileNotFound
-	}
-
-	existingDiscoveryFileName, correctCase, err := checkDiscoveryFileCase(sourceDir)
-	if err != nil {
-		return nil, err
-	}
-
-	if !correctCase {
-		return nil, fmt.Errorf("'%s' must be called exactly %s", existingDiscoveryFileName, DiscoveryFilename)
-	}
-
-	// read raw contents from discovery file
-	c, err := ioutil.ReadFile(filepath.Join(sourceDir, DiscoveryFilename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read contents of discovery file: %w", err)
-	}
-
-	return c, nil
 }
 
 func CreateDiscoveryFile(name string, discovery shared.DiscoveryData) error {

@@ -69,7 +69,7 @@ func newCmdRelease() *cobra.Command {
 			}
 
 			// check there are no previous releases for this project
-			if len(res.Releases) < 1 {
+			if len(res.Releases) < 1 && shared.IsOutputInteractive() {
 				if !cmd.Flags().Changed("confirm") {
 					continueReleasing, err := confirmReleasing(listedRelease)
 					if err != nil {
