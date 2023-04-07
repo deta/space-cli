@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/deta/space/internal/auth"
 )
 
 const (
-	spaceRoot = "https://deta.space/api"
-	//spaceRoot = "http://localhost:9900/api"
 	version = "v0"
 )
 
@@ -35,7 +34,6 @@ type GetProjectResponse struct {
 
 func (c *DetaClient) GetProject(r *GetProjectRequest) (*GetProjectResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/apps/%s", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -79,7 +77,6 @@ type CreateProjectResponse struct {
 
 func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/apps", version),
 		Method:    "POST",
 		NeedsAuth: true,
@@ -123,7 +120,6 @@ type CreateReleaseResponse struct {
 
 func (c *DetaClient) CreateRelease(r *CreateReleaseRequest) (*CreateReleaseResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/promotions", version),
 		Method:    "POST",
 		NeedsAuth: true,
@@ -157,7 +153,6 @@ type GetReleaseLogsRequest struct {
 
 func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, error) {
 	i := &requestInput{
-		Root:             spaceRoot,
 		Path:             fmt.Sprintf("/%s/promotions/%s/logs?follow=true", version, r.ID),
 		Method:           "GET",
 		NeedsAuth:        true,
@@ -205,7 +200,6 @@ type GetRevisionsResponse struct {
 
 func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/apps/%s/revisions?limit=5", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -250,7 +244,6 @@ type CreateBuildResponse struct {
 
 func (c *DetaClient) CreateBuild(r *CreateBuildRequest) (*CreateBuildResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/builds", version),
 		Method:    "POST",
 		NeedsAuth: true,
@@ -292,7 +285,6 @@ type PushSpacefileResponse struct {
 // PushSpacefile pushes raw spacefile file content
 func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileResponse, error) {
 	i := &requestInput{
-		Root:        spaceRoot,
 		Path:        fmt.Sprintf("/%s/builds/%s/manifest", version, r.BuildID),
 		Method:      "POST",
 		Headers:     make(map[string]string),
@@ -335,7 +327,6 @@ type PushIconResponse struct {
 // PushIcon pushes icon with an uploadID
 func (c *DetaClient) PushIcon(r *PushIconRequest) (*PushIconResponse, error) {
 	i := &requestInput{
-		Root:        spaceRoot,
 		Path:        fmt.Sprintf("/%s/builds/%s/icon", version, r.BuildID),
 		Method:      "POST",
 		Headers:     make(map[string]string),
@@ -375,7 +366,6 @@ type PushDiscoveryFileResponse struct {
 
 func (c *DetaClient) PushDiscoveryFile(r *PushDiscoveryFileRequest) (*PushDiscoveryFileResponse, error) {
 	i := &requestInput{
-		Root:        spaceRoot,
 		Path:        fmt.Sprintf("/%s/builds/%s/discovery", version, r.BuildID),
 		Method:      "POST",
 		Headers:     make(map[string]string),
@@ -416,7 +406,6 @@ type PushCodeResponse struct {
 // PushCode pushes raw code
 func (c *DetaClient) PushCode(r *PushCodeRequest) (*PushCodeResponse, error) {
 	i := &requestInput{
-		Root:        spaceRoot,
 		Path:        fmt.Sprintf("/%s/builds/%s/code", version, r.BuildID),
 		Method:      "POST",
 		Headers:     make(map[string]string),
@@ -449,7 +438,6 @@ type GetBuildLogsRequest struct {
 
 func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest) (io.ReadCloser, error) {
 	i := &requestInput{
-		Root:             spaceRoot,
 		Path:             fmt.Sprintf("/%s/builds/%s/logs?follow=true", version, r.BuildID),
 		Method:           "GET",
 		NeedsAuth:        true,
@@ -483,7 +471,6 @@ type GetBuildResponse struct {
 
 func (c *DetaClient) GetBuild(r *GetBuildRequest) (*GetBuildResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/builds/%s", version, r.BuildID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -520,7 +507,6 @@ type GetReleasePromotionResponse struct {
 
 func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetReleasePromotionResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/promotions/%s", version, r.PromotionID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -560,7 +546,6 @@ type FetchPromotionResponse struct {
 
 func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetReleasePromotionResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/promotions?revision_id=%s&limit=1", version, r.RevisionID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -617,7 +602,6 @@ type FetchInstallationsResponse struct {
 
 func (c *DetaClient) GetInstallationByRelease(r *GetInstallationByReleaseRequest) (*Installation, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/installations?release_id=%s&limit=1", version, r.ReleaseID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -656,7 +640,6 @@ type GetInstallationRequest struct {
 
 func (c *DetaClient) GetInstallation(r *GetInstallationRequest) (*Installation, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/installations/%s", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
@@ -690,7 +673,6 @@ type GetInstallationLogsRequest struct {
 
 func (c *DetaClient) GetInstallationLogs(r *GetInstallationLogsRequest) (io.ReadCloser, error) {
 	i := &requestInput{
-		Root:             spaceRoot,
 		Path:             fmt.Sprintf("/%s/installations/%s/logs?follow=true", version, r.ID),
 		Method:           "GET",
 		NeedsAuth:        true,
@@ -722,7 +704,6 @@ type GetSpaceResponse struct {
 
 func (c *DetaClient) GetSpace(r *GetSpaceRequest) (*GetSpaceResponse, error) {
 	i := &requestInput{
-		Root:        spaceRoot,
 		Path:        fmt.Sprintf("/%s/space", version),
 		Method:      "GET",
 		NeedsAuth:   true,
@@ -757,26 +738,29 @@ type GetLatestCLIVersionResponse struct {
 	Prerelease bool   `json:"prerelease"`
 }
 
-func (c *DetaClient) GetLatestCLIVersion() (*GetLatestCLIVersionResponse, error) {
-	i := &requestInput{
-		Root:      "https://get.deta.dev/",
-		Path:      "space-cli/latest-version",
-		Method:    "GET",
-		NeedsAuth: false,
-	}
-
-	o, err := c.request(i)
+func GetLatestCLIVersion() (*GetLatestCLIVersionResponse, error) {
+	res, err := http.Get("https://get.deta.dev/space-cli/latest-version")
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
-	if !(o.Status >= 200 && o.Status <= 299) {
-		msg := o.Error.Detail
+	if !(res.StatusCode >= 200 && res.StatusCode <= 299) {
+		msg, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get latest cli version")
+		}
+
 		return nil, fmt.Errorf("failed to get latest cli version, %s", msg)
 	}
 
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest cli version, %w", err)
+	}
+
 	var resp GetLatestCLIVersionResponse
-	err = json.Unmarshal(o.Body, &resp)
+	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest cli version, %w", err)
 	}
@@ -784,27 +768,27 @@ func (c *DetaClient) GetLatestCLIVersion() (*GetLatestCLIVersionResponse, error)
 	return &resp, nil
 }
 
-func (c *DetaClient) CheckCLIVersionTag(tag string) (bool, error) {
-	i := &requestInput{
-		Root:      "https://get.deta.dev/",
-		Path:      fmt.Sprintf("space-cli/releases/tags/%s", tag),
-		Method:    "GET",
-		NeedsAuth: false,
-	}
-
-	o, err := c.request(i)
+func CheckCLIVersionTag(tag string) (bool, error) {
+	target := fmt.Sprintf("https://get.deta.dev/space-cli/releases/tags/%s", tag)
+	o, err := http.Get(target)
 	if err != nil {
 		return false, err
 	}
+	defer o.Body.Close()
 
-	if o.Status == 200 {
+	if o.StatusCode == 200 {
 		return true, nil
 	}
-	if o.Status == 404 {
+
+	if o.StatusCode == 404 {
 		return false, nil
 	}
 
-	msg := o.Error.Detail
+	msg, err := io.ReadAll(o.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if version exists")
+	}
+
 	return false, fmt.Errorf("failed to check if version exists, %s", msg)
 }
 
@@ -820,7 +804,6 @@ type CreateProjectKeyResponse struct {
 
 func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) (*CreateProjectKeyResponse, error) {
 	i := &requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/apps/%s/keys", version, AppID),
 		Method:    "POST",
 		NeedsAuth: true,
@@ -859,7 +842,6 @@ type ListProjectResponse struct {
 
 func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error) {
 	o, err := c.request(&requestInput{
-		Root:      spaceRoot,
 		Path:      fmt.Sprintf("/%s/apps/%s/keys", version, AppID),
 		Method:    "GET",
 		NeedsAuth: true,

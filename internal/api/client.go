@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -38,7 +39,6 @@ type errorResp struct {
 
 // requestInput input to Request function
 type requestInput struct {
-	Root             string
 	Path             string
 	Method           string
 	Headers          map[string]string
@@ -72,7 +72,12 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		}
 	}
 
-	req, err := http.NewRequest(i.Method, fmt.Sprintf("%s%s", i.Root, i.Path), bytes.NewBuffer(marshalled))
+	spaceRoot := "https://deta.space/api"
+	if customRoot, ok := os.LookupEnv("DETA_SPACE_ROOT"); ok {
+		spaceRoot = customRoot
+	}
+
+	req, err := http.NewRequest(i.Method, fmt.Sprintf("%s%s", spaceRoot, i.Path), bytes.NewBuffer(marshalled))
 	if err != nil {
 		return nil, err
 	}
