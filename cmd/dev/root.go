@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/deta/space/cmd/shared"
 	"github.com/deta/space/internal/proxy"
 	"github.com/deta/space/internal/runtime"
@@ -323,6 +324,12 @@ func MicroCommand(micro *types.Micro, directory, projectKey string, port int) (*
 
 	if micro.Dev != "" {
 		devCommand = micro.Dev
+	} else if micro.Engine == "static" {
+		root := micro.Serve
+		if root == "" {
+			root = micro.Src
+		}
+		devCommand = fmt.Sprintf("%s serve %s --port %d", shellescape.Quote(os.Args[0]), shellescape.Quote(root), port)
 	} else if EngineToDevCommand[micro.Engine] != "" {
 		devCommand = EngineToDevCommand[micro.Engine]
 	} else {
