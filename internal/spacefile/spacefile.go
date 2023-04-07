@@ -310,6 +310,7 @@ func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 	if !foundPrimaryMicro {
 		if len(spacefile.Micros) == 1 {
 			spacefile.Micros[0].Primary = true
+			spacefile.Micros[0].Path = "/"
 		} else {
 			return nil, ErrNoPrimaryMicro
 		}
