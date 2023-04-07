@@ -30,3 +30,7 @@ func LoginInfo() string {
 func IsOutputInteractive() bool {
 	return isatty.IsTerminal(os.Stdout.Fd())
 }
+
+func IsInputInteractive() bool {
+	return isatty.IsTerminal(os.Stdin.Fd())
+}

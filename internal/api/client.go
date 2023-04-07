@@ -50,8 +50,8 @@ type requestInput struct {
 	AccessToken      string
 }
 
-// requestOutput ouput of Request function
-type requestOutput struct {
+// RequestOutput ouput of Request function
+type RequestOutput struct {
 	Status         int
 	Body           []byte
 	BodyReadCloser io.ReadCloser
@@ -59,8 +59,26 @@ type requestOutput struct {
 	Error          *errorResp
 }
 
+func (d *DetaClient) Get(path string) (*RequestOutput, error) {
+	return d.request(&requestInput{
+		Method:    "GET",
+		NeedsAuth: true,
+		Path:      path,
+	})
+}
+
+func (d *DetaClient) Post(path string, body interface{}) (*RequestOutput, error) {
+	return d.request(&requestInput{
+		Method:      "POST",
+		NeedsAuth:   true,
+		ContentType: "application/json",
+		Path:        path,
+		Body:        body,
+	})
+}
+
 // Request send an http request to the deta api
-func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
+func (d *DetaClient) request(i *requestInput) (*RequestOutput, error) {
 	marshalled, _ := i.Body.([]byte)
 	if i.Body != nil && i.ContentType == "" {
 		// default set content-type to application/json
@@ -133,7 +151,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		return nil, err
 	}
 
-	o := &requestOutput{
+	o := &RequestOutput{
 		Status: res.StatusCode,
 		Header: res.Header,
 	}
