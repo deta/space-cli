@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://deta.space/assets/spacefile.schema.json",
+    "$id": "https://raw.githubusercontent.com/deta/schemas/main/schemas/spacefile/spacefile.v0.schema.json",
     "$ref": "#/definitions/spacefile",
     "definitions": {
         "spacefile": {
@@ -144,13 +144,11 @@
             ],
             "allOf": [
                 {
-                    "$comment": "If the Micro is a static Micro, it must have a serve property",
+                    "$comment": "If engine is static, then serve is required",
                     "if": {
                         "properties": {
                             "engine": {
-                                "enum": [
-                                    "static"
-                                ]
+                                "const": "static"
                             }
                         },
                         "required": [
@@ -161,44 +159,11 @@
                         "required": [
                             "serve"
                         ]
-                    },
-                    "else": {
-                        "not": {
-                            "required": [
-                                "serve"
-                            ]
-                        }
                     }
                 },
                 {
-                    "$comment": "If the Micro is dynamic, it must not have a serve property",
-                    "not": {
-                        "required": [
-                            "serve",
-                            "engine"
-                        ],
-                        "properties": {
-                            "engine": {
-                                "enum": [
-                                    "next",
-                                    "nuxt",
-                                    "svelte-kit",
-                                    "python3.9",
-                                    "python3.8",
-                                    "nodejs16",
-                                    "custom"
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "$comment": "If the Micro is static, it must not have an include property",
-                    "not": {
-                        "required": [
-                            "include",
-                            "engine"
-                        ],
+                    "$comment": "If engine is static or static-like, then include is not allowed, otherwise serve is not allowed",
+                    "if": {
                         "properties": {
                             "engine": {
                                 "enum": [
@@ -208,6 +173,23 @@
                                     "svelte"
                                 ]
                             }
+                        },
+                        "required": [
+                            "engine"
+                        ]
+                    },
+                    "then": {
+                        "not": {
+                            "required": [
+                                "include"
+                            ]
+                        }
+                    },
+                    "else": {
+                        "not": {
+                            "required": [
+                                "serve"
+                            ]
                         }
                     }
                 }
