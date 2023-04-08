@@ -38,9 +38,11 @@ func newCmdRelease() *cobra.Command {
 			projectID, _ := cmd.Flags().GetString("id")
 			releaseNotes, _ := cmd.Flags().GetString("notes")
 			revisionID, _ := cmd.Flags().GetString("rid")
-			useLatestRevision, _ := cmd.Flags().GetBool("confirm")
+			
+			, _ := cmd.Flags().GetBool("confirm")
 			listedRelease, _ := cmd.Flags().GetBool("listed")
 			releaseVersion, _ := cmd.Flags().GetString("version")
+			useLatestRevision, _ := cmd.Flags().GetBool("latest")
 
 			if !cmd.Flags().Changed("id") {
 				projectMeta, err := runtime.GetProjectMeta(projectDir)
@@ -51,7 +53,7 @@ func newCmdRelease() *cobra.Command {
 			}
 
 			if !cmd.Flags().Changed("rid") {
-				if !cmd.Flags().Changed("confirm") {
+				if !cmd.Flags().Changed("latest") && !cmd.Flags().Changed("confirm") {
 					useLatestRevision, err = confirm.Run("Do you want to use the latest revision?")
 					if err != nil {
 						os.Exit(1)
