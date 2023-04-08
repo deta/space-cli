@@ -39,7 +39,6 @@ func newCmdRelease() *cobra.Command {
 			releaseNotes, _ := cmd.Flags().GetString("notes")
 			revisionID, _ := cmd.Flags().GetString("rid")
 			
-			, _ := cmd.Flags().GetBool("confirm")
 			listedRelease, _ := cmd.Flags().GetBool("listed")
 			releaseVersion, _ := cmd.Flags().GetString("version")
 			useLatestRevision, _ := cmd.Flags().GetBool("latest")
