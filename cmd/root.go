@@ -61,7 +61,6 @@ Complete documentation available at %s`, shared.DocsUrl),
 	cmd.AddCommand(newCmdOpen())
 	cmd.AddCommand(newCmdValidate())
 	cmd.AddCommand(newCmdRelease())
-	cmd.AddCommand(newCmdServe())
 
 	return cmd
 }
