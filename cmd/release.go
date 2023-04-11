@@ -29,8 +29,8 @@ func newCmdRelease() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
-			if !shared.IsOutputInteractive() && !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("latest") {
-				shared.Logger.Printf("revision id or latest flag must be provided in non-interactive mode")
+			if !shared.IsOutputInteractive() && !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("confirm") {
+				shared.Logger.Printf("revision id or confirm flag must be provided in non-interactive mode")
 				os.Exit(1)
 			}
 
@@ -83,7 +83,7 @@ func newCmdRelease() *cobra.Command {
 	cmd.Flags().Bool("confirm", false, "confirm to use latest revision")
 	cmd.Flags().StringP("notes", "n", "", "release notes")
 
-	cmd.MarkFlagsMutuallyExclusive("latest", "rid")
+	cmd.MarkFlagsMutuallyExclusive("confirm", "rid")
 
 	return cmd
 }
