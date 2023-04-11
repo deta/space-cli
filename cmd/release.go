@@ -80,7 +80,7 @@ func newCmdRelease() *cobra.Command {
 	cmd.Flags().String("rid", "", "revision id for release")
 	cmd.Flags().StringP("version", "v", "", "version for the release")
 	cmd.Flags().Bool("listed", false, "listed on discovery")
-	cmd.Flags().Bool("latest", false, "release latest revision")
+	cmd.Flags().Bool("confirm", false, "confirm to use latest revision")
 	cmd.Flags().StringP("notes", "n", "", "release notes")
 
 	cmd.MarkFlagsMutuallyExclusive("latest", "rid")
