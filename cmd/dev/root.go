@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/deta/space/cmd/shared"
 	"github.com/deta/space/internal/proxy"
 	"github.com/deta/space/internal/runtime"
@@ -89,6 +90,7 @@ The cli will start one process for each of your micros, then expose a single enp
 	cmd.AddCommand(newCmdDevUp())
 	cmd.AddCommand(newCmdDevProxy())
 	cmd.AddCommand(newCmdDevTrigger())
+	cmd.AddCommand(newCmdServe())
 
 	cmd.Flags().StringP("dir", "d", ".", "directory of the project")
 	cmd.Flags().StringP("id", "i", "", "project id")
@@ -323,6 +325,12 @@ func MicroCommand(micro *types.Micro, directory, projectKey string, port int) (*
 
 	if micro.Dev != "" {
 		devCommand = micro.Dev
+	} else if micro.Engine == "static" {
+		root := micro.Serve
+		if root == "" {
+			root = micro.Src
+		}
+		devCommand = fmt.Sprintf("%s dev serve %s --port %d", shellescape.Quote(os.Args[0]), shellescape.Quote(root), port)
 	} else if EngineToDevCommand[micro.Engine] != "" {
 		devCommand = EngineToDevCommand[micro.Engine]
 	} else {
