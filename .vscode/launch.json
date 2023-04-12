@@ -22,6 +22,17 @@
             ]
         },
         {
+            "name": "space login",
+            "type": "go",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "login",
+            ]
+        },
+        {
             "name": "space link",
             "type": "go",
             "request": "launch",

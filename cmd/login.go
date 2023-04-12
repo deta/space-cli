@@ -21,6 +21,7 @@ func newCmdLogin() *cobra.Command {
 		Use:      "login",
 		Short:    "Login to space",
 		PostRunE: shared.CheckLatestVersion,
+		Args:     cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			withToken, _ := cmd.Flags().GetBool("with-token")
