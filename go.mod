@@ -3,6 +3,7 @@ module github.com/deta/space
 go 1.19
 
 require (
+	github.com/alessio/shellescape v1.4.1
 	github.com/charmbracelet/bubbles v0.14.0
 	github.com/charmbracelet/bubbletea v0.23.1
 	github.com/charmbracelet/lipgloss v0.6.0
@@ -18,7 +19,6 @@ require (
 )
 
 require (
-	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
