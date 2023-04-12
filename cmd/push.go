@@ -11,7 +11,6 @@ import (
 	"github.com/deta/space/cmd/shared"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
-	"github.com/deta/space/internal/discovery"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/internal/spacefile"
 	"github.com/deta/space/pkg/components/emoji"
@@ -120,24 +119,6 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 			shared.Logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, err))
 			return err
 		}
-	}
-
-	// push discovery file
-	if df, err := discovery.Open(projectDir); err == nil {
-		if _, err := shared.Client.PushDiscoveryFile(&api.PushDiscoveryFileRequest{
-			DiscoveryFile: df,
-			BuildID:       build.ID,
-		}); err != nil {
-			shared.Logger.Println(styles.Errorf("\n%s Failed to push Discovery file, %v", emoji.ErrorExclamation, err))
-			return err
-		}
-		shared.Logger.Printf("%s Successfully pushed your Discovery file!", emoji.Check)
-	} else if errors.Is(err, discovery.ErrDiscoveryFileWrongCase) {
-		shared.Logger.Println(styles.Errorf("\n%s The Discovery file must be called exactly 'Discovery.md'", emoji.ErrorExclamation))
-		return err
-	} else if !errors.Is(err, discovery.ErrDiscoveryFileNotFound) {
-		shared.Logger.Println(styles.Errorf("\n%s Failed to read Discovery file, %v", emoji.ErrorExclamation, err))
-		return err
 	}
 
 	if _, err = shared.Client.PushCode(&api.PushCodeRequest{

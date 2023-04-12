@@ -1,6 +1,7 @@
 # space
 .space
 .spaceignore
+Discovery.md
 
 # version control
 .hg

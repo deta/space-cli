@@ -7,17 +7,19 @@ import (
 	"io"
 
 	"github.com/deta/space/internal/auth"
+	"github.com/deta/space/shared"
 )
 
 const (
-	spaceRoot = "https://deta.space/api"
-	//spaceRoot = "http://localhost:9900/api"
-	version = "v0"
+	//spaceRoot = "https://deta.space/api"
+	spaceRoot = "http://localhost:9900/api"
+	version   = "v0"
 )
 
 var (
 	// ErrProjectNotFound project not found error
 	ErrProjectNotFound = errors.New("project not found")
+	ErrReleaseNotFound = errors.New("release not found")
 
 	// Status
 	Complete = "complete"
@@ -827,4 +829,71 @@ func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error)
 	}
 
 	return &resp, nil
+}
+
+type Release struct {
+	ID         string                `json:"id"`
+	Tag        string                `json:"tag"`
+	ReleasedAt string                `json:"released_at"`
+	Discovery  *shared.DiscoveryData `json:"discovery"`
+}
+
+func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/releases/latest?app_id=%s", version, appID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status == 404 {
+		// no release found
+		return nil, ErrReleaseNotFound
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch release: %v", msg)
+	}
+
+	var release Release
+	err = json.Unmarshal(o.Body, &release)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse resp: %w", err)
+	}
+
+	return &release, nil
+}
+
+func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryData) error {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/promotions/%s/discovery", version, PromotionID),
+		Method:    "POST",
+		NeedsAuth: true,
+		Body:      r,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return err
+	}
+
+	if o.Status != 202 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return fmt.Errorf("failed to store discovery data: %v", msg)
+	}
+
+	return nil
 }

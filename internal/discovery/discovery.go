@@ -3,11 +3,11 @@ package discovery
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
+	"os"
 	"strings"
 
-	"github.com/deta/space/pkg/util/fs"
+	"github.com/deta/space/shared"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -23,7 +23,7 @@ var (
 )
 
 func checkDiscoveryFileCase(sourceDir string) (string, bool, error) {
-	files, err := ioutil.ReadDir(sourceDir)
+	files, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return "", false, err
 	}
@@ -38,34 +38,24 @@ func checkDiscoveryFileCase(sourceDir string) (string, bool, error) {
 	return "", false, ErrDiscoveryFileNotFound
 }
 
-// Open open discovery file
-func Open(sourceDir string) ([]byte, error) {
-	var exists bool
-	var err error
-
-	exists, err = fs.FileExists(sourceDir, DiscoveryFilename)
+func CreateDiscoveryFile(name string, discovery shared.DiscoveryData) error {
+	f, err := os.Create(name)
 	if err != nil {
-		return nil, err
+		f.Close()
+		return err
 	}
 
-	if !exists {
-		return nil, ErrDiscoveryFileNotFound
-	}
+	js, _ := yaml.Marshal(discovery)
+	fmt.Fprintln(f, "---")
+	fmt.Fprint(f, string(js))
+	fmt.Fprintln(f, "---")
+	fmt.Fprintln(f)
+	fmt.Fprintln(f, discovery.ContentRaw)
 
-	existingDiscoveryFileName, correctCase, err := checkDiscoveryFileCase(sourceDir)
+	err = f.Close()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if !correctCase {
-		return nil, fmt.Errorf("'%s' must be called exactly %s", existingDiscoveryFileName, DiscoveryFilename)
-	}
-
-	// read raw contents from discovery file
-	c, err := ioutil.ReadFile(filepath.Join(sourceDir, DiscoveryFilename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read contents of discovery file: %w", err)
-	}
-
-	return c, nil
+	return nil
 }
