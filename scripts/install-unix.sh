@@ -1,5 +1,4 @@
 #!/bin/sh
-# Copyright 2022 Deta authors. All rights reserved. MIT license.
 
 set -e
 

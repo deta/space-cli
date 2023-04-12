@@ -1,12 +1,12 @@
 #!/usr/bin/env pwsh
-# Copyright 2022 Deta authors. All rights reserved. MIT license.
 
 $ErrorActionPreference = 'Stop'
 
 if ($v) {
   if ($v[0] -match "v") {
     $Version = "${v}"
-  } else {
+  }
+  else {
     $Version = "v${v}"
   }
 }
@@ -18,7 +18,8 @@ if ($args.Length -eq 1) {
 $SpaceInstall = $env:space_INSTALL
 $BinDir = if ($SpaceInstall) {
   "$SpaceInstall\bin"
-} else {
+}
+else {
   "$Home\.detaspace\bin"
 }
 
@@ -32,7 +33,8 @@ $Target = 'windows-x86_64'
 
 $SpaceUri = if (!$Version) {
   "https://github.com/deta/space-cli/releases/latest/download/space-${Target}.zip"
-} else {
+}
+else {
   "https://github.com/deta/space-cli/releases/download/${Version}/space-${Target}.zip"
 }
 
@@ -48,7 +50,8 @@ if (Test-Path $SpaceExe) {
 
 if (Get-Command Expand-Archive -ErrorAction SilentlyContinue) {
   Expand-Archive $SpaceZip -Destination $BinDir -Force
-} else {
+}
+else {
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   [IO.Compression.ZipFile]::ExtractToDirectory($SpaceZip, $BinDir)
 }
