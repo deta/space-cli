@@ -13,9 +13,10 @@ import (
 
 func newCmdOpen() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "open",
-		Short:   "Open your local project in the Builder UI",
-		PreRunE: shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
+		Use:      "open",
+		Short:    "Open your local project in the Builder UI",
+		PreRunE:  shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
+		PostRunE: shared.CheckLatestVersion,
 
 		Run: open,
 	}
