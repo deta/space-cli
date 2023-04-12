@@ -2,44 +2,24 @@ package api
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/go-github/v51/github"
 )
 
-func findRelease(matchFunc func(*github.RepositoryRelease) bool) (*github.RepositoryRelease, error) {
-	client := github.NewClient(nil)
-	opt := &github.ListOptions{}
-	for {
-		releases, resp, err := client.Repositories.ListReleases(context.Background(), "deta", "space-cli", opt)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, release := range releases {
-			if matchFunc(release) {
-				return release, nil
-			}
-		}
-
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.Page = resp.NextPage
-	}
-
-	return nil, errors.New("release not found")
-}
-
 func GetLatestCliVersion() (string, error) {
-	latestRelease, err := findRelease(func(release *github.RepositoryRelease) bool {
-		return !release.GetPrerelease()
-	})
+	client := github.NewClient(nil)
+
+	release, resp, err := client.Repositories.GetLatestRelease(context.Background(), "deta", "space-cli")
+
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error while fetching latest release: %v", err)
 	}
 
-	tag := latestRelease.GetTagName()
-	return strings.TrimPrefix(tag, "v"), nil
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("error while fetching latest release: %v", resp.Status)
+	}
+
+	return strings.TrimPrefix(release.GetTagName(), "v"), nil
 }
