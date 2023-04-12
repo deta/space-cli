@@ -71,11 +71,10 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
+            "console": "integratedTerminal",
             "args": [
                 "release",
-                "-d=starters/python-app",
-                "--notes='Release notes'",
-                "--latest"
+                "-d=${env:HOME}/dev/tests/svelte-kit-local2",
             ]
         },
         {

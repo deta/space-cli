@@ -3,7 +3,6 @@ package discovery
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -24,7 +23,7 @@ var (
 )
 
 func checkDiscoveryFileCase(sourceDir string) (string, bool, error) {
-	files, err := ioutil.ReadDir(sourceDir)
+	files, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return "", false, err
 	}
@@ -50,6 +49,7 @@ func CreateDiscoveryFile(name string, discovery shared.DiscoveryData) error {
 	fmt.Fprintln(f, "---")
 	fmt.Fprint(f, string(js))
 	fmt.Fprintln(f, "---")
+	fmt.Fprintln(f)
 	fmt.Fprintln(f, discovery.ContentRaw)
 
 	err = f.Close()

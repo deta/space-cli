@@ -156,7 +156,7 @@ func confirmReleasing(listedRelease bool) (bool, error) {
 	return continueReleasing, nil
 }
 
-func promptForDiscoveryData(target string) (*sharedTypes.DiscoveryData, error) {
+func promptForDiscoveryData() (*sharedTypes.DiscoveryData, error) {
 	discoveryData := &sharedTypes.DiscoveryData{}
 
 	shared.Logger.Printf("\nPlease give your app a friendly name and add a short description so others know what this app does.\n\n")
@@ -229,12 +229,22 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestReleas
 
 			if updateLocalDiscovery {
 				discoveryData = latestRelease.Discovery
-				discovery.CreateDiscoveryFile(projectDir, *discoveryData)
+				discoveryPath := filepath.Join(projectDir, discovery.DiscoveryFilename)
+				err := discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
+				if err != nil {
+					shared.Logger.Println(styles.Errorf("%s Failed to update local Discovery.md file: %v", emoji.ErrorExclamation, err))
+					return err
+				}
+
+				shared.Logger.Printf("\n%s Updated your local Discovery.md file with the latest data!\n\n", emoji.Check)
 			} else {
 				continueReleasing, err := confirm.Run("Are you sure you want to continue releasing the app with the local Discovery data?")
-				if err != nil || !continueReleasing {
+				if err != nil {
 					shared.Logger.Println("Aborted releasing this app.")
 					return err
+				} else if !continueReleasing {
+					shared.Logger.Println("Aborted releasing this app.")
+					return fmt.Errorf("aborted releasing this app")
 				}
 			}
 		}
@@ -244,12 +254,12 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestReleas
 }
 
 func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
-	discoveryPath := filepath.Join(projectDir, "Discovery.md")
+	discoveryPath := filepath.Join(projectDir, discovery.DiscoveryFilename)
 	if _, err := os.Stat(discoveryPath); os.IsNotExist(err) {
 		if !shared.IsOutputInteractive() {
 			return &sharedTypes.DiscoveryData{}, nil
 		}
-		discoveryData, err := promptForDiscoveryData(discoveryPath)
+		discoveryData, err := promptForDiscoveryData()
 		if err != nil {
 			shared.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
 		}

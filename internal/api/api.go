@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	spaceRoot = "https://deta.space/api"
-	//spaceRoot = "http://localhost:9900/api"
-	version = "v0"
+	//spaceRoot = "https://deta.space/api"
+	spaceRoot = "http://localhost:9900/api"
+	version   = "v0"
 )
 
 var (
