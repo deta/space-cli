@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/internal/api"
 	detaruntime "github.com/deta/space/internal/runtime"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
@@ -21,26 +22,13 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 		Example: versionUpgradeExamples(),
 		Run: func(cmd *cobra.Command, args []string) {
 			targetVersion, _ := cmd.Flags().GetString("version")
-			if cmd.Flags().Changed("version") {
-				targetVersion := strings.TrimPrefix(targetVersion, "v")
-
-				versionExists, err := shared.Client.CheckCLIVersionTag(targetVersion)
-				if err != nil {
-					shared.Logger.Println(styles.Errorf("%s Failed to check if version exists. Please check version and try again.", emoji.X))
-					os.Exit(1)
-				}
-				if !versionExists {
-					shared.Logger.Println(styles.Errorf("%s not found.", styles.Code(targetVersion)))
-					os.Exit(1)
-				}
-			} else {
-				latestVersion, err := shared.Client.GetLatestCLIVersion()
+			if !cmd.Flags().Changed("version") {
+				latestVersion, err := api.GetLatestCliVersion()
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
 					os.Exit(1)
 				}
-
-				targetVersion = latestVersion.Tag
+				targetVersion = latestVersion
 			}
 
 			if currentVersion == targetVersion {

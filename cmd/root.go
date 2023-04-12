@@ -8,6 +8,7 @@ import (
 	"github.com/deta/space/cmd/dev"
 	"github.com/deta/space/cmd/shared"
 	"github.com/deta/space/cmd/version"
+	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/spf13/cobra"
@@ -35,14 +36,14 @@ Complete documentation available at %s`, shared.DocsUrl),
 			latestVersion, lastCheck, err := runtime.GetLatestCachedVersion()
 			if err != nil || time.Since(lastCheck) > 69*time.Minute {
 				shared.Logger.Println("\nChecking for new Space CLI version...")
-				res, err := shared.Client.GetLatestCLIVersion()
+				version, err := api.GetLatestCliVersion()
 				if err != nil {
 					shared.Logger.Println("Failed to check for new Space CLI version")
 					return
 				}
 
-				runtime.CacheLatestVersion(res.Tag)
-				latestVersion = res.Tag
+				runtime.CacheLatestVersion(version)
+				latestVersion = version
 			}
 
 			if shared.SpaceVersion != latestVersion {
