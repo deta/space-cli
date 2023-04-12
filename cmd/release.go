@@ -62,14 +62,16 @@ func newCmdRelease() *cobra.Command {
 				projectID = projectMeta.ID
 			}
 
-			res, err := shared.Client.GetLatestReleaseByApp(projectID)
+			latestRelease, err := shared.Client.GetLatestReleaseByApp(projectID)
 			if err != nil {
-				shared.Logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
-				os.Exit(1)
+				if !errors.Is(err, api.ErrReleaseNotFound) {
+					shared.Logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
+					os.Exit(1)
+				}
 			}
 
 			// check there are no previous releases for this project
-			if len(res.Releases) < 1 && shared.IsOutputInteractive() {
+			if latestRelease == nil && shared.IsOutputInteractive() {
 				if !cmd.Flags().Changed("confirm") {
 					continueReleasing, err := confirmReleasing(listedRelease)
 					if err != nil {
@@ -89,8 +91,7 @@ func newCmdRelease() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if len(res.Releases) > 0 {
-				latestRelease := res.Releases[0]
+			if latestRelease != nil {
 				err := compareDiscoveryData(discoveryData, latestRelease, projectDir)
 				if err != nil {
 					os.Exit(1)

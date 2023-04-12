@@ -19,6 +19,7 @@ const (
 var (
 	// ErrProjectNotFound project not found error
 	ErrProjectNotFound = errors.New("project not found")
+	ErrReleaseNotFound = errors.New("release not found")
 
 	// Status
 	Complete = "complete"
@@ -837,19 +838,10 @@ type Release struct {
 	Discovery  *shared.DiscoveryData `json:"discovery"`
 }
 
-type fetchReleasesResponse struct {
-	Releases []Release `json:"releases"`
-	Page     *Page     `json:"page"`
-}
-
-type GetReleasesResponse struct {
-	Releases []*Release `json:"releases"`
-}
-
-func (c *DetaClient) GetLatestReleaseByApp(appID string) (*GetReleasesResponse, error) {
+func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/releases?app_id=%s&latest=true", version, appID),
+		Path:      fmt.Sprintf("/%s/releases/latest?app_id=%s", version, appID),
 		Method:    "GET",
 		NeedsAuth: true,
 	}
@@ -859,26 +851,26 @@ func (c *DetaClient) GetLatestReleaseByApp(appID string) (*GetReleasesResponse, 
 		return nil, err
 	}
 
+	if o.Status == 404 {
+		// no release found
+		return nil, ErrReleaseNotFound
+	}
+
 	if o.Status != 200 {
 		msg := o.Error.Detail
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch releases: %v", msg)
+		return nil, fmt.Errorf("failed to fetch release: %v", msg)
 	}
 
-	var fetchResp fetchReleasesResponse
-	err = json.Unmarshal(o.Body, &fetchResp)
+	var release Release
+	err = json.Unmarshal(o.Body, &release)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch releases: %w", err)
+		return nil, fmt.Errorf("failed to parse resp: %w", err)
 	}
 
-	var releases []*Release
-	for i := range fetchResp.Releases {
-		releases = append(releases, &fetchResp.Releases[i])
-	}
-
-	return &GetReleasesResponse{Releases: releases}, nil
+	return &release, nil
 }
 
 func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryData) error {
