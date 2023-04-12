@@ -6,7 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/deta/space/internal/api"
+	"github.com/deta/space/internal/runtime"
+	"github.com/deta/space/pkg/components/styles"
 	"github.com/spf13/cobra"
 )
 
@@ -62,4 +66,33 @@ func CheckNotEmpty(flagNames ...string) PreRunFunc {
 		}
 		return nil
 	}
+}
+
+func isPrerelease(version string) bool {
+	return len(strings.Split(version, "-")) > 1
+}
+
+func CheckLatestVersion(cmd *cobra.Command, args []string) error {
+	if isPrerelease(SpaceVersion) {
+		return nil
+	}
+
+	latestVersion, lastCheck, err := runtime.GetLatestCachedVersion()
+	if err != nil || time.Since(lastCheck) > 69*time.Minute {
+		Logger.Println("\nChecking for new Space CLI version...")
+		version, err := api.GetLatestCliVersion()
+		if err != nil {
+			Logger.Println("Failed to check for new Space CLI version")
+			return nil
+		}
+
+		runtime.CacheLatestVersion(version)
+		latestVersion = version
+	}
+
+	if SpaceVersion != latestVersion {
+		Logger.Println(styles.Boldf("\n%s New Space CLI version available, upgrade with %s", styles.Info, styles.Code("space version upgrade")))
+	}
+
+	return nil
 }

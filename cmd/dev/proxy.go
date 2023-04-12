@@ -25,7 +25,8 @@ func newCmdDevProxy() *cobra.Command {
 		Long: `Start a reverse proxy for your micros
 
 The micros will be automatically discovered and proxied to.`,
-		PreRunE: shared.CheckProjectInitialized("dir"),
+		PreRunE:  shared.CheckProjectInitialized("dir"),
+		PostRunE: shared.CheckLatestVersion,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
