@@ -12,7 +12,7 @@ import (
 
 func upgradeWin(version string) error {
 	msg := "Upgrading Space CLI"
-	cmd := "iwr https://get.deta.dev/space-cli.ps1 -useb | iex"
+	cmd := "iwr https://deta.space/assets/space-cli.ps1 -useb | iex"
 
 	if version != "" {
 		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))

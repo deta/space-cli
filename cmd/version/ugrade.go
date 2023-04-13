@@ -63,7 +63,7 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 }
 
 func upgradeUnix(version string) error {
-	curlCmd := exec.Command("curl", "-fsSL", "https://get.deta.dev/space-cli.sh")
+	curlCmd := exec.Command("curl", "-fsSL", "https://deta.space/assets/space-cli.sh")
 	msg := "Upgrading Space CLI"
 	curlOutput, err := curlCmd.CombinedOutput()
 	if err != nil {
