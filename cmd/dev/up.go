@@ -23,7 +23,7 @@ func newCmdDevUp() *cobra.Command {
 		Use:      "up <micro>",
 		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			projectDir, _ := cmd.Flags().GetString("dir")
@@ -34,7 +34,7 @@ func newCmdDevUp() *cobra.Command {
 			if !cmd.Flags().Changed("id") {
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 
 			}
@@ -43,13 +43,15 @@ func newCmdDevUp() *cobra.Command {
 				port, err = GetFreePort(devDefaultPort + 1)
 				if err != nil {
 					shared.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := devUp(projectDir, projectID, port, args[0], open); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 
@@ -71,7 +73,7 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 	projectKey, err := shared.GenerateDataKeyIfNotExists(projectId)
 	if err != nil {
 		shared.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
-		os.Exit(1)
+		return err
 	}
 
 	for _, micro := range spacefile.Micros {
@@ -94,7 +96,7 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 			if errors.Is(err, errNoDevCommand) {
 				shared.Logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
 				shared.Logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
-				os.Exit(1)
+				return err
 			}
 			return err
 		}

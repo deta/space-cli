@@ -27,7 +27,7 @@ func newCmdDevProxy() *cobra.Command {
 The micros will be automatically discovered and proxied to.`,
 		PreRunE:  shared.CheckProjectInitialized("dir"),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			directory, _ := cmd.Flags().GetString("dir")
@@ -39,14 +39,15 @@ The micros will be automatically discovered and proxied to.`,
 				port, err = GetFreePort(devDefaultPort)
 				if err != nil {
 					shared.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := devProxy(directory, host, port, open); err != nil {
-				os.Exit(1)
+				return err
 			}
 
+			return nil
 		},
 	}
 
@@ -68,7 +69,7 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
 		shared.Logger.Printf("%s No running micros detected.", emoji.X)
 		shared.Logger.Printf("L Use %s to manually start a micro", styles.Blue("space dev up <micro>"))
-		os.Exit(1)
+		return err
 	}
 
 	reverseProxy, err := proxyFromDir(spacefile.Micros, microDir)

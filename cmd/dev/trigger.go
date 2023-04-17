@@ -27,12 +27,14 @@ Make sure that the corresponding micro is running before triggering the action.`
 		Args:     cobra.ExactArgs(1),
 		PreRunE:  shared.CheckProjectInitialized("dir"),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir, _ := cmd.Flags().GetString("dir")
 
 			if err := devTrigger(projectDir, args[0]); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 
@@ -60,7 +62,7 @@ func devTrigger(projectDir string, actionID string) (err error) {
 				upCommand := fmt.Sprintf("space dev up %s", micro.Name)
 				shared.Logger.Printf("%smicro %s is not running, to start it run:", emoji.X, styles.Green(micro.Name))
 				shared.Logger.Printf("L %s", styles.Blue(upCommand))
-				os.Exit(1)
+				return err
 			}
 
 			shared.Logger.Printf("%s Micro %s is running", styles.Green("✔️"), styles.Green(micro.Name))
@@ -82,7 +84,7 @@ func devTrigger(projectDir string, actionID string) (err error) {
 			res, err := http.Post(actionEndpoint, "application/json", bytes.NewReader(body))
 			if err != nil {
 				shared.Logger.Printf("\n%s failed to trigger action: %s", emoji.X, err.Error())
-				os.Exit(1)
+				return err
 			}
 			defer res.Body.Close()
 
@@ -95,7 +97,7 @@ func devTrigger(projectDir string, actionID string) (err error) {
 
 			if res.StatusCode >= 400 {
 				shared.Logger.Printf("\n\nL %s", styles.Error("failed to trigger action"))
-				os.Exit(1)
+				return err
 			}
 			shared.Logger.Printf("\n\nL Action triggered successfully!")
 			return nil
@@ -103,6 +105,5 @@ func devTrigger(projectDir string, actionID string) (err error) {
 	}
 
 	shared.Logger.Printf("\n%saction `%s` not found", emoji.X, actionID)
-	os.Exit(1)
-	return nil
+	return fmt.Errorf("\n%saction `%s` not found", emoji.X, actionID)
 }

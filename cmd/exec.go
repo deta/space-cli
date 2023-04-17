@@ -19,7 +19,7 @@ func newCmdExec() *cobra.Command {
 The data key will be automatically injected into the command's environment.`,
 		Args:     cobra.MinimumNArgs(1),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			projectID, _ := cmd.Flags().GetString("project")
 			if !cmd.Flags().Changed("project") {
@@ -27,13 +27,15 @@ The data key will be automatically injected into the command's environment.`,
 				projectID, err = runtime.GetProjectID(cwd)
 				if err != nil {
 					shared.Logger.Printf("project id not provided and could not be inferred from current working directory")
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := execRun(projectID, args); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 
