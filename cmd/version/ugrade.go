@@ -2,7 +2,6 @@ package version
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -20,20 +19,20 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 		Use:     "upgrade",
 		Short:   "Upgrade Space CLI version",
 		Example: versionUpgradeExamples(),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			targetVersion, _ := cmd.Flags().GetString("version")
 			if !cmd.Flags().Changed("version") {
 				latestVersion, err := api.GetLatestCliVersion()
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
-					os.Exit(1)
+					return err
 				}
 				targetVersion = latestVersion
 			}
 
 			if currentVersion == targetVersion {
 				shared.Logger.Println(styles.Boldf("Space CLI version already %s, no upgrade required", styles.Code(targetVersion)))
-				return
+				return nil
 			}
 
 			switch runtime.GOOS {
@@ -41,20 +40,22 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 				err := upgradeUnix(targetVersion)
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
-					os.Exit(1)
+					return err
 				}
 			case "windows":
 				err := upgradeWin(targetVersion)
 				if err != nil {
 					shared.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
-					os.Exit(1)
+					return err
 				}
 			default:
 				shared.Logger.Println(styles.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS))
-				os.Exit(1)
+				return fmt.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS)
 			}
 
 			detaruntime.CacheLatestVersion(targetVersion)
+
+			return nil
 		},
 		Args: cobra.NoArgs,
 	}

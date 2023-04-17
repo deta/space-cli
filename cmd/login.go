@@ -22,7 +22,7 @@ func newCmdLogin() *cobra.Command {
 		Short:    "Login to space",
 		PostRunE: shared.CheckLatestVersion,
 		Args:     cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			withToken, _ := cmd.Flags().GetBool("with-token")
 
@@ -31,7 +31,7 @@ func newCmdLogin() *cobra.Command {
 				input, err := io.ReadAll(os.Stdin)
 				if err != nil {
 					shared.Logger.Println("failed to read access token from standard input")
-					os.Exit(1)
+					return err
 				}
 
 				accessToken = strings.TrimSpace(string(input))
@@ -39,14 +39,16 @@ func newCmdLogin() *cobra.Command {
 				shared.Logger.Printf("To authenticate the Space CLI with your Space account, generate a new %s in your Space settings and paste it below:\n\n", styles.Code("access token"))
 				accessToken, err = inputAccessToken()
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := login(accessToken); err != nil {
 				shared.Logger.Printf(styles.Errorf("%s Failed to login: %v", emoji.ErrorExclamation, err))
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 

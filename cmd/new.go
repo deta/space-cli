@@ -23,7 +23,7 @@ func newCmdNew() *cobra.Command {
 		Use:      "new [flags]",
 		Short:    "Create new project",
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			blankProject, _ := cmd.Flags().GetBool("blank")
 			projectName, _ := cmd.Flags().GetString("name")
@@ -32,19 +32,21 @@ func newCmdNew() *cobra.Command {
 				abs, err := filepath.Abs(projectDir)
 				if err != nil {
 					shared.Logger.Printf("%sError getting absolute path of project directory: %s", styles.ErrorExclamation, err.Error())
-					os.Exit(1)
+					return err
 				}
 
 				name := filepath.Base(abs)
 				projectName, err = selectProjectName(name)
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := newProject(projectDir, projectName, blankProject); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 		PreRunE: shared.CheckAll(
 			shared.CheckExists("dir"),

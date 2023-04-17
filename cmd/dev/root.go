@@ -58,7 +58,7 @@ The cli will start one process for each of your micros, then expose a single enp
 
 		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			projectDir, _ := cmd.Flags().GetString("dir")
@@ -71,20 +71,22 @@ The cli will start one process for each of your micros, then expose a single enp
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
 					shared.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if !cmd.Flags().Changed("port") {
 				port, err = GetFreePort(devDefaultPort)
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := dev(projectDir, projectID, host, port, open); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 
@@ -131,7 +133,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	addr := fmt.Sprintf("%s:%d", host, port)
 	if err != nil {
 		shared.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
-		os.Exit(1)
+		return err
 	}
 
 	shared.Logger.Printf("\n%s Checking for running micros...", emoji.Eyes)

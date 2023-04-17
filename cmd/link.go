@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/deta/space/cmd/shared"
 	"github.com/deta/space/internal/api"
@@ -20,7 +19,7 @@ func newCmdLink() *cobra.Command {
 		Use:      "link [flags]",
 		Short:    "Link a local directory with an existing project",
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")
@@ -29,13 +28,15 @@ func newCmdLink() *cobra.Command {
 				shared.Logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
 
 				if projectID, err = selectLinkProjectID(); err != nil {
-					os.Exit(1)
+					return err
 				}
 			}
 
 			if err := link(projectDir, projectID); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 		PreRunE: shared.CheckAll(
 			shared.CheckExists("dir"),

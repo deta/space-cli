@@ -38,12 +38,12 @@ func newCmdRelease() *cobra.Command {
 		Short:    "Create a new release from a revision",
 		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "version")),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			if !shared.IsOutputInteractive() && !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("confirm") {
 				shared.Logger.Printf("revision id or confirm flag must be provided in non-interactive mode")
-				os.Exit(1)
+				return err
 			}
 
 			projectDir, _ := cmd.Flags().GetString("dir")
@@ -57,7 +57,7 @@ func newCmdRelease() *cobra.Command {
 			if !cmd.Flags().Changed("id") {
 				projectMeta, err := runtime.GetProjectMeta(projectDir)
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 				projectID = projectMeta.ID
 			}
@@ -66,7 +66,7 @@ func newCmdRelease() *cobra.Command {
 			if err != nil {
 				if !errors.Is(err, api.ErrReleaseNotFound) {
 					shared.Logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
-					os.Exit(1)
+					return err
 				}
 			}
 
@@ -75,12 +75,12 @@ func newCmdRelease() *cobra.Command {
 				if !cmd.Flags().Changed("confirm") {
 					continueReleasing, err := confirmReleasing(listedRelease)
 					if err != nil {
-						os.Exit(1)
+						return err
 					}
 
 					if !continueReleasing {
 						shared.Logger.Println("Aborted releasing this app.")
-						os.Exit(1)
+						return err
 					}
 				}
 			}
@@ -88,13 +88,13 @@ func newCmdRelease() *cobra.Command {
 			discoveryData, err := getDiscoveryData(projectDir)
 			if err != nil {
 				shared.Logger.Printf("Failed to get discovery data: %v", err)
-				os.Exit(1)
+				return err
 			}
 
 			if latestRelease != nil {
 				err := compareDiscoveryData(discoveryData, latestRelease, projectDir)
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 			}
 
@@ -102,13 +102,13 @@ func newCmdRelease() *cobra.Command {
 				if !cmd.Flags().Changed("confirm") {
 					useLatestRevision, err = confirm.Run("Do you want to use the latest revision?")
 					if err != nil {
-						os.Exit(1)
+						return err
 					}
 				}
 
 				revision, err := selectRevision(projectID, useLatestRevision)
 				if err != nil {
-					os.Exit(1)
+					return err
 				}
 				shared.Logger.Printf("\nSelected revision: %s", styles.Blue(revision.Tag))
 
@@ -118,8 +118,10 @@ func newCmdRelease() *cobra.Command {
 
 			shared.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 			if err := release(projectDir, projectID, revisionID, releaseVersion, listedRelease, releaseNotes, discoveryData); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 
@@ -266,7 +268,7 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
 		err = discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
 		if err != nil {
 			shared.Logger.Printf("%s Failed to create Discovery.md file, %v", emoji.ErrorExclamation, err)
-			os.Exit(1)
+			return nil, err
 		}
 
 		shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)

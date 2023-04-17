@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/deta/space/cmd/shared"
@@ -18,11 +17,13 @@ func newCmdValidate() *cobra.Command {
 		Use:      "validate [flags]",
 		Short:    "Validate your Spacefile and check for errors",
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			if err := validate(projectDir); err != nil {
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 		PreRunE: shared.CheckExists("dir"),
 	}

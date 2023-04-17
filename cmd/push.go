@@ -34,7 +34,7 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 		Args:     cobra.NoArgs,
 		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "tag")),
 		PostRunE: shared.CheckLatestVersion,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")
 			if !cmd.Flags().Changed("id") {
@@ -42,7 +42,7 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
 					shared.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
-					os.Exit(1)
+					return err
 				}
 			}
 
@@ -52,8 +52,9 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 
 			err := push(projectID, projectDir, pushTag, openInBrowser, skipLogs)
 			if err != nil {
-				os.Exit(1)
+				return err
 			}
+			return nil
 		},
 	}
 
