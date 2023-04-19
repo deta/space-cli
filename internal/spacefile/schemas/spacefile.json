@@ -69,6 +69,7 @@
                         "svelte-kit",
                         "python3.9",
                         "python3.8",
+                        "nodejs14",
                         "nodejs16",
                         "custom"
                     ]
