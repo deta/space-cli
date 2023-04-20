@@ -13,7 +13,7 @@ import (
 const (
 	spaceRoot = "https://deta.space/api"
 	//spaceRoot = "http://localhost:9900/api"
-	version   = "v0"
+	version = "v0"
 )
 
 var (
@@ -242,8 +242,9 @@ func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse
 }
 
 type CreateBuildRequest struct {
-	AppID string `json:"app_id"`
-	Tag   string `json:"tag"`
+	AppID        string `json:"app_id"`
+	Tag          string `json:"tag"`
+	Experimental bool   `json:"experimental"`
 }
 
 type CreateBuildResponse struct {
