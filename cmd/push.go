@@ -49,8 +49,9 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 			pushTag, _ := cmd.Flags().GetString("tag")
 			openInBrowser, _ := cmd.Flags().GetBool("open")
 			skipLogs, _ := cmd.Flags().GetBool("skip-logs")
+			experimental, _ := cmd.Flags().GetBool("experimental")
 
-			err := push(projectID, projectDir, pushTag, openInBrowser, skipLogs)
+			err := push(projectID, projectDir, pushTag, openInBrowser, skipLogs, experimental)
 			if err != nil {
 				return err
 			}
@@ -64,11 +65,13 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 	cmd.Flags().StringP("tag", "t", "", "tag to identify this push")
 	cmd.Flags().Bool("open", false, "open builder instance/project in browser after push")
 	cmd.Flags().BoolP("skip-logs", "", false, "skip following logs after push")
+	cmd.Flags().BoolP("experimental", "", false, "use experimental builds")
+	cmd.Flags().MarkHidden("experimental")
 
 	return cmd
 }
 
-func push(projectID string, projectDir string, pushTag string, openInBrowser bool, skipLogs bool) error {
+func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experimental bool) error {
 	shared.Logger.Printf("Validating your Spacefile...")
 
 	s, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
@@ -86,7 +89,7 @@ func push(projectID string, projectDir string, pushTag string, openInBrowser boo
 		return err
 	}
 
-	build, err := shared.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag})
+	build, err := shared.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental})
 	if err != nil {
 		shared.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
 		return err
