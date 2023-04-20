@@ -78,9 +78,9 @@ func goScanner(dir string) (*shared.Micro, error) {
 		Name:     name,
 		Src:      dir,
 		Engine:   "custom",
-		Commands: []string{"go build cmd/main.go"},
-		Include:  []string{"main"},
-		Run:      "./main",
+		Commands: []string{"go build -o server"},
+		Include:  []string{"server"},
+		Run:      "./server",
 	}
 
 	return m, nil
