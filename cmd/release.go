@@ -292,7 +292,7 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
 
 	discoveryData.ContentRaw = string(rest)
 	if discoveryData.AppName == "" {
-		spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, spacefile.SpacefileName))
+		spacefile, err := spacefile.LoadSpacefile(projectDir)
 		if err != nil {
 			return nil, err
 		}

@@ -122,7 +122,7 @@ func GetFreePort(start int) (int, error) {
 
 func dev(projectDir string, projectID string, host string, port int, open bool) error {
 	routeDir := filepath.Join(projectDir, ".space", "micros")
-	spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
+	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
 		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err

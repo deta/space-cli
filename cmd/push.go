@@ -74,7 +74,7 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experimental bool) error {
 	shared.Logger.Printf("Validating your Spacefile...")
 
-	s, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
+	s, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
 		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err

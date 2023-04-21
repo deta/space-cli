@@ -6,41 +6,41 @@ import (
 )
 
 type TestCase struct {
-	spacefile     string
+	projectDir    string
 	expectedError error
 }
 
 func TestValidation(t *testing.T) {
 	cases := []TestCase{
 		{
-			spacefile:     "testdata/spacefile/duplicate_micros.yaml",
+			projectDir:    "testdata/spacefile/duplicated_micros",
 			expectedError: ErrDuplicateMicros,
 		},
 		{
-			spacefile:     "testdata/spacefile/invalid_micro_path.yaml",
+			projectDir:    "testdata/spacefile/invalid_micro_path",
 			expectedError: ErrSpacefileNotFound,
 		},
 		{
-			spacefile:     "testdata/spacefile/multiple_primary.yaml",
+			projectDir:    "testdata/spacefile/multiple_primary",
 			expectedError: ErrMultiplePrimary,
 		},
 		{
-			spacefile:     "testdata/spacefile/no_primary.yaml",
+			projectDir:    "testdata/spacefile/no_primary",
 			expectedError: ErrNoPrimaryMicro,
 		},
 		{
-			spacefile:     "testdata/spacefile/single_micro.yaml",
+			projectDir:    "testdata/spacefile/single_micro",
 			expectedError: nil,
 		},
 		{
-			spacefile:     "testdata/spacefile/multiple_micros.yaml",
+			projectDir:    "testdata/spacefile/multiple_micros",
 			expectedError: nil,
 		},
 	}
 
 	for _, c := range cases {
-		t.Run(c.spacefile, func(t *testing.T) {
-			_, err := ParseSpacefile(c.spacefile)
+		t.Run(c.projectDir, func(t *testing.T) {
+			_, err := LoadSpacefile(c.projectDir)
 
 			if err != nil && c.expectedError == nil {
 				t.Fatalf("expected no error but got: %v", err)
@@ -58,8 +58,8 @@ func TestValidation(t *testing.T) {
 }
 
 func TestImplicitPrimary(t *testing.T) {
-	spacefile := "./testdata/spacefile/implicit_primary.yaml"
-	space, err := ParseSpacefile(spacefile)
+	spacefile := "./testdata/spacefile/implicit_primary"
+	space, err := LoadSpacefile(spacefile)
 	if err != nil {
 		t.Fatalf("failed to parse spacefile: %v", err)
 	}

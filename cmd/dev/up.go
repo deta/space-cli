@@ -65,7 +65,7 @@ func newCmdDevUp() *cobra.Command {
 
 func devUp(projectDir string, projectId string, port int, microName string, open bool) (err error) {
 
-	spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
+	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
 		return err
 	}

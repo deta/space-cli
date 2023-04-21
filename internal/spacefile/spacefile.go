@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -241,7 +240,9 @@ func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string
 	return strings.Join(rows, "\n")
 }
 
-func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
+func LoadSpacefile(projectDir string) (*Spacefile, error) {
+	spacefilePath := filepath.Join(projectDir, SpacefileName)
+
 	if _, err := os.Stat(spacefilePath); os.IsNotExist(err) {
 		return nil, ErrSpacefileNotFound
 	} else if err != nil {
@@ -290,7 +291,7 @@ func ParseSpacefile(spacefilePath string) (*Spacefile, error) {
 			continue
 		}
 
-		if _, err := os.Stat(filepath.Join(path.Dir(spacefilePath), micro.Src)); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(projectDir, micro.Src)); os.IsNotExist(err) {
 			return nil, fmt.Errorf("micro %s src %s not found", micro.Name, micro.Src)
 		}
 

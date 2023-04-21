@@ -64,7 +64,7 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
 
 	microDir := filepath.Join(projectDir, ".space", "micros")
-	spacefile, _ := spacefile.ParseSpacefile(projectDir)
+	spacefile, _ := spacefile.LoadSpacefile(projectDir)
 
 	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
 		shared.Logger.Printf("%s No running micros detected.", emoji.X)

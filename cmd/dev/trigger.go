@@ -44,7 +44,7 @@ Make sure that the corresponding micro is running before triggering the action.`
 }
 
 func devTrigger(projectDir string, actionID string) (err error) {
-	spacefile, err := spacefile.ParseSpacefile(filepath.Join(projectDir, "Spacefile"))
+	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
 		shared.Logger.Printf("%s failed to parse Spacefile: %s", emoji.X, err.Error())
 	}
