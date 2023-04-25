@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,7 +137,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		return err
 	}
 
-	shared.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n", emoji.Package, nbFiles)
+	shared.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n\n", emoji.Package, nbFiles)
 
 	if skipLogs {
 		b, err := shared.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
@@ -173,9 +174,11 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 	defer readCloser.Close()
 	// stream build logs
 	scanner := bufio.NewScanner(readCloser)
+	buildLogger := log.New(os.Stderr, "", 0)
+	buildLogger.SetFlags(log.Ldate | log.Ltime)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		buildLogger.Println(line)
 	}
 	if err := scanner.Err(); err != nil {
 		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
