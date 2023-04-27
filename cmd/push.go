@@ -254,12 +254,15 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 
 	defer readCloserInstallation.Close()
 	scannerInstallation := bufio.NewScanner(readCloserInstallation)
+
+	installationLogger := log.New(os.Stderr, "", 0)
+	installationLogger.SetFlags(log.Ldate | log.Ltime)
 	for scannerInstallation.Scan() {
 		line := scannerInstallation.Text()
 		if strings.Contains(line, "http") {
 			instanceUrl = line
 		} else {
-			fmt.Println(line)
+			installationLogger.Println(line)
 		}
 	}
 	if err := scannerInstallation.Err(); err != nil {
