@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/deta/space/internal/auth"
 )
@@ -16,9 +18,10 @@ const (
 )
 
 type DetaClient struct {
-	Client   *http.Client
-	Version  string
-	Platform string
+	Client         *http.Client
+	Version        string
+	Platform       string
+	TimestampShift int64
 }
 
 func NewDetaClient(version string, platform string) *DetaClient {
@@ -57,24 +60,29 @@ type requestOutput struct {
 	Error          *errorResp
 }
 
-func fetchServerTimestamp() (string, error) {
+func fetchServerTimestamp() (int64, error) {
 	timestampUrl := fmt.Sprintf("%s/v0/time", spaceRoot)
 	res, err := http.Get(timestampUrl)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch timestamp: %w", err)
+		return 0, fmt.Errorf("failed to fetch timestamp: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return "", fmt.Errorf("failed to fetch timestamp, status code: %v", res.StatusCode)
+		return 0, fmt.Errorf("failed to fetch timestamp, status code: %v", res.StatusCode)
 	}
 
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read timestamp response: %w", err)
+		return 0, fmt.Errorf("failed to read timestamp response: %w", err)
 	}
 
-	return string(b), nil
+	serverTimestamp, err := strconv.ParseInt(string(b), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse timestamp: %w", err)
+	}
+
+	return serverTimestamp, nil
 }
 
 // Request send an http request to the deta api
@@ -121,10 +129,19 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 			}
 		}
 
-		timestamp, err := fetchServerTimestamp()
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch server timestamp: %w", err)
+		now := time.Now().UTC().Unix()
+
+		// client timestamps can be off by a lot, so we compute the shift from the server
+		if d.TimestampShift == 0 {
+			serverTimestamp, err := fetchServerTimestamp()
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute timestamp shift: %w", err)
+			}
+
+			d.TimestampShift = serverTimestamp - now
 		}
+
+		timestamp := strconv.FormatInt(now+d.TimestampShift, 10)
 
 		// compute signature
 		signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
