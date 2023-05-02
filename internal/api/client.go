@@ -7,8 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/deta/space/internal/auth"
 )
@@ -59,6 +57,26 @@ type requestOutput struct {
 	Error          *errorResp
 }
 
+func fetchServerTimestamp() (string, error) {
+	timestampUrl := fmt.Sprintf("%s/v0/time", spaceRoot)
+	res, err := http.Get(timestampUrl)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch timestamp: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		return "", fmt.Errorf("failed to fetch timestamp, status code: %v", res.StatusCode)
+	}
+
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read timestamp response: %w", err)
+	}
+
+	return string(b), nil
+}
+
 // Request send an http request to the deta api
 func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	marshalled, _ := i.Body.([]byte)
@@ -102,9 +120,11 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 				return nil, fmt.Errorf("failed to get access token: %w", err)
 			}
 		}
-		//  request timestamp
-		now := time.Now().UTC().Unix()
-		timestamp := strconv.FormatInt(now, 10)
+
+		timestamp, err := fetchServerTimestamp()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch server timestamp: %w", err)
+		}
 
 		// compute signature
 		signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
