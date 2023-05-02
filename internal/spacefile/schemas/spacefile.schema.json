@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://raw.githubusercontent.com/deta/schemas/main/schemas/spacefile/spacefile.v0.schema.json",
+    "$id": "https://deta.space/assets/spacefile.schema.json",
     "$ref": "#/definitions/spacefile",
     "definitions": {
         "spacefile": {
@@ -69,7 +69,6 @@
                         "svelte-kit",
                         "python3.9",
                         "python3.8",
-                        "nodejs14",
                         "nodejs16",
                         "custom"
                     ]
@@ -160,6 +159,15 @@
                     "then": {
                         "required": [
                             "serve"
+                        ]
+                    }
+                },
+                {
+                    "$comment": "public and public_routes are mutually exclusive",
+                    "not": {
+                        "required": [
+                            "public",
+                            "public_routes"
                         ]
                     }
                 },
