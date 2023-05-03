@@ -305,19 +305,19 @@ func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileRespo
 	}
 
 	o, err := c.request(i)
-
 	if err != nil {
 		return nil, err
 	}
+
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push spacefile file, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp PushSpacefileResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push spacefile file %w", err)
+		return nil, fmt.Errorf("unable to read response: %w", err)
 	}
 
 	return &resp, nil
