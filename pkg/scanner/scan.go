@@ -48,6 +48,7 @@ func scanDir(dir string) (*shared.Micro, error) {
 		pythonScanner,
 		nodeScanner,
 		goScanner,
+		rustScanner,
 		staticScanner,
 	}
 

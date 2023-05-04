@@ -162,6 +162,26 @@ func goScanner(dir string) (*shared.Micro, error) {
 	return m, nil
 }
 
+func rustScanner(dir string) (*shared.Micro, error) {
+	name, err := getMicroNameFromPath(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract micro name from it's path, %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "Cargo.toml")); err != nil {
+		return nil, nil
+	}
+
+	return &shared.Micro{
+		Name:     name,
+		Src:      dir,
+		Engine:   "custom",
+		Commands: []string{"cargo build --release --bin server"},
+		Include:  []string{"target/release/server"},
+		Run:      "./server",
+	}, nil
+}
+
 func staticScanner(dir string) (*shared.Micro, error) {
 	// if any of the following files exist, detect as a static app
 	exists, err := fs.CheckIfAnyFileExists(dir, "index.html")
