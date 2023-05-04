@@ -78,25 +78,31 @@ func extractMicroName(v any, index int) (string, bool) {
 var microReg = regexp.MustCompile(`\/micros\/(\d+)`)
 
 func (ve SpacefileValidationError) Error() string {
-	leaf := ve.wrapped
-	queue := []*jsonschema.ValidationError{leaf}
+	errorMsg := func(leaf *jsonschema.ValidationError) string {
+		matches := microReg.FindStringSubmatch(leaf.InstanceLocation)
+		if len(matches) == 0 {
+			return fmt.Sprintf("L %s: %s", leaf.InstanceLocation, leaf.Message)
+		}
+
+		i := matches[1]
+		idx, _ := strconv.Atoi(i)
+		name, ok := extractMicroName(ve.raw, idx)
+		if !ok {
+			return fmt.Sprintf("L %s: %s", leaf.InstanceLocation, leaf.Message)
+		}
+
+		return fmt.Sprintf("L %s: %s", strings.Replace(leaf.InstanceLocation, i, name, 1), leaf.Message)
+	}
+
+	queue := []*jsonschema.ValidationError{ve.wrapped}
 	rootErrors := []string{}
 	for len(queue) > 0 {
-		if len(leaf.Causes) == 0 {
-			if matches := microReg.FindStringSubmatch(leaf.InstanceLocation); len(matches) > 0 {
-				i := matches[1]
-				idx, _ := strconv.Atoi(i)
-
-				if name, ok := extractMicroName(ve.raw, idx); ok {
-					rootErrors = append(rootErrors, fmt.Sprintf("L %s: %s", strings.Replace(leaf.InstanceLocation, i, name, 1), leaf.Message))
-				} else {
-					rootErrors = append(rootErrors, fmt.Sprintf("L %s: %s", leaf.InstanceLocation, leaf.Message))
-				}
-			}
-		}
-		leaf = queue[0]
+		leaf := queue[0]
 		queue = queue[1:]
-		if len(leaf.Causes) > 0 {
+
+		if len(leaf.Causes) == 0 {
+			rootErrors = append(rootErrors, errorMsg(leaf))
+		} else {
 			queue = append(queue, leaf.Causes...)
 		}
 	}

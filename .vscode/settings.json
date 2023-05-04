@@ -1,10 +1,8 @@
 {
-    "files.associations": {
-        "Spacefile": "yaml"
-    },
-    "yaml.schemas": {
-        "internal/spacefile/schemas/spacefile.json": [
-            "Spacefile"
-        ]
-    }
+  "files.associations": {
+    "Spacefile": "yaml"
+  },
+  "yaml.schemas": {
+    "internal/spacefile/schemas/spacefile.schema.json": ["Spacefile"]
+  }
 }
