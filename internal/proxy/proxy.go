@@ -1,38 +1,48 @@
 package proxy
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 )
 
-type ProxyRoute struct {
-	Prefix string   `json:"prefix"`
+const (
+	actionsPath = "/__space/actions"
+)
+
+type ActionMeta struct {
+	Actions []Action `json:"actions"`
+}
+
+type Action struct {
+	Name   string        `json:"name"`
+	Path   string        `json:"path"`
+	Inputs []ActionInput `json:"inputs,omitempty"`
+}
+
+type ActionInput struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Optional bool   `json:"optional"`
+}
+
+type ProxyAction struct {
 	Target *url.URL `json:"target"`
+	Action `json:"action"`
 }
 
 type ReverseProxy struct {
 	prefixToProxy map[string]*httputil.ReverseProxy
 	actionToProxy map[string]*httputil.ReverseProxy
+	actions       []Action
 }
 
-func NewReverseProxy(routes []ProxyRoute, actions map[string]*url.URL) *ReverseProxy {
-	prefixToProxy := make(map[string]*httputil.ReverseProxy)
-	for _, route := range routes {
-		proxy := httputil.NewSingleHostReverseProxy(route.Target)
-		prefixToProxy[route.Prefix] = proxy
-	}
-
-	actionToProxy := make(map[string]*httputil.ReverseProxy)
-	for actionName, action := range actions {
-		proxy := httputil.NewSingleHostReverseProxy(action)
-		actionToProxy[actionName] = proxy
-	}
-
+func NewReverseProxy() *ReverseProxy {
 	return &ReverseProxy{
-		prefixToProxy: prefixToProxy,
-		actionToProxy: actionToProxy,
+		prefixToProxy: make(map[string]*httputil.ReverseProxy),
+		actionToProxy: make(map[string]*httputil.ReverseProxy),
 	}
 }
 
@@ -45,19 +55,71 @@ func extractPrefix(path string) string {
 	return "/"
 }
 
+func (p *ReverseProxy) AddRoute(prefix string, target *url.URL) {
+	p.prefixToProxy[prefix] = httputil.NewSingleHostReverseProxy(target)
+}
+
+func (p *ReverseProxy) ExtractActions(target *url.URL) error {
+	actionUrl := url.URL{
+		Scheme: target.Scheme,
+		Host:   target.Host,
+		Path:   "/__space/actions",
+	}
+
+	res, err := http.Get(actionUrl.String())
+	if err != nil {
+		return nil
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	var meta ActionMeta
+	if err := json.NewDecoder(res.Body).Decode(&meta); err != nil {
+		return nil
+	}
+
+	for _, action := range meta.Actions {
+		actionUrl := url.URL{
+			Scheme: target.Scheme,
+			Host:   target.Host,
+			Path:   action.Path,
+		}
+		p.actionToProxy[action.Name] = httputil.NewSingleHostReverseProxy(&actionUrl)
+		p.actions = append(p.actions, action)
+	}
+
+	return nil
+}
+
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/__space/actions") {
+	if r.URL.Path == actionsPath || r.URL.Path == actionsPath+"/" {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		json.NewEncoder(w).Encode(ActionMeta{Actions: p.actions})
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, actionsPath) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		actionName := strings.TrimPrefix(r.URL.Path, "/__space/actions/")
+		actionName := strings.TrimPrefix(r.URL.Path, actionsPath+"/")
 		if proxy, ok := p.actionToProxy[actionName]; ok {
 			r.URL.Path = "/"
 			proxy.ServeHTTP(w, r)
 			return
 		}
+
+		http.NotFound(w, r)
+		return
 	}
 
 	prefix := extractPrefix(r.URL.Path)
