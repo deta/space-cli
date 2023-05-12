@@ -13,10 +13,10 @@ const (
 )
 
 type ActionMeta struct {
-	Actions []Action `json:"actions"`
+	Actions []MicroAction `json:"actions"`
 }
 
-type Action struct {
+type MicroAction struct {
 	Name   string        `json:"name"`
 	Path   string        `json:"path"`
 	Inputs []ActionInput `json:"inputs,omitempty"`
@@ -28,15 +28,16 @@ type ActionInput struct {
 	Optional bool   `json:"optional"`
 }
 
-type ProxyAction struct {
-	Target *url.URL `json:"target"`
-	Action `json:"action"`
+type AppAction struct {
+	Name    string        `json:"name"`
+	AppName string        `json:"app_name"`
+	Inputs  []ActionInput `json:"inputs,omitempty"`
 }
 
 type ReverseProxy struct {
 	prefixToProxy map[string]*httputil.ReverseProxy
 	actionToProxy map[string]*httputil.ReverseProxy
-	actions       []Action
+	actions       []AppAction
 }
 
 func NewReverseProxy() *ReverseProxy {
@@ -88,7 +89,11 @@ func (p *ReverseProxy) ExtractActions(target *url.URL) error {
 			Path:   action.Path,
 		}
 		p.actionToProxy[action.Name] = httputil.NewSingleHostReverseProxy(&actionUrl)
-		p.actions = append(p.actions, action)
+		p.actions = append(p.actions, AppAction{
+			Name:    action.Name,
+			AppName: "dev",
+			Inputs:  action.Inputs,
+		})
 	}
 
 	return nil
@@ -101,7 +106,7 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(ActionMeta{Actions: p.actions})
+		json.NewEncoder(w).Encode(p.actions)
 		return
 	}
 
