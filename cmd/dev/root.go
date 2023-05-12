@@ -2,6 +2,7 @@ package dev
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -186,16 +187,6 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		shared.Logger.Printf("L url: %s\n\n", styles.Blue(spaceUrl))
 	}
 
-	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
-	if err != nil {
-		return err
-	}
-
-	server := http.Server{
-		Addr:    addr,
-		Handler: proxy,
-	}
-
 	wg := sync.WaitGroup{}
 
 	for _, command := range commands {
@@ -211,6 +202,17 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 				shared.Logger.Printf("Command `%s` exited", command.String())
 			}
 		}(command)
+	}
+
+	time.Sleep(1 * time.Second) // wait for the micros to start
+	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
+	if err != nil {
+		return err
+	}
+
+	server := http.Server{
+		Addr:    addr,
+		Handler: proxy,
 	}
 
 	wg.Add(1)
@@ -261,8 +263,38 @@ func writePortFile(portfile string, port int) error {
 	return os.WriteFile(portfile, []byte(fmt.Sprintf("%d", port)), 0644)
 }
 
+type ActionMeta struct {
+	Actions []Action
+}
+
+type Action struct {
+	Name string
+	Path string
+}
+
+func extractActions(rawUrl string) ([]Action, error) {
+	actionUrl := fmt.Sprintf("%s/__space/actions", rawUrl)
+	res, err := http.Get(actionUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got status %d", res.StatusCode)
+	}
+
+	var payload ActionMeta
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+
+	return payload.Actions, nil
+}
+
 func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, error) {
 	routes := make([]proxy.ProxyRoute, 0)
+	actions := make(map[string]*url.URL)
 	for _, micro := range micros {
 		portFile := filepath.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
 		if _, err := os.Stat(portFile); err != nil {
@@ -280,9 +312,25 @@ func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, 
 			Prefix: micro.Path,
 			Target: target,
 		})
+
+		// extract actions
+		microActions, err := extractActions(target.String())
+		if err != nil {
+			continue
+		}
+
+		for _, action := range microActions {
+			actions[action.Name] = &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("localhost:%d", microPort),
+				Path:   action.Path,
+			}
+		}
 	}
 
-	return proxy.NewReverseProxy(routes), nil
+	p := proxy.NewReverseProxy(routes, actions)
+
+	return p, nil
 }
 
 func getMicroPort(micro *types.Micro, routeDir string) (int, error) {

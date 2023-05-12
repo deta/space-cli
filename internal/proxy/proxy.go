@@ -14,17 +14,25 @@ type ProxyRoute struct {
 
 type ReverseProxy struct {
 	prefixToProxy map[string]*httputil.ReverseProxy
+	actionToProxy map[string]*httputil.ReverseProxy
 }
 
-func NewReverseProxy(routes []ProxyRoute) *ReverseProxy {
+func NewReverseProxy(routes []ProxyRoute, actions map[string]*url.URL) *ReverseProxy {
 	prefixToProxy := make(map[string]*httputil.ReverseProxy)
 	for _, route := range routes {
 		proxy := httputil.NewSingleHostReverseProxy(route.Target)
 		prefixToProxy[route.Prefix] = proxy
 	}
 
+	actionToProxy := make(map[string]*httputil.ReverseProxy)
+	for actionName, action := range actions {
+		proxy := httputil.NewSingleHostReverseProxy(action)
+		actionToProxy[actionName] = proxy
+	}
+
 	return &ReverseProxy{
 		prefixToProxy: prefixToProxy,
+		actionToProxy: actionToProxy,
 	}
 }
 
@@ -38,6 +46,20 @@ func extractPrefix(path string) string {
 }
 
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/__space/actions") {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		actionName := strings.TrimPrefix(r.URL.Path, "/__space/actions/")
+		if proxy, ok := p.actionToProxy[actionName]; ok {
+			r.URL.Path = "/"
+			proxy.ServeHTTP(w, r)
+			return
+		}
+	}
+
 	prefix := extractPrefix(r.URL.Path)
 	if proxy, ok := p.prefixToProxy[prefix]; ok {
 		if prefix != "/" {
