@@ -29,7 +29,7 @@ func newCmdAPI() *cobra.Command {
 
 			var method string
 			if cmd.Flags().Changed("method") {
-				method, _ := cmd.Flags().GetString("method")
+				method, _ = cmd.Flags().GetString("method")
 				if strings.ToUpper(method) == "GET" && body != nil {
 					return errors.New("cannot send body with GET request")
 				}

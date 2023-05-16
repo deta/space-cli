@@ -129,6 +129,10 @@
                     "type": "boolean",
                     "default": false
                 },
+                "provide_actions": {
+                    "type": "boolean",
+                    "default": false
+                },
                 "actions": {
                     "description": "Tasks that run on triggers like a schedule",
                     "type": "array",
