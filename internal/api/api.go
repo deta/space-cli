@@ -5,18 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/shared"
 )
 
 const (
-	spaceRoot = "https://deta.space/api"
-	//spaceRoot = "http://localhost:9900/api"
 	version = "v0"
 )
 
 var (
+	spaceRoot = "https://deta.space/api"
+
 	// ErrProjectNotFound project not found error
 	ErrProjectNotFound = errors.New("project not found")
 	ErrReleaseNotFound = errors.New("release not found")
@@ -24,6 +25,12 @@ var (
 	// Status
 	Complete = "complete"
 )
+
+func init() {
+	if env, ok := os.LookupEnv("SPACE_ROOT"); ok {
+		spaceRoot = env
+	}
+}
 
 type GetProjectRequest struct {
 	ID string `json:"id"`
