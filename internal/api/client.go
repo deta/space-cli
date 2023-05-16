@@ -85,6 +85,46 @@ func fetchServerTimestamp() (int64, error) {
 	return serverTimestamp, nil
 }
 
+func (d *DetaClient) Get(path string) ([]byte, error) {
+	output, err := d.request(&requestInput{
+		Method:    "GET",
+		Root:      spaceRoot,
+		Path:      path,
+		NeedsAuth: true,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if output.Status != 200 {
+		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
+	}
+
+	return output.Body, nil
+}
+
+func (d *DetaClient) Post(path string, body []byte) ([]byte, error) {
+	output, err := d.request(&requestInput{
+		Method:      "POST",
+		Path:        path,
+		Root:        spaceRoot,
+		ContentType: "application/json",
+		Body:        body,
+		NeedsAuth:   true,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if output.Status != 200 {
+		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
+	}
+
+	return output.Body, nil
+}
+
 // Request send an http request to the deta api
 func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	marshalled, _ := i.Body.([]byte)

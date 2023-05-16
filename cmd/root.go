@@ -33,8 +33,9 @@ Complete documentation available at %s`, shared.DocsUrl),
 	cmd.AddCommand(newCmdOpen())
 	cmd.AddCommand(newCmdValidate())
 	cmd.AddCommand(newCmdRelease())
+	cmd.AddCommand(newCmdAPI())
 
-	// XXX: This will prevent the usage from being displayed when an error occurs 
+	// XXX: This will prevent the usage from being displayed when an error occurs
 	// while calling the Execute function in the main.go file.
 	cmd.SilenceUsage = true
 

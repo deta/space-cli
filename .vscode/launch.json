@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/scripts/generate-docs.go",
+            "program": "${workspaceFolder}/scripts/generate-docs.go"
         },
         {
             "name": "space new",
@@ -29,7 +29,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": [
-                "login",
+                "login"
             ]
         },
         {
@@ -74,7 +74,7 @@
             "console": "integratedTerminal",
             "args": [
                 "release",
-                "-d=${env:HOME}/dev/tests/svelte-kit-local2",
+                "-d=${env:HOME}/dev/tests/svelte-kit-local2"
             ]
         },
         {
@@ -111,7 +111,7 @@
                 "dev",
                 "up",
                 "--dir=${workspaceFolder}/starters",
-                "python-app",
+                "python-app"
             ]
         },
         {
@@ -124,7 +124,7 @@
                 "dev",
                 "run",
                 "--dir=${workspaceFolder}/example",
-                "ls",
+                "ls"
             ]
         },
         {
@@ -136,7 +136,20 @@
             "args": [
                 "dev",
                 "proxy",
-                "--dir=${workspaceFolder}/example",
+                "--dir=${workspaceFolder}/example"
+            ]
+        },
+        {
+            "name": "space api",
+            "type": "go",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "mode": "auto",
+            "envFile": "${workspaceFolder}/.env.staging",
+            "program": "${workspaceFolder}",
+            "args": [
+                "api",
+                "/v0/apps"
             ]
         }
     ],

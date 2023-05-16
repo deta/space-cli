@@ -5,3 +5,6 @@ out
 # goreleaser
 dist
 starters
+
+.env
+.env.*
