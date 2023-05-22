@@ -22,7 +22,7 @@ type Action struct {
 
 func newTeletypeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "tty",
+		Use:  "tty {<instance-id> | <instance-alias>} <action-id>",
 		Args: cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := shared.Client.Get("/v0/actions")
@@ -88,7 +88,7 @@ func newTeletypeCmd() *cobra.Command {
 			}
 
 			for _, action := range actions {
-				if action.InstanceAlias != args[0] {
+				if action.InstanceAlias != args[0] && action.InstanceID != args[0] {
 					continue
 				}
 
