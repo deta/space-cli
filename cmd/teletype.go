@@ -22,8 +22,9 @@ type Action struct {
 
 func newTeletypeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "tty {<instance-id> | <instance-alias>} <action-id>",
-		Args: cobra.ExactArgs(2),
+		Use:   "tty {<instance-id> | <instance-alias>} <action-id>",
+		Short: "Trigger a micro. Action input is read from stdin.",
+		Args:  cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := shared.Client.Get("/v0/actions")
 			if err != nil {
