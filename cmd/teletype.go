@@ -23,7 +23,7 @@ type Action struct {
 func newTeletypeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tty {<instance-id> | <instance-alias>} <action-id>",
-		Short: "Trigger a micro. Action input is read from stdin.",
+		Short: "Trigger a app action. Input is read from stdin.",
 		Args:  cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := shared.Client.Get("/v0/actions")
@@ -43,9 +43,10 @@ func newTeletypeCmd() *cobra.Command {
 
 			if len(args) == 0 {
 				args := make([]string, 0)
-				for instanceAlias := range instance2actions {
+				for instanceAlias, actions := range instance2actions {
 					if strings.HasPrefix(instanceAlias, toComplete) {
-						args = append(args, instanceAlias)
+						appName := actions[0].AppName
+						args = append(args, fmt.Sprintf("%s\t%s", instanceAlias, appName))
 					}
 				}
 
@@ -60,7 +61,7 @@ func newTeletypeCmd() *cobra.Command {
 				args := make([]string, 0)
 				for _, action := range actions {
 					if strings.HasPrefix(action.ActionID, toComplete) {
-						args = append(args, action.ActionID)
+						args = append(args, fmt.Sprintf("%s\t%s", action.ActionID, action.ActionName))
 					}
 				}
 
