@@ -35,6 +35,7 @@ Complete documentation available at %s`, shared.DocsUrl),
 	cmd.AddCommand(newCmdRelease())
 	cmd.AddCommand(newCmdAPI())
 	cmd.AddCommand(newCmdPrintAccessToken())
+	cmd.AddCommand(newTeletypeCmd())
 
 	// XXX: This will prevent the usage from being displayed when an error occurs
 	// while calling the Execute function in the main.go file.
