@@ -360,6 +360,11 @@ func MicroCommand(micro *types.Micro, directory, projectKey string, port int) (*
 			if os.Getenv(env.Name) != "" {
 				continue
 			}
+
+			if env.Default == "" {
+				continue
+			}
+
 			environ[env.Name] = env.Default
 		}
 	}
