@@ -20,6 +20,20 @@ git clone https://github.com/deta/starters
 go run main.go -d ./starters/python-app [command]
 ```
 
+## Customizing the api endpoint
+
+You can customize the root endpoint by setting the `SPACE_ROOT` environment variable:
+
+```bash
+SPACE_ROOT=<custom-api-endpoint> space push
+```
+
+You can also set the `SPACE_ROOT` environment variable in a `.env` file in the root of your project, and load it with a tool like [direnv](https://direnv.net/).
+
+Other configuration options can be set in the .env file as well:
+
+- SPACE_ACCESS_TOKEN
+
 ## Running unit tests
 
 ```bash
