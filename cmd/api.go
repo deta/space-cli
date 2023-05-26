@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/deta/space/cmd/shared"
+	"github.com/itchyny/gojq"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
@@ -40,27 +44,66 @@ func newCmdAPI() *cobra.Command {
 			}
 
 			path := args[0]
+			var res []byte
 			switch strings.ToUpper(method) {
 			case "GET":
-				res, err := shared.Client.Get(path)
+				r, err := shared.Client.Get(path)
 				if err != nil {
 					return err
 				}
-				os.Stdout.Write(res)
-				return nil
+
+				res = r
 			case "POST":
-				res, err := shared.Client.Get(path)
+				r, err := shared.Client.Get(path)
 				if err != nil {
 					return err
 				}
-				os.Stdout.Write(res)
-				return nil
+
+				res = r
 			default:
 				return errors.New("invalid method")
 			}
+
+			if !cmd.Flags().Changed("jq") {
+				os.Stdout.Write(res)
+				return nil
+			}
+
+			jq, _ := cmd.Flags().GetString("jq")
+			query, err := gojq.Parse(jq)
+			if err != nil {
+				return fmt.Errorf("invalid jq query: %s", err)
+			}
+
+			var v any
+			if err := json.Unmarshal(res, &v); err != nil {
+				return err
+			}
+
+			encoder := json.NewEncoder(os.Stdout)
+			if isatty.IsTerminal(os.Stdout.Fd()) {
+				encoder.SetIndent("", "  ")
+			}
+
+			iter := query.Run(v)
+			for {
+				v, ok := iter.Next()
+				if !ok {
+					break
+				}
+				if err, ok := v.(error); ok {
+					log.Fatalln(err)
+				}
+				if err := encoder.Encode(v); err != nil {
+					return err
+				}
+			}
+
+			return nil
 		},
 	}
 
 	cmd.Flags().StringP("method", "X", "", "HTTP method")
+	cmd.Flags().String("jq", "", "jq filter")
 	return cmd
 }
