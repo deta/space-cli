@@ -1,6 +1,7 @@
 package dev
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -91,7 +92,7 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 
 		writePortFile(portFile, port)
 
-		command, err := MicroCommand(micro, projectDir, projectKey, port)
+		command, err := MicroCommand(micro, projectDir, projectKey, port, context.Background())
 		if err != nil {
 			if errors.Is(err, errNoDevCommand) {
 				shared.Logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
