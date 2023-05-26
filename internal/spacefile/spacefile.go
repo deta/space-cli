@@ -46,198 +46,68 @@ type Spacefile struct {
 	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
-func extractMicro(v any, index int) (map[string]any, bool) {
+type SpacefileValidationError struct {
+	wrapped *jsonschema.ValidationError
+	raw     any
+}
+
+func extractMicroName(v any, index int) (string, bool) {
 	spacefile, ok := v.(map[string]interface{})
 	if !ok {
-		return nil, false
+		return "", false
 	}
 
 	micros, ok := spacefile["micros"].([]interface{})
 	if !ok {
-		return nil, false
+		return "", false
 	}
 
 	micro, ok := micros[index].(map[string]interface{})
 	if !ok {
-		return nil, false
+		return "", false
 	}
 
-	return micro, true
+	name, ok := micro["name"].(string)
+	if !ok {
+		return "", false
+	}
+
+	return name, true
 }
 
-func extractPresets(v any, microIndex int) (map[string]any, bool) {
-	micro, ok := extractMicro(v, microIndex)
-	if !ok {
-		return nil, false
-	}
+var microReg = regexp.MustCompile(`\/micros\/(\d+)`)
 
-	presets, ok := micro["presets"].(map[string]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	return presets, true
-}
-
-func extractAction(v any, microIndex int, actionIndex int) (map[string]any, bool) {
-	micro, ok := extractMicro(v, microIndex)
-	if !ok {
-		return nil, false
-	}
-
-	actions, ok := micro["actions"].([]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	action, ok := actions[actionIndex].(map[string]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	return action, true
-}
-
-func extractEnv(v any, microIndex int, envIndex int) (map[string]any, bool) {
-	presets, ok := extractPresets(v, microIndex)
-	if !ok {
-		return nil, false
-	}
-
-	envs, ok := presets["env"].([]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	env, ok := envs[envIndex].(map[string]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	return env, true
-}
-
-func extractApiKey(v any, microIndex int, apiKeyIndex int) (map[string]any, bool) {
-	presets, ok := extractPresets(v, microIndex)
-	if !ok {
-		return nil, false
-	}
-
-	apiKeys, ok := presets["api_keys"].([]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	apiKey, ok := apiKeys[apiKeyIndex].(map[string]interface{})
-	if !ok {
-		return nil, false
-	}
-
-	return apiKey, true
-}
-
-var (
-	microReg        = regexp.MustCompile(`\/micros\/(\d+)$`)
-	actionReg       = regexp.MustCompile(`\/micros\/(\d+)\/actions\/(\d+)$`)
-	commandsReg     = regexp.MustCompile(`\/micros\/(\d+)\/commands$`)
-	includeReg      = regexp.MustCompile(`\/micros\/(\d+)\/include$`)
-	publicRoutesReg = regexp.MustCompile(`\/micros\/(\d+)\/public_routes$`)
-	presetsReg      = regexp.MustCompile(`\/micros\/(\d+)\/presets$`)
-	envReg          = regexp.MustCompile(`\/micros\/(\d+)\/presets\/env\/(\d+)$`)
-	apiKeyReg       = regexp.MustCompile(`\/micros\/(\d+)\/presets\/api_keys\/(\d+)$`)
-	numberReg       = regexp.MustCompile(`^\d+$`)
-)
-
-func PrettyValidationErrors(ve *jsonschema.ValidationError, v any, prefix string) string {
-	// Skip the root error
-	if ve.KeywordLocation == "" {
-		return PrettyValidationErrors(ve.Causes[0], v, prefix)
-	}
-
-	// If there are no causes, just print the message
-	if len(ve.Causes) == 0 {
-		message := strings.Replace(ve.Message, "additionalProperties", "unknown field", 1)
-		parts := strings.Split(ve.InstanceLocation, "/")
-
-		leaf := parts[len(parts)-1]
-		if leaf == "" || numberReg.MatchString(leaf) {
-			return fmt.Sprintf("%sL %s", prefix, message)
+func (ve SpacefileValidationError) Error() string {
+	errorMsg := func(leaf *jsonschema.ValidationError) string {
+		matches := microReg.FindStringSubmatch(leaf.InstanceLocation)
+		if len(matches) == 0 {
+			return fmt.Sprintf("L %s: %s", leaf.InstanceLocation, leaf.Message)
 		}
 
-		return fmt.Sprintf("%sL %s -> %s", prefix, leaf, message)
-	}
-
-	var rows []string
-	if matches := microReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
-		i, _ := strconv.Atoi(matches[1])
-		micro, ok := extractMicro(v, i)
+		i := matches[1]
+		idx, _ := strconv.Atoi(i)
+		name, ok := extractMicroName(ve.raw, idx)
 		if !ok {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Micro at index "+matches[1]))
+			return fmt.Sprintf("L %s: %s", leaf.InstanceLocation, leaf.Message)
 		}
 
-		if name, ok := micro["name"].(string); ok {
-			rows = append(rows, fmt.Sprintf("%sL Micro '%s'", prefix, name))
-		} else {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Micro at index "+matches[1]))
-		}
-	} else if matches := presetsReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
-		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Presets"))
-	} else if matches := publicRoutesReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
-		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Public Routes"))
-	} else if matches := commandsReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
-		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Commands"))
-	} else if matches := includeReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 2 {
-		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Include"))
-	} else if matches := actionReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
-		i, _ := strconv.Atoi(matches[1])
-		j, _ := strconv.Atoi(matches[2])
-		action, ok := extractAction(v, i, j)
-		if !ok {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Action at index "+matches[2]))
-		}
-
-		if name, ok := action["name"].(string); ok {
-			rows = append(rows, fmt.Sprintf("%sL Action '%s'", prefix, name))
-		} else {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Action at index "+matches[2]))
-		}
-	} else if matches := envReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
-		i, _ := strconv.Atoi(matches[1])
-		j, _ := strconv.Atoi(matches[2])
-		env, ok := extractEnv(v, i, j)
-		if !ok {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Env at index "+matches[2]))
-		}
-
-		if name, ok := env["name"].(string); ok {
-			rows = append(rows, fmt.Sprintf("%sL Env '%s'", prefix, name))
-		} else {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L Env at index "+matches[2]))
-		}
-	} else if matches := apiKeyReg.FindStringSubmatch(ve.InstanceLocation); len(matches) == 3 {
-		i, _ := strconv.Atoi(matches[1])
-		j, _ := strconv.Atoi(matches[2])
-		apiKey, ok := extractApiKey(v, i, j)
-		if !ok {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L API Key at index "+matches[2]))
-		}
-
-		if name, ok := apiKey["name"].(string); ok {
-			rows = append(rows, fmt.Sprintf("%sL API Key '%s'", prefix, name))
-		} else {
-			rows = append(rows, fmt.Sprintf("%s%s", prefix, "L API Key at index "+matches[2]))
-		}
-	} else if ve.InstanceLocation == "" {
-		rows = append(rows, fmt.Sprintf("%s%s", prefix, "Spacefile"))
-	} else {
-		rows = append(rows, fmt.Sprintf("%s%s", prefix, "L "+ve.InstanceLocation))
+		return fmt.Sprintf("L %s: %s", strings.Replace(leaf.InstanceLocation, i, name, 1), leaf.Message)
 	}
 
-	for _, c := range ve.Causes {
-		rows = append(rows, PrettyValidationErrors(c, v, prefix+"  "))
+	queue := []*jsonschema.ValidationError{ve.wrapped}
+	rootErrors := []string{}
+	for len(queue) > 0 {
+		leaf := queue[0]
+		queue = queue[1:]
+
+		if len(leaf.Causes) == 0 {
+			rootErrors = append(rootErrors, errorMsg(leaf))
+		} else {
+			queue = append(queue, leaf.Causes...)
+		}
 	}
 
-	return strings.Join(rows, "\n")
+	return fmt.Sprintf("validation failed:\n%s", strings.Join(rootErrors, "\n"))
 }
 
 func LoadSpacefile(projectDir string) (*Spacefile, error) {
@@ -264,7 +134,10 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 	if err := spacefileSchema.Validate(v); err != nil {
 		var ve *jsonschema.ValidationError
 		if errors.As(err, &ve) {
-			return nil, fmt.Errorf(PrettyValidationErrors(ve, v, ""))
+			return nil, SpacefileValidationError{
+				wrapped: ve,
+				raw:     v,
+			}
 		}
 	}
 
