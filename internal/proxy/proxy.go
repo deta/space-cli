@@ -99,8 +99,10 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"instance_alias": "dev",
 				"instance_id":    "dev",
 				"app_name":       "dev",
-				"action_name":    action.Name,
-				"action_title":   action.Title,
+				"name":           action.Name,
+				"title":          action.Title,
+				"channel":        "local",
+				"version":        "dev",
 			}
 
 			if action.Input != nil {
