@@ -36,7 +36,7 @@ The micros will be automatically discovered and proxied to.`,
 			open, _ := cmd.Flags().GetBool("open")
 
 			if !cmd.Flags().Changed("port") {
-				port, err = GetFreePort(devDefaultPort)
+				port, err = GetFreePort(shared.DevPort)
 				if err != nil {
 					shared.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
 					return err
@@ -52,7 +52,7 @@ The micros will be automatically discovered and proxied to.`,
 	}
 
 	cmd.Flags().StringP("dir", "d", ".", "directory of the project")
-	cmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	cmd.Flags().IntP("port", "p", 0, "port to run the proxy on")
 	cmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
 	cmd.Flags().Bool("open", false, "open the app in the browser")
 

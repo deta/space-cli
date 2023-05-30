@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -30,7 +29,6 @@ import (
 )
 
 const (
-	devDefaultPort  = 4200
 	actionEndpoint  = "__space/v0/actions"
 	spaceDevDocsURL = "https://deta.space/docs/en/basics/local"
 )
@@ -75,7 +73,7 @@ The cli will start one process for each of your micros, then expose a single enp
 			}
 
 			if !cmd.Flags().Changed("port") {
-				port, err = GetFreePort(devDefaultPort)
+				port, err = GetFreePort(shared.DevPort)
 				if err != nil {
 					return err
 				}
@@ -96,7 +94,7 @@ The cli will start one process for each of your micros, then expose a single enp
 
 	cmd.Flags().StringP("dir", "d", ".", "directory of the project")
 	cmd.Flags().StringP("id", "i", "", "project id")
-	cmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	cmd.Flags().IntP("port", "p", 0, "port to run the proxy on")
 	cmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
 	cmd.Flags().Bool("open", false, "open the app in the browser")
 
@@ -109,7 +107,7 @@ func GetFreePort(start int) (int, error) {
 	}
 
 	for portNumber := start; portNumber < start+100; portNumber++ {
-		if isPortActive(portNumber) {
+		if shared.IsPortActive(portNumber) {
 			continue
 		}
 
@@ -295,7 +293,7 @@ func getMicroPort(micro *types.Micro, routeDir string) (int, error) {
 		return 0, err
 	}
 
-	if !isPortActive(port) {
+	if !shared.IsPortActive(port) {
 		return 0, fmt.Errorf("port %d is not active", port)
 	}
 
@@ -310,16 +308,6 @@ func parsePort(portFile string) (int, error) {
 	}
 
 	return strconv.Atoi(string(portStr))
-}
-
-func isPortActive(port int) bool {
-	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return false
-	}
-
-	conn.Close()
-	return true
 }
 
 func MicroCommand(micro *types.Micro, directory, projectKey string, port int, ctx context.Context) (*exec.Cmd, error) {

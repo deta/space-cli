@@ -41,7 +41,7 @@ func newCmdDevUp() *cobra.Command {
 			}
 
 			if !cmd.Flags().Changed("port") {
-				port, err = GetFreePort(devDefaultPort + 1)
+				port, err = GetFreePort(shared.DevPort + 1)
 				if err != nil {
 					shared.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
 					return err
@@ -85,7 +85,7 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 		portFile := filepath.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
 		if _, err := os.Stat(portFile); err == nil {
 			microPort, _ := parsePort(portFile)
-			if isPortActive(microPort) {
+			if shared.IsPortActive(microPort) {
 				shared.Logger.Printf("%s %s is already running on port %d", emoji.X, styles.Green(microName), microPort)
 			}
 		}
