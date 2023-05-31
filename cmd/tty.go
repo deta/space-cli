@@ -8,10 +8,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/deta/space/cmd/shared"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
+
+type ActionResponse struct {
+	Actions []Action `json:"actions"`
+}
 
 type Action struct {
 	InstanceID    string      `json:"instance_id"`
@@ -35,70 +40,22 @@ var (
 	InputTypeBool   InputType = "bool"
 )
 
-func parseFlags(args []string, action Action) (map[string]any, error) {
-	flags := make(map[string]any)
-
-	for len(args) > 0 {
-		arg := args[0]
-		args = args[1:]
-		if !strings.HasPrefix(arg, "--") {
-			return nil, fmt.Errorf("invalid flag %s", arg)
-		}
-
-		flag := strings.TrimPrefix(arg, "--")
-		parts := strings.Split(flag, "=")
-		var inputType InputType
-		for _, input := range action.Input {
-			if input.Name != parts[0] {
-				continue
-			}
-
-			inputType = input.Type
-		}
-
-		switch inputType {
-		case InputTypeString:
-			if len(parts) == 2 {
-				flags[parts[0]] = parts[1]
-			} else {
-				if len(args) == 0 {
-					return nil, fmt.Errorf("invalid flag %s", arg)
-				}
-
-				value := args[0]
-				args = args[1:]
-				if strings.HasPrefix(value, "--") {
-					return nil, fmt.Errorf("invalid flag %s", arg)
-				}
-
-				flags[parts[0]] = args[0]
-			}
-		case InputTypeBool:
-			flags[flag] = true
-		default:
-			return nil, fmt.Errorf("invalid flag %s", arg)
-		}
-
-	}
-	return flags, nil
-}
-
 func newCmdTTY() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                "tty {<instance-id> | <instance-alias>} <action-id>",
-		Short:              "Trigger a app action. Input is read from stdin.",
-		Args:               cobra.MinimumNArgs(2),
-		DisableFlagParsing: true,
+		Use:   "tty {<instance-id> | <instance-alias>} <action-id>",
+		Short: "Trigger a app action. Input is read from stdin.",
+		Args:  cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := shared.Client.Get("/v0/actions")
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
 
-			var actions []Action
-			if err = json.Unmarshal(body, &actions); err != nil {
+			var actionResponse ActionResponse
+			if err = json.Unmarshal(body, &actionResponse); err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
+			actions := actionResponse.Actions
 
 			if shared.IsPortActive(shared.DevPort) {
 				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions", shared.DevPort))
@@ -112,12 +69,14 @@ func newCmdTTY() *cobra.Command {
 					return nil, cobra.ShellCompDirectiveError
 				}
 
-				actions = append(actions, devActions...)
+				actionResponse.Actions = append(actionResponse.Actions, devActions...)
 			}
 
 			instance2actions := make(map[string][]Action)
 			for _, action := range actions {
-				instance2actions[action.InstanceAlias] = append(instance2actions[action.InstanceAlias], action)
+				parts := strings.Split(action.InstanceAlias, "-")
+				shortAlias := strings.Join(parts[:len(parts)-1], "-")
+				instance2actions[shortAlias] = append(instance2actions[shortAlias], action)
 			}
 
 			if len(args) == 0 {
@@ -130,7 +89,7 @@ func newCmdTTY() *cobra.Command {
 				}
 
 				return args, cobra.ShellCompDirectiveNoFileComp
-			} else if len(args) == 1 {
+			} else if len(args) == 1 || len(args) == 2 {
 				instanceAlias := args[0]
 				actions, ok := instance2actions[instanceAlias]
 				if !ok {
@@ -139,52 +98,38 @@ func newCmdTTY() *cobra.Command {
 
 				args := make([]string, 0)
 				for _, action := range actions {
-					if strings.HasPrefix(action.Title, toComplete) {
+					if strings.HasPrefix(action.Name, toComplete) {
 						args = append(args, fmt.Sprintf("%s\t%s", action.Name, action.Title))
 					}
 				}
 
 				return args, cobra.ShellCompDirectiveNoFileComp
 			} else {
-				instanceAlias := args[0]
-				actions, ok := instance2actions[instanceAlias]
-				if !ok {
-					return nil, cobra.ShellCompDirectiveError
-				}
-
-				var action *Action
-				for _, a := range actions {
-					if a.Name == args[1] {
-						action = &a
-						break
-					}
-				}
-
-				if action == nil {
-					return nil, cobra.ShellCompDirectiveError
-				}
-
-				args := make([]string, 0)
-				for _, input := range action.Input {
-					if strings.HasPrefix("--"+input.Name, toComplete) {
-						args = append(args, fmt.Sprintf("--%s\t%s", input.Name, input.Name))
-					}
-				}
-
-				return args, cobra.ShellCompDirectiveNoFileComp
+				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var input map[string]any
+			var stdinParams map[string]any
 			if !isatty.IsTerminal(os.Stdin.Fd()) {
 				bs, err := io.ReadAll(os.Stdin)
 				if err != nil {
 					return err
 				}
 
-				if err := json.Unmarshal(bs, &input); err != nil {
+				if err := json.Unmarshal(bs, &stdinParams); err != nil {
 					return err
 				}
+			}
+
+			inputParams := make(map[string]any)
+			inputFlag, _ := cmd.Flags().GetStringArray("input")
+			for _, input := range inputFlag {
+				parts := strings.Split(input, "=")
+				if len(parts) != 2 {
+					return fmt.Errorf("invalid input flag: %s", input)
+				}
+
+				inputParams[parts[0]] = parts[1]
 			}
 
 			body, err := shared.Client.Get("/v0/actions")
@@ -192,10 +137,11 @@ func newCmdTTY() *cobra.Command {
 				return err
 			}
 
-			var actions []Action
-			if err = json.Unmarshal(body, &actions); err != nil {
+			var actionResponse ActionResponse
+			if err = json.Unmarshal(body, &actionResponse); err != nil {
 				return err
 			}
+			actions := actionResponse.Actions
 
 			if shared.IsPortActive(shared.DevPort) {
 				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions", shared.DevPort))
@@ -213,44 +159,66 @@ func newCmdTTY() *cobra.Command {
 			}
 
 			for _, action := range actions {
-				if action.InstanceAlias != args[0] && action.InstanceID != args[0] {
+				parts := strings.Split(action.InstanceAlias, "-")
+				if strings.Join(parts[:len(parts)-1], "-") != args[0] {
 					continue
 				}
 
-				if action.Title != args[1] {
+				if action.Name != args[1] {
 					continue
 				}
 
-				flags, err := parseFlags(args[2:], action)
+				payload := make(map[string]any)
+				for _, input := range action.Input {
+					if param, ok := inputParams[input.Name]; ok {
+						payload[input.Name] = param
+						continue
+					}
+
+					if param, ok := stdinParams[input.Name]; ok {
+						payload[input.Name] = param
+						continue
+					}
+
+					if input.Optional {
+						continue
+					}
+
+					var res string
+					if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("%s:", input.Name)}, &res, nil); err != nil {
+						return err
+					}
+
+					payload[input.Name] = res
+				}
+
+				body, err := json.Marshal(payload)
 				if err != nil {
 					return err
 				}
 
-				for k, v := range flags {
-					input[k] = v
+				path := fmt.Sprintf("/v0/actions/%s/%s", action.InstanceID, action.Name)
+				if action.InstanceID == "dev" {
+					path = fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, action.Title)
 				}
 
-				path := fmt.Sprintf("/v0/actions/%s/%s/invoke", action.InstanceID, action.Title)
-				payload, err := json.Marshal(input)
+				res, err := shared.Client.Post(path, body)
 				if err != nil {
 					return err
 				}
 
-				body, err := shared.Client.Post(path, payload)
-				if err != nil {
-					return err
-				}
-
-				if _, err := os.Stdout.Write(body); err != nil {
+				if _, err := os.Stdout.Write(res); err != nil {
 					return err
 				}
 
 				return nil
 			}
 
-			return nil
+			return fmt.Errorf("action %s not found", args[1])
 		},
 	}
+
+	cmd.Flags().StringArrayP("input", "i", nil, "Input parameters")
 
 	return cmd
 }
