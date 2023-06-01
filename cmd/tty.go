@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -74,9 +75,7 @@ func newCmdTTY() *cobra.Command {
 
 			instance2actions := make(map[string][]Action)
 			for _, action := range actions {
-				parts := strings.Split(action.InstanceAlias, "-")
-				shortAlias := strings.Join(parts[:len(parts)-1], "-")
-				instance2actions[shortAlias] = append(instance2actions[shortAlias], action)
+				instance2actions[action.InstanceAlias] = append(instance2actions[action.InstanceAlias], action)
 			}
 
 			if len(args) == 0 {
@@ -159,8 +158,7 @@ func newCmdTTY() *cobra.Command {
 			}
 
 			for _, action := range actions {
-				parts := strings.Split(action.InstanceAlias, "-")
-				if strings.Join(parts[:len(parts)-1], "-") != args[0] {
+				if action.InstanceAlias != args[0] {
 					continue
 				}
 
@@ -184,12 +182,40 @@ func newCmdTTY() *cobra.Command {
 						continue
 					}
 
-					var res string
-					if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("%s:", input.Name)}, &res, nil); err != nil {
-						return err
-					}
+					switch input.Type {
+					case "string":
+						var res string
+						if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("%s:", input.Name)}, &res, nil); err != nil {
+							return err
+						}
 
-					payload[input.Name] = res
+						payload[input.Name] = res
+					case "number":
+						var res int
+						if err := survey.AskOne(
+							&survey.Input{Message: fmt.Sprintf("%s:", input.Name)},
+							&res,
+							survey.WithValidator(func(ans interface{}) error {
+								if _, err := strconv.Atoi(ans.(string)); err != nil {
+									return fmt.Errorf("invalid number")
+								}
+								return nil
+							},
+							)); err != nil {
+							return err
+						}
+
+						payload[input.Name] = res
+					case "boolean":
+						var res bool
+						if err := survey.AskOne(&survey.Confirm{Message: fmt.Sprintf("%s:", input.Name)}, &res); err != nil {
+							return err
+						}
+
+						payload[input.Name] = res
+					default:
+						return fmt.Errorf("unknown input type: %s", input.Type)
+					}
 				}
 
 				body, err := json.Marshal(payload)
