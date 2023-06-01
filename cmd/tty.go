@@ -43,7 +43,7 @@ var (
 
 func newCmdTTY() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tty <instance-id> <action-name>",
+		Use:   "tty <instance-alias> <action-name>",
 		Short: "Trigger a app action",
 		Long:  `Trigger a app action.If the action requires input, it will be prompted for. You can also pipe the input to the command, or pass it as a flag.`,
 		Args:  cobra.ExactArgs(2),
@@ -76,7 +76,7 @@ func newCmdTTY() *cobra.Command {
 
 			instance2actions := make(map[string][]Action)
 			for _, action := range actions {
-				instance2actions[action.InstanceID] = append(instance2actions[action.InstanceID], action)
+				instance2actions[action.InstanceAlias] = append(instance2actions[action.InstanceAlias], action)
 			}
 
 			if len(args) == 0 {
@@ -124,13 +124,26 @@ func newCmdTTY() *cobra.Command {
 					return err
 				}
 			} else {
-				body, err := shared.Client.Get(fmt.Sprintf("/v0/actions/%s/%s", args[0], args[1]))
+				body, err := shared.Client.Get(fmt.Sprintf("/v0/actions?instance_alias=%s", args[0]))
 				if err != nil {
 					return err
 				}
 
-				if err = json.Unmarshal(body, &action); err != nil {
+				var actionResponse ActionResponse
+				if err = json.Unmarshal(body, &actionResponse); err != nil {
 					return err
+				}
+
+				actions := actionResponse.Actions
+				for _, a := range actions {
+					if a.Name == args[1] {
+						action = a
+						break
+					}
+				}
+
+				if action.Name == "" {
+					return fmt.Errorf("action %s not found", args[1])
 				}
 			}
 
