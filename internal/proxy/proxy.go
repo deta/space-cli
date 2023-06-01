@@ -34,16 +34,15 @@ type Action struct {
 type ReverseProxy struct {
 	prefixToProxy map[string]*httputil.ReverseProxy
 	actionToProxy map[string]*httputil.ReverseProxy
-	actions       []Action
+	actionMap     map[string]map[string]any
 }
 
 func NewReverseProxy() *ReverseProxy {
-	prefixToProxy := make(map[string]*httputil.ReverseProxy)
-	actionToProxy := make(map[string]*httputil.ReverseProxy)
 
 	return &ReverseProxy{
-		prefixToProxy: prefixToProxy,
-		actionToProxy: actionToProxy,
+		prefixToProxy: make(map[string]*httputil.ReverseProxy),
+		actionToProxy: make(map[string]*httputil.ReverseProxy),
+		actionMap:     make(map[string]map[string]any),
 	}
 }
 
@@ -77,7 +76,19 @@ func (p *ReverseProxy) AddMicro(micro *shared.Micro, port int) (int, error) {
 			Path:   action.Path,
 		})
 
-		p.actions = append(p.actions, action)
+		p.actionMap[action.Name] = map[string]any{
+			"instance_alias": "dev",
+			"instance_id":    "dev",
+			"app_name":       "dev",
+			"name":           action.Name,
+			"title":          action.Title,
+			"channel":        "local",
+			"version":        "dev",
+		}
+
+		if action.Input != nil {
+			p.actionMap[action.Name]["input"] = action.Input
+		}
 	}
 	return len(actionMeta.Actions), nil
 }
@@ -93,21 +104,9 @@ func extractPrefix(path string) string {
 
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == actionEndpoint {
-		var actions = make([]map[string]any, len(p.actions))
-		for i, action := range p.actions {
-			actions[i] = map[string]any{
-				"instance_alias": "dev",
-				"instance_id":    "dev",
-				"app_name":       "dev",
-				"name":           action.Name,
-				"title":          action.Title,
-				"channel":        "local",
-				"version":        "dev",
-			}
-
-			if action.Input != nil {
-				actions[i]["input"] = action.Input
-			}
+		var actions = make([]map[string]any, 0, len(p.actionMap))
+		for _, action := range p.actionMap {
+			actions = append(actions, action)
 		}
 
 		encoder := json.NewEncoder(w)
@@ -119,12 +118,29 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(r.URL.Path, actionEndpoint) {
 		actionName := strings.TrimPrefix(r.URL.Path, actionEndpoint+"/")
-		if proxy, ok := p.actionToProxy[actionName]; ok {
-			r.URL.Path = ""
-			proxy.ServeHTTP(w, r)
+		proxy, ok := p.actionToProxy[actionName]
+		if !ok {
+			http.NotFound(w, r)
 			return
 		}
-		http.NotFound(w, r)
+		switch r.Method {
+		case http.MethodGet:
+			action, ok := p.actionMap[actionName]
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+
+			encoder := json.NewEncoder(w)
+			if err := encoder.Encode(action); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		case http.MethodPost:
+			r.URL.Path = ""
+			proxy.ServeHTTP(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 		return
 	}
 

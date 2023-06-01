@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -114,7 +115,7 @@ func newCmdTTY() *cobra.Command {
 				if !shared.IsPortActive(shared.DevPort) {
 					return fmt.Errorf("dev server is not running")
 				}
-				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions", shared.DevPort))
+				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, args[1]))
 				if err != nil {
 					return err
 				}
@@ -227,19 +228,30 @@ func newCmdTTY() *cobra.Command {
 				return err
 			}
 
-			path := fmt.Sprintf("/v0/actions/%s/%s", action.InstanceID, action.Name)
 			if action.InstanceID == "dev" {
-				path = fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, action.Title)
+				path := fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, action.Name)
+				res, err := http.Post(path, "application/json", bytes.NewReader(body))
+				if err != nil {
+					return err
+				}
+				defer res.Body.Close()
+
+				bs, err := io.ReadAll(res.Body)
+				if err != nil {
+					return err
+				}
+
+				os.Stdout.Write(bs)
+				return nil
 			}
 
+			path := fmt.Sprintf("/v0/actions/%s/%s", action.InstanceID, action.Name)
 			res, err := shared.Client.Post(path, body)
 			if err != nil {
 				return err
 			}
 
-			if _, err := os.Stdout.Write(res); err != nil {
-				return err
-			}
+			os.Stdout.Write(res)
 
 			return nil
 		},
