@@ -43,8 +43,9 @@ var (
 
 func newCmdTTY() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tty {<instance-id> | <instance-alias>} <action-id>",
-		Short: "Trigger a app action. Input is read from stdin.",
+		Use:   "tty <instance-id> <action-name>",
+		Short: "Trigger a app action",
+		Long:  `Trigger a app action.If the action requires input, it will be prompted for. You can also pipe the input to the command, or pass it as a flag.`,
 		Args:  cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := shared.Client.Get("/v0/actions")
@@ -70,12 +71,12 @@ func newCmdTTY() *cobra.Command {
 					return nil, cobra.ShellCompDirectiveError
 				}
 
-				actionResponse.Actions = append(actionResponse.Actions, devActions...)
+				actions = append(actions, devActions...)
 			}
 
 			instance2actions := make(map[string][]Action)
 			for _, action := range actions {
-				instance2actions[action.InstanceAlias] = append(instance2actions[action.InstanceAlias], action)
+				instance2actions[action.InstanceID] = append(instance2actions[action.InstanceID], action)
 			}
 
 			if len(args) == 0 {
@@ -108,6 +109,31 @@ func newCmdTTY() *cobra.Command {
 			}
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var action Action
+			if args[0] == "dev" {
+				if !shared.IsPortActive(shared.DevPort) {
+					return fmt.Errorf("dev server is not running")
+				}
+				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions", shared.DevPort))
+				if err != nil {
+					return err
+				}
+				defer res.Body.Close()
+
+				if err = json.NewDecoder(res.Body).Decode(&action); err != nil {
+					return err
+				}
+			} else {
+				body, err := shared.Client.Get(fmt.Sprintf("/v0/actions/%s/%s", args[0], args[1]))
+				if err != nil {
+					return err
+				}
+
+				if err = json.Unmarshal(body, &action); err != nil {
+					return err
+				}
+			}
+
 			var stdinParams map[string]any
 			if !isatty.IsTerminal(os.Stdin.Fd()) {
 				bs, err := io.ReadAll(os.Stdin)
@@ -131,116 +157,78 @@ func newCmdTTY() *cobra.Command {
 				inputParams[parts[0]] = parts[1]
 			}
 
-			body, err := shared.Client.Get("/v0/actions")
+			payload := make(map[string]any)
+			for _, input := range action.Input {
+				if param, ok := inputParams[input.Name]; ok {
+					payload[input.Name] = param
+					continue
+				}
+
+				if param, ok := stdinParams[input.Name]; ok {
+					payload[input.Name] = param
+					continue
+				}
+
+				if input.Optional {
+					continue
+				}
+
+				switch input.Type {
+				case "string":
+					var res string
+					if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("%s:", input.Name)}, &res, nil); err != nil {
+						return err
+					}
+
+					payload[input.Name] = res
+				case "number":
+					var res int
+					if err := survey.AskOne(
+						&survey.Input{Message: fmt.Sprintf("%s:", input.Name)},
+						&res,
+						survey.WithValidator(func(ans interface{}) error {
+							if _, err := strconv.Atoi(ans.(string)); err != nil {
+								return fmt.Errorf("invalid number")
+							}
+							return nil
+						},
+						)); err != nil {
+						return err
+					}
+
+					payload[input.Name] = res
+				case "boolean":
+					var res bool
+					if err := survey.AskOne(&survey.Confirm{Message: fmt.Sprintf("%s:", input.Name)}, &res); err != nil {
+						return err
+					}
+
+					payload[input.Name] = res
+				default:
+					return fmt.Errorf("unknown input type: %s", input.Type)
+				}
+			}
+
+			body, err := json.Marshal(payload)
 			if err != nil {
 				return err
 			}
 
-			var actionResponse ActionResponse
-			if err = json.Unmarshal(body, &actionResponse); err != nil {
+			path := fmt.Sprintf("/v0/actions/%s/%s", action.InstanceID, action.Name)
+			if action.InstanceID == "dev" {
+				path = fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, action.Title)
+			}
+
+			res, err := shared.Client.Post(path, body)
+			if err != nil {
 				return err
 			}
-			actions := actionResponse.Actions
 
-			if shared.IsPortActive(shared.DevPort) {
-				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions", shared.DevPort))
-				if err != nil {
-					return err
-				}
-				defer res.Body.Close()
-
-				var devActions []Action
-				if err = json.NewDecoder(res.Body).Decode(&devActions); err != nil {
-					return err
-				}
-
-				actions = append(actions, devActions...)
+			if _, err := os.Stdout.Write(res); err != nil {
+				return err
 			}
 
-			for _, action := range actions {
-				if action.InstanceAlias != args[0] {
-					continue
-				}
-
-				if action.Name != args[1] {
-					continue
-				}
-
-				payload := make(map[string]any)
-				for _, input := range action.Input {
-					if param, ok := inputParams[input.Name]; ok {
-						payload[input.Name] = param
-						continue
-					}
-
-					if param, ok := stdinParams[input.Name]; ok {
-						payload[input.Name] = param
-						continue
-					}
-
-					if input.Optional {
-						continue
-					}
-
-					switch input.Type {
-					case "string":
-						var res string
-						if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("%s:", input.Name)}, &res, nil); err != nil {
-							return err
-						}
-
-						payload[input.Name] = res
-					case "number":
-						var res int
-						if err := survey.AskOne(
-							&survey.Input{Message: fmt.Sprintf("%s:", input.Name)},
-							&res,
-							survey.WithValidator(func(ans interface{}) error {
-								if _, err := strconv.Atoi(ans.(string)); err != nil {
-									return fmt.Errorf("invalid number")
-								}
-								return nil
-							},
-							)); err != nil {
-							return err
-						}
-
-						payload[input.Name] = res
-					case "boolean":
-						var res bool
-						if err := survey.AskOne(&survey.Confirm{Message: fmt.Sprintf("%s:", input.Name)}, &res); err != nil {
-							return err
-						}
-
-						payload[input.Name] = res
-					default:
-						return fmt.Errorf("unknown input type: %s", input.Type)
-					}
-				}
-
-				body, err := json.Marshal(payload)
-				if err != nil {
-					return err
-				}
-
-				path := fmt.Sprintf("/v0/actions/%s/%s", action.InstanceID, action.Name)
-				if action.InstanceID == "dev" {
-					path = fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, action.Title)
-				}
-
-				res, err := shared.Client.Post(path, body)
-				if err != nil {
-					return err
-				}
-
-				if _, err := os.Stdout.Write(res); err != nil {
-					return err
-				}
-
-				return nil
-			}
-
-			return fmt.Errorf("action %s not found", args[1])
+			return nil
 		},
 	}
 
