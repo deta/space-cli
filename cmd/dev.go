@@ -199,7 +199,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		}(command)
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
 	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
 	if err != nil {
 		return err
