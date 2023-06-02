@@ -124,7 +124,7 @@ Make sure that the corresponding micro is running before triggering the action.`
 	}
 
 	cmd.Flags().StringArrayP("input", "i", []string{}, "action input")
-	cmd.Flags().Bool("experimental", false, "enable experimental features")
+	cmd.Flags().BoolP("experimental", "x", false, "enable experimental features")
 	cmd.Flags().String("id", "", "project id")
 
 	return cmd
