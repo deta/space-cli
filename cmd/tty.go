@@ -136,13 +136,18 @@ func newCmdTTY() *cobra.Command {
 
 				alias2actions := make(map[string][]Action)
 				for _, action := range actionResponse.Actions {
+					if len(args) > 0 && !strings.HasPrefix(action.InstanceAlias, args[0]) {
+						continue
+					}
 					alias2actions[action.InstanceAlias] = append(alias2actions[action.InstanceAlias], action)
 				}
 
 				if len(alias2actions) == 0 {
 					return fmt.Errorf("no instances found")
 				} else if len(alias2actions) == 1 && len(args) > 0 {
-					actions = alias2actions[actionResponse.Actions[0].InstanceAlias]
+					for _, items := range alias2actions {
+						actions = append(actions, items...)
+					}
 				} else {
 					instanceAliases := make([]string, 0)
 					for alias := range alias2actions {
