@@ -1,10 +1,10 @@
-package dev
+package cmd
 
 import (
 	"fmt"
 	"net/http"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ func newCmdServe() *cobra.Command {
 			port, _ := cmd.Flags().GetInt("port")
 
 			address := fmt.Sprintf("%s:%d", host, port)
-			shared.Logger.Printf("Serving %s on %s", args[0], address)
+			utils.Logger.Printf("Serving %s on %s", args[0], address)
 			http.ListenAndServe(address, nil)
 		},
 	}

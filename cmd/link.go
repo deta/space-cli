@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/internal/runtime"
@@ -18,14 +18,14 @@ func newCmdLink() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "link [flags]",
 		Short:    "Link a local directory with an existing project",
-		PostRunE: shared.CheckLatestVersion,
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")
 
 			if !cmd.Flags().Changed("id") {
-				shared.Logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
+				utils.Logger.Printf("Grab the %s of the project you want to link to using Teletype.\n\n", styles.Code("Project ID"))
 
 				if projectID, err = selectLinkProjectID(); err != nil {
 					return err
@@ -38,9 +38,9 @@ func newCmdLink() *cobra.Command {
 
 			return nil
 		},
-		PreRunE: shared.CheckAll(
-			shared.CheckExists("dir"),
-			shared.CheckNotEmpty("id"),
+		PreRunE: utils.CheckAll(
+			utils.CheckExists("dir"),
+			utils.CheckNotEmpty("id"),
 		),
 	}
 
@@ -67,32 +67,32 @@ func selectLinkProjectID() (string, error) {
 
 func link(projectDir string, projectID string) error {
 	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
-		shared.Logger.Println("failed to add .space to .gitignore, %w", err)
+		utils.Logger.Println("failed to add .space to .gitignore, %w", err)
 		return err
 	}
 
-	projectRes, err := shared.Client.GetProject(&api.GetProjectRequest{ID: projectID})
+	projectRes, err := utils.Client.GetProject(&api.GetProjectRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			shared.Logger.Println(shared.LoginInfo())
+			utils.Logger.Println(utils.LoginInfo())
 			return err
 		}
 		if errors.Is(err, api.ErrProjectNotFound) {
-			shared.Logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
+			utils.Logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
 			return err
 		}
 
-		shared.Logger.Println(styles.Errorf("%s Failed to link project, %s", emoji.ErrorExclamation, err.Error()))
+		utils.Logger.Println(styles.Errorf("%s Failed to link project, %s", emoji.ErrorExclamation, err.Error()))
 		return err
 	}
 
 	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: projectRes.ID, Name: projectRes.Name, Alias: projectRes.Alias})
 	if err != nil {
-		shared.Logger.Printf("failed to link project: %s", err)
+		utils.Logger.Printf("failed to link project: %s", err)
 		return err
 	}
 
-	shared.Logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))
-	shared.Logger.Println(shared.ProjectNotes(projectRes.Name, projectRes.ID))
+	utils.Logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))
+	utils.Logger.Println(utils.ProjectNotes(projectRes.Name, projectRes.ID))
 	return nil
 }

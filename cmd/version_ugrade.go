@@ -1,4 +1,4 @@
-package version
+package cmd
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	detaruntime "github.com/deta/space/internal/runtime"
 	"github.com/deta/space/pkg/components/emoji"
@@ -24,14 +24,14 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 			if !cmd.Flags().Changed("version") {
 				latestVersion, err := api.GetLatestCliVersion()
 				if err != nil {
-					shared.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
+					utils.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
 					return err
 				}
 				targetVersion = latestVersion
 			}
 
 			if currentVersion == targetVersion {
-				shared.Logger.Println(styles.Boldf("Space CLI version already %s, no upgrade required", styles.Code(targetVersion)))
+				utils.Logger.Println(styles.Boldf("Space CLI version already %s, no upgrade required", styles.Code(targetVersion)))
 				return nil
 			}
 
@@ -39,17 +39,17 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 			case "linux", "darwin":
 				err := upgradeUnix(targetVersion)
 				if err != nil {
-					shared.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
+					utils.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
 					return err
 				}
 			case "windows":
 				err := upgradeWin(targetVersion)
 				if err != nil {
-					shared.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
+					utils.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
 					return err
 				}
 			default:
-				shared.Logger.Println(styles.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS))
+				utils.Logger.Println(styles.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS))
 				return fmt.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS)
 			}
 
@@ -68,7 +68,7 @@ func upgradeUnix(version string) error {
 	msg := "Upgrading Space CLI"
 	curlOutput, err := curlCmd.CombinedOutput()
 	if err != nil {
-		shared.Logger.Println(string(curlOutput))
+		utils.Logger.Println(string(curlOutput))
 		return err
 	}
 
@@ -81,10 +81,10 @@ func upgradeUnix(version string) error {
 		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))
 		shCmd = exec.Command("sh", "-c", co, "upgrade", version)
 	}
-	shared.Logger.Printf("%s...\n", msg)
+	utils.Logger.Printf("%s...\n", msg)
 
 	shOutput, err := shCmd.CombinedOutput()
-	shared.Logger.Println(string(shOutput))
+	utils.Logger.Println(string(shOutput))
 	if err != nil {
 		return err
 	}

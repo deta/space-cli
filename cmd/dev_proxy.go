@@ -1,4 +1,4 @@
-package dev
+package cmd
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/spacefile"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
@@ -25,8 +25,8 @@ func newCmdDevProxy() *cobra.Command {
 		Long: `Start a reverse proxy for your micros
 
 The micros will be automatically discovered and proxied to.`,
-		PreRunE:  shared.CheckProjectInitialized("dir"),
-		PostRunE: shared.CheckLatestVersion,
+		PreRunE:  utils.CheckProjectInitialized("dir"),
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
@@ -36,9 +36,9 @@ The micros will be automatically discovered and proxied to.`,
 			open, _ := cmd.Flags().GetBool("open")
 
 			if !cmd.Flags().Changed("port") {
-				port, err = GetFreePort(shared.DevPort)
+				port, err = GetFreePort(utils.DevPort)
 				if err != nil {
-					shared.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
+					utils.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
 					return err
 				}
 			}
@@ -67,8 +67,8 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 	spacefile, _ := spacefile.LoadSpacefile(projectDir)
 
 	if entries, err := os.ReadDir(microDir); err != nil || len(entries) == 0 {
-		shared.Logger.Printf("%s No running micros detected.", emoji.X)
-		shared.Logger.Printf("L Use %s to manually start a micro", styles.Blue("space dev up <micro>"))
+		utils.Logger.Printf("%s No running micros detected.", emoji.X)
+		utils.Logger.Printf("L Use %s to manually start a micro", styles.Blue("space dev up <micro>"))
 		return err
 	}
 
@@ -85,7 +85,7 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		shared.Logger.Printf("%s proxy listening on http://%s", emoji.Laptop, addr)
+		utils.Logger.Printf("%s proxy listening on http://%s", emoji.Laptop, addr)
 		server.ListenAndServe()
 	}()
 
@@ -93,7 +93,7 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		shared.Logger.Printf("\n\nShutting down...\n\n")
+		utils.Logger.Printf("\n\nShutting down...\n\n")
 		server.Shutdown(context.Background())
 	}()
 
