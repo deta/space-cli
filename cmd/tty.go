@@ -124,7 +124,7 @@ func newCmdTTY() *cobra.Command {
 					return err
 				}
 			} else {
-				res, err := shared.Client.Get("/v0/actions")
+				res, err := shared.Client.Get("/v0/actions?per_page=1000")
 				if err != nil {
 					return err
 				}
@@ -141,7 +141,7 @@ func newCmdTTY() *cobra.Command {
 
 				if len(alias2actions) == 0 {
 					return fmt.Errorf("no instances found")
-				} else if len(alias2actions) == 1 {
+				} else if len(alias2actions) == 1 && len(args) > 0 {
 					actions = alias2actions[actionResponse.Actions[0].InstanceAlias]
 				} else {
 					instanceAliases := make([]string, 0)
@@ -251,7 +251,7 @@ func newCmdTTY() *cobra.Command {
 				case "number":
 					var res int
 					if err := survey.AskOne(
-						&survey.Input{Message: fmt.Sprintf("%s:", input.Name)},
+						&survey.Input{Message: fmt.Sprintf("Input %s:", input.Name)},
 						&res,
 						survey.WithValidator(func(ans interface{}) error {
 							if _, err := strconv.Atoi(ans.(string)); err != nil {
@@ -266,7 +266,7 @@ func newCmdTTY() *cobra.Command {
 					payload[input.Name] = res
 				case "boolean":
 					var res bool
-					if err := survey.AskOne(&survey.Confirm{Message: fmt.Sprintf("%s:", input.Name)}, &res); err != nil {
+					if err := survey.AskOne(&survey.Confirm{Message: fmt.Sprintf("Input %s:", input.Name)}, &res); err != nil {
 						return err
 					}
 
