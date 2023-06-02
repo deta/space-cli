@@ -153,6 +153,10 @@ func newCmdTTY() *cobra.Command {
 					survey.AskOne(&survey.Select{
 						Message: "Select an instance:",
 						Options: instanceAliases,
+						Description: func(value string, index int) string {
+							actions := alias2actions[value]
+							return actions[0].AppName
+						},
 					}, &response)
 
 					actions = alias2actions[response]
@@ -183,6 +187,9 @@ func newCmdTTY() *cobra.Command {
 					&survey.Select{
 						Message: "Select an action:",
 						Options: options,
+						Description: func(value string, index int) string {
+							return actions[index].Title
+						},
 					},
 					&response,
 				); err != nil {
