@@ -47,7 +47,6 @@ func newCmdTTY() *cobra.Command {
 		Use:   "tty <instance-alias> <action-name>",
 		Short: "Trigger a app action",
 		Long:  `Trigger a app action.If the action requires input, it will be prompted for. You can also pipe the input to the command, or pass it as a flag.`,
-		Args:  cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := shared.Client.Get("/v0/actions")
 			if err != nil {
@@ -110,41 +109,95 @@ func newCmdTTY() *cobra.Command {
 			}
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var action Action
-			if args[0] == "dev" {
+			var actions []Action
+			if len(args) > 0 && args[0] == "dev" {
 				if !shared.IsPortActive(shared.DevPort) {
 					return fmt.Errorf("dev server is not running")
 				}
-				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions/%s", shared.DevPort, args[1]))
+				res, err := http.Get(fmt.Sprintf("http://localhost:%d/__space/actions", shared.DevPort))
 				if err != nil {
 					return err
 				}
 				defer res.Body.Close()
 
-				if err = json.NewDecoder(res.Body).Decode(&action); err != nil {
+				if err = json.NewDecoder(res.Body).Decode(&actions); err != nil {
 					return err
 				}
 			} else {
-				body, err := shared.Client.Get(fmt.Sprintf("/v0/actions?instance_alias=%s", args[0]))
+				res, err := shared.Client.Get("/v0/actions")
 				if err != nil {
 					return err
 				}
 
 				var actionResponse ActionResponse
-				if err = json.Unmarshal(body, &actionResponse); err != nil {
+				if err = json.Unmarshal(res, &actionResponse); err != nil {
 					return err
 				}
 
-				actions := actionResponse.Actions
+				alias2actions := make(map[string][]Action)
+				for _, action := range actionResponse.Actions {
+					alias2actions[action.InstanceAlias] = append(alias2actions[action.InstanceAlias], action)
+				}
+
+				if len(alias2actions) == 0 {
+					return fmt.Errorf("no instances found")
+				} else if len(alias2actions) == 1 {
+					actions = alias2actions[actionResponse.Actions[0].InstanceAlias]
+				} else {
+					instanceAliases := make([]string, 0)
+					for alias := range alias2actions {
+						instanceAliases = append(instanceAliases, alias)
+					}
+
+					var response string
+					survey.AskOne(&survey.Select{
+						Message: "Select an instance:",
+						Options: instanceAliases,
+					}, &response)
+
+					actions = alias2actions[response]
+				}
+
+			}
+
+			var action *Action
+			if len(args) > 1 {
 				for _, a := range actions {
 					if a.Name == args[1] {
-						action = a
+						action = &a
 						break
 					}
 				}
 
-				if action.Name == "" {
+				if action == nil {
 					return fmt.Errorf("action %s not found", args[1])
+				}
+			} else {
+				options := make([]string, 0)
+				for _, a := range actions {
+					options = append(options, a.Name)
+				}
+
+				var response string
+				if err := survey.AskOne(
+					&survey.Select{
+						Message: "Select an action:",
+						Options: options,
+					},
+					&response,
+				); err != nil {
+					return err
+				}
+
+				for _, a := range actions {
+					if a.Name == response {
+						action = &a
+						break
+					}
+				}
+
+				if action == nil {
+					return fmt.Errorf("action %s not found", response)
 				}
 			}
 
@@ -190,7 +243,7 @@ func newCmdTTY() *cobra.Command {
 				switch input.Type {
 				case "string":
 					var res string
-					if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("%s:", input.Name)}, &res, nil); err != nil {
+					if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("Input %s:", input.Name)}, &res, nil); err != nil {
 						return err
 					}
 
