@@ -37,7 +37,7 @@ Make sure that the corresponding micro is running before triggering the action.`
 					return errors.New("action name is required")
 				}
 
-				if err := triggerScheduleAction(projectDir, args[0]); err != nil {
+				if err := triggerScheduledAction(projectDir, args[0]); err != nil {
 					return err
 				}
 
@@ -78,13 +78,14 @@ Make sure that the corresponding micro is running before triggering the action.`
 				}
 
 				var response string
-				if err := survey.AskOne(&survey.Select{
+				prompt := &survey.Select{
 					Message: "Select an action to trigger",
 					Options: options,
 					Description: func(value string, index int) string {
 						return actions[index].Title
 					},
-				}, &response); err != nil {
+				}
+				if err := survey.AskOne(prompt, &response); err != nil {
 					return err
 				}
 
@@ -116,7 +117,6 @@ Make sure that the corresponding micro is running before triggering the action.`
 			}
 			defer actionResponse.Body.Close()
 
-			utils.Logger.Println("\n┌ Action Response:")
 			io.Copy(os.Stdout, actionResponse.Body)
 
 			return nil
@@ -130,7 +130,7 @@ Make sure that the corresponding micro is running before triggering the action.`
 	return cmd
 }
 
-func triggerScheduleAction(projectDir string, actionID string) (err error) {
+func triggerScheduledAction(projectDir string, actionID string) (err error) {
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
 		utils.Logger.Printf("%s failed to parse Spacefile: %s", emoji.X, err.Error())

@@ -251,30 +251,30 @@ func extractInput(cmd *cobra.Command, action Action) (map[string]any, error) {
 		switch input.Type {
 		case "string":
 			var res string
-			if err := survey.AskOne(&survey.Input{Message: fmt.Sprintf("Input %s:", input.Name)}, &res, nil); err != nil {
+			prompt := &survey.Input{Message: fmt.Sprintf("Input %s:", input.Name)}
+			if err := survey.AskOne(prompt, &res, nil); err != nil {
 				return nil, err
 			}
 
 			payload[input.Name] = res
 		case "number":
 			var res int
-			if err := survey.AskOne(
-				&survey.Input{Message: fmt.Sprintf("Input %s:", input.Name)},
-				&res,
-				survey.WithValidator(func(ans interface{}) error {
-					if _, err := strconv.Atoi(ans.(string)); err != nil {
-						return fmt.Errorf("invalid number")
-					}
-					return nil
-				},
-				)); err != nil {
+			prompt := &survey.Input{Message: fmt.Sprintf("Input %s:", input.Name)}
+			validator := func(ans interface{}) error {
+				if _, err := strconv.Atoi(ans.(string)); err != nil {
+					return fmt.Errorf("invalid number")
+				}
+				return nil
+			}
+			if err := survey.AskOne(prompt, &res, survey.WithValidator(validator)); err != nil {
 				return nil, err
 			}
 
 			payload[input.Name] = res
 		case "boolean":
 			var res bool
-			if err := survey.AskOne(&survey.Confirm{Message: fmt.Sprintf("Input %s:", input.Name)}, &res); err != nil {
+			prompt := &survey.Confirm{Message: fmt.Sprintf("Input %s:", input.Name)}
+			if err := survey.AskOne(prompt, &res); err != nil {
 				return nil, err
 			}
 
