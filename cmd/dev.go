@@ -1,12 +1,10 @@
-package dev
+package cmd
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -17,7 +15,7 @@ import (
 	"time"
 
 	"github.com/alessio/shellescape"
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/proxy"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/internal/spacefile"
@@ -31,7 +29,6 @@ import (
 )
 
 const (
-	devDefaultPort  = 4200
 	actionEndpoint  = "__space/v0/actions"
 	spaceDevDocsURL = "https://deta.space/docs/en/basics/local"
 )
@@ -56,8 +53,8 @@ func NewCmdDev() *cobra.Command {
 
 The cli will start one process for each of your micros, then expose a single enpoint for your Space app.`,
 
-		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
-		PostRunE: shared.CheckLatestVersion,
+		PreRunE:  utils.CheckAll(utils.CheckProjectInitialized("dir"), utils.CheckNotEmpty("id")),
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
@@ -70,13 +67,13 @@ The cli will start one process for each of your micros, then expose a single enp
 			if !cmd.Flags().Changed("id") {
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
-					shared.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
+					utils.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
 					return err
 				}
 			}
 
 			if !cmd.Flags().Changed("port") {
-				port, err = GetFreePort(devDefaultPort)
+				port, err = GetFreePort(utils.DevPort)
 				if err != nil {
 					return err
 				}
@@ -97,7 +94,7 @@ The cli will start one process for each of your micros, then expose a single enp
 
 	cmd.Flags().StringP("dir", "d", ".", "directory of the project")
 	cmd.Flags().StringP("id", "i", "", "project id")
-	cmd.Flags().IntP("port", "p", devDefaultPort, "port to run the proxy on")
+	cmd.Flags().IntP("port", "p", 0, "port to run the proxy on")
 	cmd.Flags().StringP("host", "H", "localhost", "host to run the proxy on")
 	cmd.Flags().Bool("open", false, "open the app in the browser")
 
@@ -110,7 +107,7 @@ func GetFreePort(start int) (int, error) {
 	}
 
 	for portNumber := start; portNumber < start+100; portNumber++ {
-		if isPortActive(portNumber) {
+		if utils.IsPortActive(portNumber) {
 			continue
 		}
 
@@ -124,19 +121,19 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	routeDir := filepath.Join(projectDir, ".space", "micros")
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
-		shared.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
+		utils.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
 		return err
 	}
 
-	projectKey, err := shared.GenerateDataKeyIfNotExists(projectID)
+	projectKey, err := utils.GenerateDataKeyIfNotExists(projectID)
 
 	addr := fmt.Sprintf("%s:%d", host, port)
 	if err != nil {
-		shared.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
+		utils.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
 		return err
 	}
 
-	shared.Logger.Printf("\n%s Checking for running micros...", emoji.Eyes)
+	utils.Logger.Printf("\n%s Checking for running micros...", emoji.Eyes)
 	var stoppedMicros []*types.Micro
 	for _, micro := range spacefile.Micros {
 		_, err := getMicroPort(micro, routeDir)
@@ -145,25 +142,28 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 			continue
 		}
 
-		shared.Logger.Printf("\nMicro %s found", styles.Green(micro.Name))
-		shared.Logger.Printf("L url: %s", styles.Blue(fmt.Sprintf("http://%s%s", addr, micro.Path)))
+		utils.Logger.Printf("\nMicro %s found", styles.Green(micro.Name))
+		utils.Logger.Printf("L url: %s", styles.Blue(fmt.Sprintf("http://%s%s", addr, micro.Path)))
 	}
 
-	commands := make([]*exec.Cmd, 0, len(stoppedMicros))
 	startPort := port + 1
 
-	shared.Logger.Printf("\n%s Starting %d micro servers...\n\n", emoji.Laptop, len(stoppedMicros))
+	wg := sync.WaitGroup{}
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	utils.Logger.Printf("\n%s Starting %d micro servers...\n\n", emoji.Laptop, len(stoppedMicros))
 	for _, micro := range stoppedMicros {
 		freePort, err := GetFreePort(startPort)
 		if err != nil {
 			return err
 		}
 
-		command, err := MicroCommand(micro, projectDir, projectKey, freePort)
+		command, err := MicroCommand(micro, projectDir, projectKey, freePort, ctx)
 		if err != nil {
 			if errors.Is(err, errNoDevCommand) {
-				shared.Logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
-				shared.Logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
+				utils.Logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
+				utils.Logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
 				continue
 			}
 		}
@@ -174,18 +174,32 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		}
 		defer os.Remove(portFile)
 
-		commands = append(commands, command)
 		startPort = freePort + 1
 
 		if micro.Primary {
-			shared.Logger.Printf("Micro %s (primary)", styles.Green(micro.Name))
+			utils.Logger.Printf("Micro %s (primary)", styles.Green(micro.Name))
 		} else {
-			shared.Logger.Printf("Micro %s", styles.Green(micro.Name))
+			utils.Logger.Printf("Micro %s", styles.Green(micro.Name))
 		}
 		spaceUrl := fmt.Sprintf("http://%s%s", addr, micro.Path)
-		shared.Logger.Printf("L url: %s\n\n", styles.Blue(spaceUrl))
+		utils.Logger.Printf("L url: %s\n\n", styles.Blue(spaceUrl))
+
+		wg.Add(1)
+		go func(command *exec.Cmd) {
+			defer wg.Done()
+			err := command.Run()
+			if err != nil {
+				if errors.Is(err, exec.ErrNotFound) {
+					utils.Logger.Printf("%s Command not found: %s", emoji.ErrorExclamation, command.Args[0])
+					return
+				}
+				utils.Logger.Printf("Command `%s` exited.", command.String())
+				cancelFunc()
+			}
+		}(command)
 	}
 
+	time.Sleep(3 * time.Second)
 	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
 	if err != nil {
 		return err
@@ -196,43 +210,26 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		Handler: proxy,
 	}
 
-	wg := sync.WaitGroup{}
-
-	for _, command := range commands {
-		wg.Add(1)
-		go func(command *exec.Cmd) {
-			defer wg.Done()
-			err := command.Run()
-			if err != nil {
-				if errors.Is(err, exec.ErrNotFound) {
-					shared.Logger.Printf("%s Command not found: %s", emoji.ErrorExclamation, command.Args[0])
-					return
-				}
-				shared.Logger.Printf("Command `%s` exited", command.String())
-			}
-		}(command)
-	}
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			shared.Logger.Println("proxy error", err)
+			utils.Logger.Println("proxy error", err)
 		}
 	}()
 
 	go func() {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-		<-sigs
-		shared.Logger.Printf("\n\nShutting down...\n\n")
-
-		for _, command := range commands {
-			if command.Process != nil {
-				command.Process.Signal(syscall.SIGTERM)
-			}
+		select {
+		case <-sigs:
+			utils.Logger.Println("Interrupted!")
+			cancelFunc()
+		case <-ctx.Done():
 		}
+
+		utils.Logger.Printf("\n\nShutting down...\n\n")
 		server.Shutdown(context.Background())
 	}()
 
@@ -262,7 +259,7 @@ func writePortFile(portfile string, port int) error {
 }
 
 func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, error) {
-	routes := make([]proxy.ProxyRoute, 0)
+	proxy := proxy.NewReverseProxy()
 	for _, micro := range micros {
 		portFile := filepath.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
 		if _, err := os.Stat(portFile); err != nil {
@@ -274,15 +271,15 @@ func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, 
 			continue
 		}
 
-		target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", microPort))
+		n, err := proxy.AddMicro(micro, microPort)
+		if err != nil {
+			return nil, err
+		}
 
-		routes = append(routes, proxy.ProxyRoute{
-			Prefix: micro.Path,
-			Target: target,
-		})
+		utils.Logger.Printf("\nExtracted %d actions from %s\n", n, micro.Name)
 	}
 
-	return proxy.NewReverseProxy(routes), nil
+	return proxy, nil
 }
 
 func getMicroPort(micro *types.Micro, routeDir string) (int, error) {
@@ -296,7 +293,7 @@ func getMicroPort(micro *types.Micro, routeDir string) (int, error) {
 		return 0, err
 	}
 
-	if !isPortActive(port) {
+	if !utils.IsPortActive(port) {
 		return 0, fmt.Errorf("port %d is not active", port)
 	}
 
@@ -313,17 +310,7 @@ func parsePort(portFile string) (int, error) {
 	return strconv.Atoi(string(portStr))
 }
 
-func isPortActive(port int) bool {
-	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return false
-	}
-
-	conn.Close()
-	return true
-}
-
-func MicroCommand(micro *types.Micro, directory, projectKey string, port int) (*exec.Cmd, error) {
+func MicroCommand(micro *types.Micro, directory, projectKey string, port int, ctx context.Context) (*exec.Cmd, error) {
 	var devCommand string
 
 	if micro.Dev != "" {

@@ -1,6 +1,7 @@
-package dev
+package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -8,7 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/internal/spacefile"
 	"github.com/deta/space/pkg/components/emoji"
@@ -21,8 +22,8 @@ func newCmdDevUp() *cobra.Command {
 	devUpCmd := &cobra.Command{
 		Short:    "Start a single micro for local development",
 		Use:      "up <micro>",
-		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id")),
-		PostRunE: shared.CheckLatestVersion,
+		PreRunE:  utils.CheckAll(utils.CheckProjectInitialized("dir"), utils.CheckNotEmpty("id")),
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
@@ -40,9 +41,9 @@ func newCmdDevUp() *cobra.Command {
 			}
 
 			if !cmd.Flags().Changed("port") {
-				port, err = GetFreePort(devDefaultPort + 1)
+				port, err = GetFreePort(utils.DevPort + 1)
 				if err != nil {
-					shared.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
+					utils.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
 					return err
 				}
 			}
@@ -70,9 +71,9 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 		return err
 	}
 
-	projectKey, err := shared.GenerateDataKeyIfNotExists(projectId)
+	projectKey, err := utils.GenerateDataKeyIfNotExists(projectId)
 	if err != nil {
-		shared.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
+		utils.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
 		return err
 	}
 
@@ -84,18 +85,18 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 		portFile := filepath.Join(projectDir, ".space", "micros", fmt.Sprintf("%s.port", microName))
 		if _, err := os.Stat(portFile); err == nil {
 			microPort, _ := parsePort(portFile)
-			if isPortActive(microPort) {
-				shared.Logger.Printf("%s %s is already running on port %d", emoji.X, styles.Green(microName), microPort)
+			if utils.IsPortActive(microPort) {
+				utils.Logger.Printf("%s %s is already running on port %d", emoji.X, styles.Green(microName), microPort)
 			}
 		}
 
 		writePortFile(portFile, port)
 
-		command, err := MicroCommand(micro, projectDir, projectKey, port)
+		command, err := MicroCommand(micro, projectDir, projectKey, port, context.Background())
 		if err != nil {
 			if errors.Is(err, errNoDevCommand) {
-				shared.Logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
-				shared.Logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
+				utils.Logger.Printf("%s micro %s has no dev command\n", emoji.X, micro.Name)
+				utils.Logger.Printf("See %s to get started\n", styles.Blue(spaceDevDocsURL))
 				return err
 			}
 			return err
@@ -111,7 +112,7 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 			sigs := make(chan os.Signal, 1)
 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 			<-sigs
-			shared.Logger.Printf("\n\nShutting down...\n\n")
+			utils.Logger.Printf("\n\nShutting down...\n\n")
 
 			command.Process.Signal(syscall.SIGTERM)
 		}()
@@ -121,13 +122,13 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 		}
 
 		microUrl := fmt.Sprintf("http://localhost:%d", port)
-		shared.Logger.Printf("\n%s Micro %s running on %s", styles.Green("✔️"), styles.Green(microName), styles.Blue(microUrl))
-		shared.Logger.Printf("\n%s Use %s to emulate the routing of your Space app\n\n", emoji.LightBulb, styles.Blue("space dev proxy"))
+		utils.Logger.Printf("\n%s Micro %s running on %s", styles.Green("✔️"), styles.Green(microName), styles.Blue(microUrl))
+		utils.Logger.Printf("\n%s Use %s to emulate the routing of your Space app\n\n", emoji.LightBulb, styles.Blue("space dev proxy"))
 
 		command.Wait()
 		return nil
 	}
 
-	shared.Logger.Printf("micro %s not found", microName)
+	utils.Logger.Printf("micro %s not found", microName)
 	return fmt.Errorf("micro %s not found", microName)
 }

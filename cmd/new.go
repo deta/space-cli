@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/internal/runtime"
@@ -22,7 +22,7 @@ func newCmdNew() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "new [flags]",
 		Short:    "Create new project",
-		PostRunE: shared.CheckLatestVersion,
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir, _ := cmd.Flags().GetString("dir")
 			blankProject, _ := cmd.Flags().GetBool("blank")
@@ -31,7 +31,7 @@ func newCmdNew() *cobra.Command {
 			if !cmd.Flags().Changed("name") {
 				abs, err := filepath.Abs(projectDir)
 				if err != nil {
-					shared.Logger.Printf("%sError getting absolute path of project directory: %s", styles.ErrorExclamation, err.Error())
+					utils.Logger.Printf("%sError getting absolute path of project directory: %s", styles.ErrorExclamation, err.Error())
 					return err
 				}
 
@@ -48,8 +48,8 @@ func newCmdNew() *cobra.Command {
 
 			return nil
 		},
-		PreRunE: shared.CheckAll(
-			shared.CheckExists("dir"),
+		PreRunE: utils.CheckAll(
+			utils.CheckExists("dir"),
 			func(cmd *cobra.Command, args []string) error {
 				if cmd.Flags().Changed("name") {
 					name, _ := cmd.Flags().GetString("name")
@@ -65,7 +65,7 @@ func newCmdNew() *cobra.Command {
 	cmd.MarkFlagDirname("dir")
 	cmd.Flags().BoolP("blank", "b", false, "create blank project")
 
-	if !shared.IsOutputInteractive() {
+	if !utils.IsOutputInteractive() {
 		cmd.MarkFlagRequired("name")
 	}
 
@@ -95,7 +95,7 @@ func selectProjectName(placeholder string) (string, error) {
 }
 
 func createProject(name string) (*runtime.ProjectMeta, error) {
-	res, err := shared.Client.CreateProject(&api.CreateProjectRequest{
+	res, err := utils.Client.CreateProject(&api.CreateProjectRequest{
 		Name: name,
 	})
 	if err != nil {
@@ -122,16 +122,16 @@ func createSpacefile(projectDir string, projectName string, blankProject bool) e
 	}
 
 	for _, micro := range autoDetectedMicros {
-		shared.Logger.Printf("\nMicro found in \"%s\"", styles.Code(micro.Src))
-		shared.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
+		utils.Logger.Printf("\nMicro found in \"%s\"", styles.Code(micro.Src))
+		utils.Logger.Printf("L engine: %s\n", styles.Blue(micro.Engine))
 	}
 
-	if !shared.IsOutputInteractive() {
+	if !utils.IsOutputInteractive() {
 		_, err = spacefile.CreateSpacefileWithMicros(projectDir, autoDetectedMicros)
 		return err
 	}
 
-	shared.Logger.Println()
+	utils.Logger.Println()
 	if ok, err := confirm.Run(fmt.Sprintf("Do you want to setup \"%s\" with this configuration?", projectName)); err != nil {
 		return err
 	} else if !ok {
@@ -149,14 +149,14 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
 		err := createSpacefile(projectDir, projectName, blankProject)
 		if err != nil {
-			shared.Logger.Printf("failed to create spacefile: %s", err)
+			utils.Logger.Printf("failed to create spacefile: %s", err)
 			return err
 		}
 	}
 
 	// add .space folder to gitignore
 	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
-		shared.Logger.Printf("failed to add .space to gitignore: %s", err)
+		utils.Logger.Printf("failed to add .space to gitignore: %s", err)
 		return err
 	}
 
@@ -164,20 +164,20 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 	meta, err := createProject(projectName)
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
-			shared.Logger.Println(shared.LoginInfo())
+			utils.Logger.Println(utils.LoginInfo())
 			return err
 		}
-		shared.Logger.Printf("failed to create project: %s", err)
+		utils.Logger.Printf("failed to create project: %s", err)
 		return err
 	}
 
 	if err := runtime.StoreProjectMeta(projectDir, meta); err != nil {
-		shared.Logger.Printf("failed to save project meta, %s", err)
+		utils.Logger.Printf("failed to save project meta, %s", err)
 		return err
 	}
 
-	shared.Logger.Println(styles.Greenf("\nProject %s created successfully!", projectName))
-	shared.Logger.Println(shared.ProjectNotes(projectName, meta.ID))
+	utils.Logger.Println(styles.Greenf("\nProject %s created successfully!", projectName))
+	utils.Logger.Println(utils.ProjectNotes(projectName, meta.ID))
 
 	return nil
 }

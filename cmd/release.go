@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/adrg/frontmatter"
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/internal/discovery"
@@ -24,7 +24,7 @@ import (
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/deta/space/pkg/components/text"
 	"github.com/deta/space/pkg/util/fs"
-	sharedTypes "github.com/deta/space/shared"
+	"github.com/deta/space/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -36,13 +36,13 @@ func newCmdRelease() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "release [flags]",
 		Short:    "Create a new release from a revision",
-		PreRunE:  shared.CheckAll(shared.CheckProjectInitialized("dir"), shared.CheckNotEmpty("id", "rid", "version")),
-		PostRunE: shared.CheckLatestVersion,
+		PreRunE:  utils.CheckAll(utils.CheckProjectInitialized("dir"), utils.CheckNotEmpty("id", "rid", "version")),
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
-			if !shared.IsOutputInteractive() && !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("confirm") {
-				shared.Logger.Printf("revision id or confirm flag must be provided in non-interactive mode")
+			if !utils.IsOutputInteractive() && !cmd.Flags().Changed("rid") && !cmd.Flags().Changed("confirm") {
+				utils.Logger.Printf("revision id or confirm flag must be provided in non-interactive mode")
 				return err
 			}
 
@@ -62,16 +62,16 @@ func newCmdRelease() *cobra.Command {
 				projectID = projectMeta.ID
 			}
 
-			latestRelease, err := shared.Client.GetLatestReleaseByApp(projectID)
+			latestRelease, err := utils.Client.GetLatestReleaseByApp(projectID)
 			if err != nil {
 				if !errors.Is(err, api.ErrReleaseNotFound) {
-					shared.Logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
+					utils.Logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
 					return err
 				}
 			}
 
 			// check there are no previous releases for this project
-			if latestRelease == nil && shared.IsOutputInteractive() {
+			if latestRelease == nil && utils.IsOutputInteractive() {
 				if !cmd.Flags().Changed("confirm") {
 					continueReleasing, err := confirmReleasing(listedRelease)
 					if err != nil {
@@ -79,7 +79,7 @@ func newCmdRelease() *cobra.Command {
 					}
 
 					if !continueReleasing {
-						shared.Logger.Println("Aborted releasing this app.")
+						utils.Logger.Println("Aborted releasing this app.")
 						return err
 					}
 				}
@@ -87,7 +87,7 @@ func newCmdRelease() *cobra.Command {
 
 			discoveryData, err := getDiscoveryData(projectDir)
 			if err != nil {
-				shared.Logger.Printf("Failed to get discovery data: %v", err)
+				utils.Logger.Printf("Failed to get discovery data: %v", err)
 				return err
 			}
 
@@ -110,13 +110,13 @@ func newCmdRelease() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				shared.Logger.Printf("\nSelected revision: %s", styles.Blue(revision.Tag))
+				utils.Logger.Printf("\nSelected revision: %s", styles.Blue(revision.Tag))
 
 				revisionID = revision.ID
 
 			}
 
-			shared.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
+			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 			if err := release(projectDir, projectID, revisionID, releaseVersion, listedRelease, releaseNotes, discoveryData); err != nil {
 				return err
 			}
@@ -142,13 +142,13 @@ func confirmReleasing(listedRelease bool) (bool, error) {
 	var confirmMsg string
 
 	if listedRelease {
-		shared.Logger.Println("Creating a listed release makes your app available on Deta Discovery for anyone to install and use.")
+		utils.Logger.Println("Creating a listed release makes your app available on Deta Discovery for anyone to install and use.")
 		confirmMsg = "Are you sure you want to release this app publicly on Discovery? (y/n)"
 	} else {
-		shared.Logger.Println("Releasing makes your app available via a unique link for others to install and use.")
+		utils.Logger.Println("Releasing makes your app available via a unique link for others to install and use.")
 		confirmMsg = "Are you sure you want to release this app to others? (y/n)"
 	}
-	shared.Logger.Printf("If you only want to use this app yourself, use your Builder instance instead.\n\n")
+	utils.Logger.Printf("If you only want to use this app yourself, use your Builder instance instead.\n\n")
 
 	continueReleasing, err := confirm.Run(confirmMsg)
 	if err != nil {
@@ -158,10 +158,10 @@ func confirmReleasing(listedRelease bool) (bool, error) {
 	return continueReleasing, nil
 }
 
-func promptForDiscoveryData() (*sharedTypes.DiscoveryData, error) {
-	discoveryData := &sharedTypes.DiscoveryData{}
+func promptForDiscoveryData() (*shared.DiscoveryData, error) {
+	discoveryData := &shared.DiscoveryData{}
 
-	shared.Logger.Printf("\nPlease give your app a friendly name and add a short description so others know what this app does.\n\n")
+	utils.Logger.Printf("\nPlease give your app a friendly name and add a short description so others know what this app does.\n\n")
 	name, err := text.Run(&text.Input{
 		Prompt:      "App Name (max 12 chars)",
 		Placeholder: "",
@@ -205,27 +205,27 @@ func validateAppDescription(value string) error {
 	return validatePromptValue(value, 4, 69)
 }
 
-func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestRelease *api.Release, projectDir string) error {
+func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *api.Release, projectDir string) error {
 	if latestRelease.Discovery.ContentRaw != "" && !reflect.DeepEqual(latestRelease.Discovery, discoveryData) {
 		p := filepath.Join(projectDir, discovery.DiscoveryFilename)
 		modTime, err := fs.GetFileLastChanged(p)
 		if err != nil {
-			shared.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
+			utils.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
 			return err
 		}
 
 		parsedTime, err := time.Parse(time.RFC3339, latestRelease.ReleasedAt)
 		if err != nil {
-			shared.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
+			utils.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
 			return err
 		}
 
 		if modTime.Before(parsedTime) {
-			shared.Logger.Print("\nWarning: your local Discovery data is different from the latest release's Discovery data.\n\n")
+			utils.Logger.Print("\nWarning: your local Discovery data is different from the latest release's Discovery data.\n\n")
 
 			updateLocalDiscovery, err := confirm.Run("Do you want to update your local Discovery.md file with the data from the latest release?")
 			if err != nil {
-				shared.Logger.Println("Aborted releasing this app.")
+				utils.Logger.Println("Aborted releasing this app.")
 				return err
 			}
 
@@ -234,18 +234,18 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestReleas
 				discoveryPath := filepath.Join(projectDir, discovery.DiscoveryFilename)
 				err := discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
 				if err != nil {
-					shared.Logger.Println(styles.Errorf("%s Failed to update local Discovery.md file: %v", emoji.ErrorExclamation, err))
+					utils.Logger.Println(styles.Errorf("%s Failed to update local Discovery.md file: %v", emoji.ErrorExclamation, err))
 					return err
 				}
 
-				shared.Logger.Printf("\n%s Updated your local Discovery.md file with the latest data!\n\n", emoji.Check)
+				utils.Logger.Printf("\n%s Updated your local Discovery.md file with the latest data!\n\n", emoji.Check)
 			} else {
 				continueReleasing, err := confirm.Run("Are you sure you want to continue releasing the app with the local Discovery data?")
 				if err != nil {
-					shared.Logger.Println("Aborted releasing this app.")
+					utils.Logger.Println("Aborted releasing this app.")
 					return err
 				} else if !continueReleasing {
-					shared.Logger.Println("Aborted releasing this app.")
+					utils.Logger.Println("Aborted releasing this app.")
 					return fmt.Errorf("aborted releasing this app")
 				}
 			}
@@ -255,23 +255,23 @@ func compareDiscoveryData(discoveryData *sharedTypes.DiscoveryData, latestReleas
 	return nil
 }
 
-func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
+func getDiscoveryData(projectDir string) (*shared.DiscoveryData, error) {
 	discoveryPath := filepath.Join(projectDir, discovery.DiscoveryFilename)
 	if _, err := os.Stat(discoveryPath); os.IsNotExist(err) {
-		if !shared.IsOutputInteractive() {
-			return &sharedTypes.DiscoveryData{}, nil
+		if !utils.IsOutputInteractive() {
+			return &shared.DiscoveryData{}, nil
 		}
 		discoveryData, err := promptForDiscoveryData()
 		if err != nil {
-			shared.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
+			utils.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
 		}
 		err = discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
 		if err != nil {
-			shared.Logger.Printf("%s Failed to create Discovery.md file, %v", emoji.ErrorExclamation, err)
+			utils.Logger.Printf("%s Failed to create Discovery.md file, %v", emoji.ErrorExclamation, err)
 			return nil, err
 		}
 
-		shared.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
+		utils.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
 
 		return discoveryData, nil
 	} else if err != nil {
@@ -283,10 +283,10 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
 		return nil, err
 	}
 
-	discoveryData := &sharedTypes.DiscoveryData{}
+	discoveryData := &shared.DiscoveryData{}
 	rest, err := frontmatter.Parse(bytes.NewReader(df), &discoveryData)
 	if err != nil {
-		shared.Logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
+		utils.Logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
 		return nil, err
 	}
 
@@ -297,8 +297,8 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
 			return nil, err
 		}
 
-		shared.Logger.Printf("\nNo app name found in Discovery file. Using the app name from your Spacefile: %s", styles.Code(spacefile.AppName))
-		shared.Logger.Printf("Using the app name from your Spacefile is deprecated and will be removed in a future version.\n\n")
+		utils.Logger.Printf("\nNo app name found in Discovery file. Using the app name from your Spacefile: %s", styles.Code(spacefile.AppName))
+		utils.Logger.Printf("Using the app name from your Spacefile is deprecated and will be removed in a future version.\n\n")
 
 		discoveryData.AppName = spacefile.AppName
 	}
@@ -307,20 +307,20 @@ func getDiscoveryData(projectDir string) (*sharedTypes.DiscoveryData, error) {
 }
 
 func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, error) {
-	r, err := shared.Client.GetRevisions(&api.GetRevisionsRequest{ID: projectID})
+	r, err := utils.Client.GetRevisions(&api.GetRevisionsRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
-			shared.Logger.Println(shared.LoginInfo())
+			utils.Logger.Println(utils.LoginInfo())
 			return nil, err
 		} else {
-			shared.Logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
+			utils.Logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
 			return nil, err
 		}
 	}
 	revisions := r.Revisions
 
 	if len(r.Revisions) == 0 {
-		shared.Logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
+		utils.Logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
 		return nil, err
 	}
 
@@ -350,8 +350,8 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 	return revisionMap[tag], nil
 }
 
-func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *sharedTypes.DiscoveryData) (err error) {
-	cr, err := shared.Client.CreateRelease(&api.CreateReleaseRequest{
+func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *shared.DiscoveryData) (err error) {
+	cr, err := utils.Client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         projectID,
 		Version:       releaseVersion,
@@ -361,24 +361,24 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 	})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
-			shared.Logger.Println(shared.LoginInfo())
+			utils.Logger.Println(utils.LoginInfo())
 			return nil
 		}
-		shared.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
+		utils.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 
-	err = shared.Client.StoreDiscoveryData(cr.ID, discoveryData)
+	err = utils.Client.StoreDiscoveryData(cr.ID, discoveryData)
 	if err != nil {
-		shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 
-	readCloser, err := shared.Client.GetReleaseLogs(&api.GetReleaseLogsRequest{
+	readCloser, err := utils.Client.GetReleaseLogs(&api.GetReleaseLogsRequest{
 		ID: cr.ID,
 	})
 	if err != nil {
-		shared.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
+		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 
@@ -395,30 +395,30 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		shared.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
+		utils.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return err
 	}
 
-	r, err := shared.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
+	r, err := utils.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		shared.Logger.Printf(styles.Errorf("\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", shared.BuilderUrl, projectID)))
+		utils.Logger.Printf(styles.Errorf("\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
 		return err
 	}
 
 	if r.Status == api.Complete {
-		shared.Logger.Println()
-		shared.Logger.Println(emoji.Rocket, "Lift off -- successfully created a new release!")
-		shared.Logger.Println(emoji.Earth, "Your release is available globally on 5 Deta Edges")
-		shared.Logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
+		utils.Logger.Println()
+		utils.Logger.Println(emoji.Rocket, "Lift off -- successfully created a new release!")
+		utils.Logger.Println(emoji.Earth, "Your release is available globally on 5 Deta Edges")
+		utils.Logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
 		if listedRelease {
-			shared.Logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
+			utils.Logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
 		}
 
 		if releaseUrl != "" {
-			shared.Logger.Printf("\nRelease: %s", styles.Code(releaseUrl))
+			utils.Logger.Printf("\nRelease: %s", styles.Code(releaseUrl))
 		}
 	} else {
-		shared.Logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
+		utils.Logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
 		return fmt.Errorf("release failed: %s", r.Status)
 	}
 

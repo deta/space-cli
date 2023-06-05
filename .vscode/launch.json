@@ -151,6 +151,36 @@
                 "api",
                 "/v0/apps"
             ]
+        },
+        {
+            "name": "space complete",
+            "type": "go",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "mode": "auto",
+            "envFile": "${workspaceFolder}/.env.staging",
+            "program": "${workspaceFolder}",
+            "args": [
+                "__complete",
+                "tty",
+                "d"
+            ]
+        },
+        {
+            "name": "space tty",
+            "type": "go",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "mode": "auto",
+            "envFile": "${workspaceFolder}/.env.staging",
+            "program": "${workspaceFolder}",
+            "args": [
+                "tty",
+                "ttydemoapp-1",
+                "greet",
+                "--input",
+                "name=achille"
+            ]
         }
     ],
     "inputs": [

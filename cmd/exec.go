@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/spf13/cobra"
@@ -18,7 +18,7 @@ func newCmdExec() *cobra.Command {
 
 The data key will be automatically injected into the command's environment.`,
 		Args:     cobra.MinimumNArgs(1),
-		PostRunE: shared.CheckLatestVersion,
+		PostRunE: utils.CheckLatestVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			projectID, _ := cmd.Flags().GetString("project")
@@ -26,7 +26,7 @@ The data key will be automatically injected into the command's environment.`,
 				cwd, _ := os.Getwd()
 				projectID, err = runtime.GetProjectID(cwd)
 				if err != nil {
-					shared.Logger.Printf("project id not provided and could not be inferred from current working directory")
+					utils.Logger.Printf("project id not provided and could not be inferred from current working directory")
 					return err
 				}
 			}
@@ -47,9 +47,9 @@ The data key will be automatically injected into the command's environment.`,
 func execRun(projectID string, args []string) error {
 	var err error
 
-	projectKey, err := shared.GenerateDataKeyIfNotExists(projectID)
+	projectKey, err := utils.GenerateDataKeyIfNotExists(projectID)
 	if err != nil {
-		shared.Logger.Printf("%sError generating data key: %s\n", emoji.ErrorExclamation, err.Error())
+		utils.Logger.Printf("%sError generating data key: %s\n", emoji.ErrorExclamation, err.Error())
 		return err
 	}
 

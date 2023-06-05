@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/pkg/browser"
@@ -14,8 +14,8 @@ func newCmdOpen() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "open",
 		Short:    "Open your local project in the Builder UI",
-		PreRunE:  shared.CheckAll(shared.CheckExists("dir"), shared.CheckNotEmpty("id")),
-		PostRunE: shared.CheckLatestVersion,
+		PreRunE:  utils.CheckAll(utils.CheckExists("dir"), utils.CheckNotEmpty("id")),
+		PostRunE: utils.CheckLatestVersion,
 
 		RunE: open,
 	}
@@ -35,14 +35,14 @@ func open(cmd *cobra.Command, args []string) error {
 		var err error
 		projectID, err = runtime.GetProjectID(projectDir)
 		if err != nil {
-			shared.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
+			utils.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
 			return err
 		}
 	}
 
-	shared.Logger.Printf("Opening project in default browser...\n")
-	if err := browser.OpenURL(fmt.Sprintf("%s/%s", shared.BuilderUrl, projectID)); err != nil {
-		shared.Logger.Printf("%s Failed to open browser window %s", emoji.ErrorExclamation, err)
+	utils.Logger.Printf("Opening project in default browser...\n")
+	if err := browser.OpenURL(fmt.Sprintf("%s/%s", utils.BuilderUrl, projectID)); err != nil {
+		utils.Logger.Printf("%s Failed to open browser window %s", emoji.ErrorExclamation, err)
 		return err
 	}
 

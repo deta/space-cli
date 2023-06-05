@@ -119,21 +119,22 @@ type Action struct {
 
 // Micro xx
 type Micro struct {
-	Name         string   `yaml:"name"`
-	Src          string   `yaml:"src"`
-	Engine       string   `yaml:"engine"`
-	Path         string   `yaml:"path,omitempty"`
-	Presets      *Presets `yaml:"presets,omitempty"`
-	Public       bool     `yaml:"public,omitempty"`
-	PublicRoutes []string `yaml:"public_routes,omitempty"`
-	Primary      bool     `yaml:"primary"`
-	Runtime      string   `yaml:"runtime,omitempty"`
-	Commands     []string `yaml:"commands,omitempty"`
-	Include      []string `yaml:"include,omitempty"`
-	Actions      []Action `yaml:"actions,omitempty"`
-	Serve        string   `yaml:"serve,omitempty"`
-	Run          string   `yaml:"run,omitempty"`
-	Dev          string   `yaml:"dev,omitempty"`
+	Name           string   `yaml:"name"`
+	Src            string   `yaml:"src"`
+	Engine         string   `yaml:"engine"`
+	Path           string   `yaml:"path,omitempty"`
+	Presets        *Presets `yaml:"presets,omitempty"`
+	Public         bool     `yaml:"public,omitempty"`
+	PublicRoutes   []string `yaml:"public_routes,omitempty"`
+	ProvideActions bool     `yaml:"provide_actions,omitempty"`
+	Primary        bool     `yaml:"primary"`
+	Runtime        string   `yaml:"runtime,omitempty"`
+	Commands       []string `yaml:"commands,omitempty"`
+	Include        []string `yaml:"include,omitempty"`
+	Actions        []Action `yaml:"actions,omitempty"`
+	Serve          string   `yaml:"serve,omitempty"`
+	Run            string   `yaml:"run,omitempty"`
+	Dev            string   `yaml:"dev,omitempty"`
 }
 
 type DiscoveryData struct {

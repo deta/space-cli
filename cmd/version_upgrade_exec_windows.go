@@ -1,11 +1,11 @@
 //go:build windows
 // +build windows
 
-package version
+package cmd
 
 import (
 	"fmt"
-	"github.com/deta/space/cmd/shared"
+	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/pkg/components/styles"
 	"os/exec"
 )
@@ -18,7 +18,7 @@ func upgradeWin(version string) error {
 		msg = fmt.Sprintf("%s to version %s", msg, styles.Code(version))
 		cmd = fmt.Sprintf(`$v="%s"; %s`, version, cmd)
 	}
-	shared.Logger.Printf("%s...\n", msg)
+	utils.Logger.Printf("%s...\n", msg)
 
 	pshellCmd := exec.Command("powershell", cmd)
 
