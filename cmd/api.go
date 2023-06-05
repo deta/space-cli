@@ -60,6 +60,20 @@ func newCmdAPI() *cobra.Command {
 				}
 
 				res = r
+			case "DELETE":
+				r, err := utils.Client.Delete(path, body)
+				if err != nil {
+					return err
+				}
+
+				res = r
+			case "PATCH":
+				r, err := utils.Client.Patch(path, body)
+				if err != nil {
+					return err
+				}
+
+				res = r
 			default:
 				return errors.New("invalid method")
 			}
