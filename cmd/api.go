@@ -67,6 +67,13 @@ func newCmdAPI() *cobra.Command {
 				}
 
 				res = r
+			case "PATCH":
+				r, err := shared.Client.Patch(path, body)
+				if err != nil {
+					return err
+				}
+
+				res = r
 			default:
 				return errors.New("invalid method")
 			}

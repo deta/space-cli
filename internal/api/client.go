@@ -145,6 +145,26 @@ func (d *DetaClient) Delete(path string, body []byte) ([]byte, error) {
 	return output.Body, err
 }
 
+func (d *DetaClient) Patch(path string, body []byte) ([]byte, error) {
+	output, err := d.request(&requestInput{
+		Method:      "PATCH",
+		Path:        path,
+		Root:        spaceRoot,
+		ContentType: "application/json",
+		Body:        body,
+		NeedsAuth:   true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if output.Status != 200 {
+		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
+	}
+
+	return output.Body, err
+}
+
 // Request send an http request to the deta api
 func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	marshalled, _ := i.Body.([]byte)
