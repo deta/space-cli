@@ -119,10 +119,50 @@ func (d *DetaClient) Post(path string, body []byte) ([]byte, error) {
 	}
 
 	if output.Status != 200 {
-		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
+		return nil, fmt.Errorf("request failed, status code: %v, ", output.Status)
 	}
 
 	return output.Body, nil
+}
+
+func (d *DetaClient) Delete(path string, body []byte) ([]byte, error) {
+	output, err := d.request(&requestInput{
+		Method:      "DELETE",
+		Path:        path,
+		Root:        spaceRoot,
+		ContentType: "application/json",
+		Body:        body,
+		NeedsAuth:   true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if output.Status != 200 {
+		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
+	}
+
+	return output.Body, err
+}
+
+func (d *DetaClient) Patch(path string, body []byte) ([]byte, error) {
+	output, err := d.request(&requestInput{
+		Method:      "PATCH",
+		Path:        path,
+		Root:        spaceRoot,
+		ContentType: "application/json",
+		Body:        body,
+		NeedsAuth:   true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if output.Status != 200 {
+		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
+	}
+
+	return output.Body, err
 }
 
 // Request send an http request to the deta api
