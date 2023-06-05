@@ -25,8 +25,8 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -X github.com/deta/space/cmd/shared.SpaceVersion={{ .Version }}
-      - -X github.com/deta/space/cmd/shared.Platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
+      - -X github.com/deta/space/cmd/utils.SpaceVersion={{ .Version }}
+      - -X github.com/deta/space/cmd/utils.Platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
     goos:
       - darwin
     goarch:
@@ -39,8 +39,8 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -X github.com/deta/space/cmd/shared.SpaceVersion={{ .Version }}
-      - -X github.com/deta/space/cmd/shared.Platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
+      - -X github.com/deta/space/cmd/utils.SpaceVersion={{ .Version }}
+      - -X github.com/deta/space/cmd/utils.Platform={{ .Env.GOARCH }}-{{ .Env.GOOS }}
     goos:
       - darwin
     goarch:
