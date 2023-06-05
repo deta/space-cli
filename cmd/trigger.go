@@ -42,9 +42,10 @@ var (
 
 func newCmdTrigger() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "trigger <instance-alias> <action-name>",
-		Short: "Trigger a app action",
-		Long:  `Trigger a app action.If the action requires input, it will be prompted for. You can also pipe the input to the command, or pass it as a flag.`,
+		Use:    "trigger <instance-alias> <action-name>",
+		Short:  "Trigger a app action",
+		Long:   `Trigger a app action.If the action requires input, it will be prompted for. You can also pipe the input to the command, or pass it as a flag.`,
+		Hidden: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			body, err := utils.Client.Get("/v0/actions")
 			if err != nil {
