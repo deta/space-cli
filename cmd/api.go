@@ -54,7 +54,14 @@ func newCmdAPI() *cobra.Command {
 
 				res = r
 			case "POST":
-				r, err := shared.Client.Get(path)
+				r, err := shared.Client.Post(path, body)
+				if err != nil {
+					return err
+				}
+
+				res = r
+			case "DELETE":
+				r, err := shared.Client.Delete(path, body)
 				if err != nil {
 					return err
 				}
