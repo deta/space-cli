@@ -20,7 +20,7 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 	}
 
 	// delete the project key if it exists
-	keyName := "space-dev"
+	keyName := "space cli"
 	for _, key := range listRes.Keys {
 		if key.Name == keyName {
 			err := Client.DeleteProjectKey(projectID, keyName)
