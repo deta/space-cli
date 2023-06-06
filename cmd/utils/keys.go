@@ -9,7 +9,9 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 	// check if we have already stored the project key based on the project's id
 	projectKey, err := auth.GetProjectKey(projectID)
 	if err == nil {
-		return projectKey, nil
+		if err := Client.CheckProjectKey(projectKey); err == nil {
+			return projectKey, nil
+		}
 	}
 
 	listRes, err := Client.ListProjectKeys(projectID)
@@ -17,6 +19,7 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 		return "", err
 	}
 
+	// delete the project key if it exists
 	keyName := "space-dev"
 	for _, key := range listRes.Keys {
 		if key.Name == keyName {
@@ -28,7 +31,7 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 		}
 	}
 
-	// create a new project key using the api
+	// create a new project key
 	r, err := Client.CreateProjectKey(projectID, &api.CreateProjectKeyRequest{
 		Name: keyName,
 	})
