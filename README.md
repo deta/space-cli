@@ -33,6 +33,16 @@ You can also set the `SPACE_ROOT` environment variable in a `.env` file in the r
 Other configuration options can be set in the .env file as well:
 
 - SPACE_ACCESS_TOKEN
+- SPACE_PROJECT_ID
+- SPACE_PROJECT_KEY
+
+A good way to manage different environment is too use the [direnv](https://direnv.net/). Exampleas `.envrc` and `.env.template` file are provided.
+
+To use them:
+
+- Copy `.env.template` to `.env.prod` or `.env.<your-env-name>`
+- Fill in the values
+- Comment out the proper line in `.envrc` to load the correct file
 
 ## Running unit tests
 

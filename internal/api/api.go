@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/shared"
@@ -837,6 +840,54 @@ func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error)
 	}
 
 	return &resp, nil
+}
+
+func (c *DetaClient) CheckProjectKey(projectKey string) error {
+	parts := strings.Split(projectKey, "_")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid project key")
+	}
+
+	instanceID := parts[0]
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://database.deta.sh/v1/%s/dummy/items/dummy", instanceID), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-API-Key", projectKey)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == 401 {
+		return fmt.Errorf("invalid project key")
+	}
+
+	return nil
+}
+
+func (c *DetaClient) DeleteProjectKey(appID string, keyName string) error {
+	o, err := c.request(&requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/keys/%s", version, appID, url.QueryEscape(keyName)),
+		Method:    "DELETE",
+		NeedsAuth: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return fmt.Errorf("failed to delete project key: %v", msg)
+	}
+
+	return nil
 }
 
 type Release struct {

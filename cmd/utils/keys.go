@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"fmt"
-
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
 )
@@ -11,7 +9,9 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 	// check if we have already stored the project key based on the project's id
 	projectKey, err := auth.GetProjectKey(projectID)
 	if err == nil {
-		return projectKey, nil
+		if err := Client.CheckProjectKey(projectKey); err == nil {
+			return projectKey, nil
+		}
 	}
 
 	listRes, err := Client.ListProjectKeys(projectID)
@@ -19,9 +19,19 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 		return "", err
 	}
 
-	keyName := findAvailableKey(listRes.Keys, "space cli")
+	// delete the project key if it exists
+	keyName := "space cli"
+	for _, key := range listRes.Keys {
+		if key.Name == keyName {
+			err := Client.DeleteProjectKey(projectID, keyName)
+			if err != nil {
+				return "", err
+			}
+			break
+		}
+	}
 
-	// create a new project key using the api
+	// create a new project key
 	r, err := Client.CreateProjectKey(projectID, &api.CreateProjectKeyRequest{
 		Name: keyName,
 	})
@@ -36,22 +46,4 @@ func GenerateDataKeyIfNotExists(projectID string) (string, error) {
 	}
 
 	return r.Value, nil
-}
-
-func findAvailableKey(keys []api.ProjectKey, name string) string {
-	keyMap := make(map[string]struct{})
-	for _, key := range keys {
-		keyMap[key.Name] = struct{}{}
-	}
-
-	if _, ok := keyMap[name]; !ok {
-		return name
-	}
-
-	for i := 1; ; i++ {
-		newName := fmt.Sprintf("%s (%d)", name, i)
-		if _, ok := keyMap[newName]; !ok {
-			return newName
-		}
-	}
 }

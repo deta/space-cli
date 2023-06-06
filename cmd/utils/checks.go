@@ -44,6 +44,10 @@ func CheckExists(flagName ...string) PreRunFunc {
 
 func CheckProjectInitialized(dirFlag string) PreRunFunc {
 	return CheckAll(CheckExists(dirFlag), func(cmd *cobra.Command, args []string) error {
+		if os.Getenv(runtime.SpaceProjectIDEnv) != "" {
+			return nil
+		}
+
 		dir, _ := cmd.Flags().GetString(dirFlag)
 
 		if _, err := os.Stat(filepath.Join(dir, ".space", "meta")); os.IsNotExist(err) {
