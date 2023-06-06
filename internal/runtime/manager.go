@@ -18,6 +18,8 @@ const (
 )
 
 var (
+	SpaceProjectIDEnv = "SPACE_PROJECT_ID"
+
 	PythonSkipPattern = `__pycache__`
 
 	NodeSkipPattern = `node_modules`
@@ -46,6 +48,10 @@ func StoreProjectMeta(projectDir string, p *ProjectMeta) error {
 }
 
 func GetProjectID(projectDir string) (string, error) {
+	if env, ok := os.LookupEnv(SpaceProjectIDEnv); ok {
+		return env, nil
+	}
+
 	projectMeta, err := GetProjectMeta(projectDir)
 	if err != nil {
 		return "", err

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 
 	"github.com/deta/space/internal/auth"
@@ -837,6 +838,28 @@ func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error)
 	}
 
 	return &resp, nil
+}
+
+func (c *DetaClient) DeleteProjectKey(appID string, keyName string) error {
+	o, err := c.request(&requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/keys/%s", version, appID, url.QueryEscape(keyName)),
+		Method:    "DELETE",
+		NeedsAuth: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return fmt.Errorf("failed to delete project key: %v", msg)
+	}
+
+	return nil
 }
 
 type Release struct {

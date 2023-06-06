@@ -118,7 +118,6 @@ func GetFreePort(start int) (int, error) {
 }
 
 func dev(projectDir string, projectID string, host string, port int, open bool) error {
-	routeDir := filepath.Join(projectDir, ".space", "micros")
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
 		utils.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
@@ -134,6 +133,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	}
 
 	utils.Logger.Printf("\n%s Checking for running micros...", emoji.Eyes)
+	routeDir := filepath.Join(projectDir, ".space", "micros")
 	var stoppedMicros []*types.Micro
 	for _, micro := range spacefile.Micros {
 		_, err := getMicroPort(micro, routeDir)

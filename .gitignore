@@ -8,3 +8,4 @@ starters
 
 .env
 .env.*
+!.env.template

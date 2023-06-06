@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	spaceAccessTokenEnv         = "SPACE_ACCESS_TOKEN"
+	SpaceAccessTokenEnv         = "SPACE_ACCESS_TOKEN"
+	SpaceProjectKeyEnv          = "SPACE_PROJECT_KEY"
+	DetaProjectKeyEnv           = "DETA_PROJECT_KEY"
 	spaceTokensFile             = "space_tokens"
 	spaceSignVersion            = "v0"
 	spaceDir                    = ".detaspace"
@@ -62,7 +64,7 @@ func getAccessTokenFromFile(filepath string) (string, error) {
 // GetAccessToken retrieves the tokens from storage or env var
 func GetAccessToken() (string, error) {
 	// preference to env var first
-	spaceAccessToken := os.Getenv(spaceAccessTokenEnv)
+	spaceAccessToken := os.Getenv(SpaceAccessTokenEnv)
 	if spaceAccessToken != "" {
 		return spaceAccessToken, nil
 	}
@@ -167,6 +169,14 @@ type Keys map[string]string
 
 // GetProjectKey retrieves a project key storage or env var
 func GetProjectKey(projectId string) (string, error) {
+	if env, ok := os.LookupEnv(SpaceProjectKeyEnv); ok {
+		return env, nil
+	}
+
+	if env, ok := os.LookupEnv(DetaProjectKeyEnv); ok {
+		return env, nil
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", nil
