@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/deta/space/shared"
@@ -32,26 +33,71 @@ type Action struct {
 }
 
 type ReverseProxy struct {
-	prefixToProxy map[string]*httputil.ReverseProxy
-	actionToProxy map[string]*httputil.ReverseProxy
-	actionMap     map[string]map[string]any
+	prefixToUrl map[string]*url.URL
+	actionToUrl map[string]*url.URL
+	actionMap   map[string]map[string]any
+	proxy       *httputil.ReverseProxy
 }
 
 func NewReverseProxy() *ReverseProxy {
+	prefixToUrl := make(map[string]*url.URL)
+	actionToUrl := make(map[string]*url.URL)
+	actionMap := make(map[string]map[string]any)
 
 	return &ReverseProxy{
-		prefixToProxy: make(map[string]*httputil.ReverseProxy),
-		actionToProxy: make(map[string]*httputil.ReverseProxy),
-		actionMap:     make(map[string]map[string]any),
+		prefixToUrl: prefixToUrl,
+		actionToUrl: actionToUrl,
+		actionMap:   actionMap,
+		proxy: &httputil.ReverseProxy{
+			Director: func(r *http.Request) {
+				for action, url := range actionToUrl {
+					if r.URL.Path == fmt.Sprintf("/__space/actions/%s", action) {
+						r.URL.Scheme = url.Scheme
+						r.URL.Host = url.Host
+						r.URL.Path = url.Path
+						return
+					}
+				}
+
+				requestPath := r.URL.Path
+
+				// if request is coming from a page, use the page's path as the request path
+				if referer := r.Header.Get("Referer"); referer != "" {
+					refererUrl, err := url.Parse(referer)
+					if err != nil {
+						return
+					}
+					requestPath = path.Join(refererUrl.Path, r.URL.Path)
+				}
+
+				prefix := extractPrefix(requestPath)
+				if target, ok := prefixToUrl[prefix]; ok {
+					r.URL.Scheme = target.Scheme
+					r.URL.Host = target.Host
+					r.URL.Path = strings.TrimPrefix(r.URL.Path, prefix)
+					if r.URL.Path == "" {
+						r.URL.Path = "/"
+					}
+
+					return
+				}
+
+				if fallback, ok := prefixToUrl["/"]; ok {
+					r.URL.Scheme = fallback.Scheme
+					r.URL.Host = fallback.Host
+					return
+				}
+			},
+		},
 	}
 }
 
 func (p *ReverseProxy) AddMicro(micro *shared.Micro, port int) (int, error) {
 	prefix := extractPrefix(micro.Path)
-	p.prefixToProxy[prefix] = httputil.NewSingleHostReverseProxy(&url.URL{
+	p.prefixToUrl[prefix] = &url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("localhost:%d", port),
-	})
+	}
 
 	if !micro.ProvideActions {
 		return 0, nil
@@ -70,12 +116,10 @@ func (p *ReverseProxy) AddMicro(micro *shared.Micro, port int) (int, error) {
 	}
 
 	for _, action := range actionMeta.Actions {
-		p.actionToProxy[action.Name] = httputil.NewSingleHostReverseProxy(&url.URL{
+		p.actionToUrl[action.Name] = &url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("localhost:%d", port),
-			Path:   action.Path,
-		})
-
+		}
 		p.actionMap[action.Name] = map[string]any{
 			"instance_alias": "dev",
 			"instance_id":    "dev",
@@ -90,6 +134,7 @@ func (p *ReverseProxy) AddMicro(micro *shared.Micro, port int) (int, error) {
 			p.actionMap[action.Name]["input"] = action.Input
 		}
 	}
+
 	return len(actionMeta.Actions), nil
 }
 
@@ -103,6 +148,10 @@ func extractPrefix(path string) string {
 }
 
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if p.proxy == nil {
+		http.Error(w, "proxy not initialized", http.StatusInternalServerError)
+	}
+
 	if r.URL.Path == actionEndpoint {
 		var actions = make([]map[string]any, 0, len(p.actionMap))
 		for _, action := range p.actionMap {
@@ -116,48 +165,5 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, actionEndpoint) {
-		actionName := strings.TrimPrefix(r.URL.Path, actionEndpoint+"/")
-		proxy, ok := p.actionToProxy[actionName]
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		switch r.Method {
-		case http.MethodGet:
-			action, ok := p.actionMap[actionName]
-			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-
-			encoder := json.NewEncoder(w)
-			if err := encoder.Encode(action); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		case http.MethodPost:
-			r.URL.Path = ""
-			proxy.ServeHTTP(w, r)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-		return
-	}
-
-	prefix := extractPrefix(r.URL.Path)
-	if proxy, ok := p.prefixToProxy[prefix]; ok {
-		if prefix != "/" {
-			r.URL.Path = strings.TrimPrefix(r.URL.Path, prefix)
-		}
-		proxy.ServeHTTP(w, r)
-		return
-	}
-
-	fallback, ok := p.prefixToProxy["/"]
-	if ok {
-		fallback.ServeHTTP(w, r)
-		return
-	}
-
-	http.NotFound(w, r)
+	p.proxy.ServeHTTP(w, r)
 }
