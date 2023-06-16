@@ -11,7 +11,7 @@ import (
 
 const (
 	DocsUrl          = "https://deta.space/docs"
-	SpacefileDocsUrl = "https://deta.space/docs/en/reference/spacefile"
+	SpacefileDocsUrl = "https://go.deta.dev/docs/spacefile/v0"
 	BuilderUrl       = "https://deta.space/builder"
 )
 
