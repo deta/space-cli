@@ -11,6 +11,8 @@ import (
 	"syscall"
 
 	"github.com/deta/space/cmd/utils"
+	"github.com/deta/space/internal/proxy"
+	"github.com/deta/space/internal/runtime"
 	"github.com/deta/space/internal/spacefile"
 	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
@@ -60,6 +62,10 @@ The micros will be automatically discovered and proxied to.`,
 }
 
 func devProxy(projectDir string, host string, port int, open bool) error {
+	meta, err := runtime.GetProjectMeta(projectDir)
+	if err != nil {
+		return err
+	}
 
 	addr := fmt.Sprintf("%s:%d", host, port)
 
@@ -72,7 +78,10 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 		return err
 	}
 
-	reverseProxy, err := proxyFromDir(spacefile.Micros, microDir)
+	reverseProxy := proxy.NewReverseProxy(meta.ID, meta.Name, meta.Alias)
+	if err := loadMicrosFromDir(reverseProxy, spacefile.Micros, microDir); err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
