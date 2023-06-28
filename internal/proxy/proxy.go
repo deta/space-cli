@@ -25,21 +25,27 @@ type ActionMeta struct {
 }
 
 type Action struct {
-	Name  string `json:"name"`
-	Title string `json:"title"`
-	Path  string `json:"path"`
-	Input any    `json:"input"`
+	Name   string `json:"name"`
+	Title  string `json:"title"`
+	Path   string `json:"path"`
+	Input  any    `json:"input"`
+	Output string `json:"output"`
 }
 
 type ReverseProxy struct {
+	appID         string
+	appName       string
+	instanceAlias string
 	prefixToProxy map[string]*httputil.ReverseProxy
 	actionToProxy map[string]*httputil.ReverseProxy
 	actionMap     map[string]map[string]any
 }
 
-func NewReverseProxy() *ReverseProxy {
-
+func NewReverseProxy(appID string, appName string, instanceAlias string) *ReverseProxy {
 	return &ReverseProxy{
+		appID:         appID,
+		appName:       appName,
+		instanceAlias: instanceAlias,
 		prefixToProxy: make(map[string]*httputil.ReverseProxy),
 		actionToProxy: make(map[string]*httputil.ReverseProxy),
 		actionMap:     make(map[string]map[string]any),
@@ -69,26 +75,35 @@ func (p *ReverseProxy) AddMicro(micro *shared.Micro, port int) (int, error) {
 		return 0, err
 	}
 
-	for _, action := range actionMeta.Actions {
-		p.actionToProxy[action.Name] = httputil.NewSingleHostReverseProxy(&url.URL{
+	for _, devAction := range actionMeta.Actions {
+		p.actionToProxy[devAction.Name] = httputil.NewSingleHostReverseProxy(&url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("localhost:%d", port),
-			Path:   action.Path,
+			Path:   devAction.Path,
 		})
 
-		p.actionMap[action.Name] = map[string]any{
-			"instance_alias": "dev",
-			"instance_id":    "dev",
-			"app_name":       "dev",
-			"name":           action.Name,
-			"title":          action.Title,
+		action := map[string]any{
+			"instance_id":    p.appID,
+			"instance_alias": p.instanceAlias,
+			"app_name":       p.appName,
+			"name":           devAction.Name,
+			"title":          devAction.Title,
 			"channel":        "local",
 			"version":        "dev",
+			"output":         devAction.Output,
 		}
 
-		if action.Input != nil {
-			p.actionMap[action.Name]["input"] = action.Input
+		if devAction.Output != "" {
+			action["output"] = devAction.Output
+		} else {
+			action["output"] = "@deta/raw"
 		}
+
+		if devAction.Input != nil {
+			action["input"] = devAction.Input
+		}
+
+		p.actionMap[devAction.Name] = action
 	}
 	return len(actionMeta.Actions), nil
 }

@@ -118,6 +118,11 @@ func GetFreePort(start int) (int, error) {
 }
 
 func dev(projectDir string, projectID string, host string, port int, open bool) error {
+	meta, err := runtime.GetProjectMeta(projectDir)
+	if err != nil {
+		return err
+	}
+
 	routeDir := filepath.Join(projectDir, ".space", "micros")
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
@@ -200,8 +205,8 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	}
 
 	time.Sleep(3 * time.Second)
-	proxy, err := proxyFromDir(spacefile.Micros, routeDir)
-	if err != nil {
+	proxy := proxy.NewReverseProxy(meta.ID, meta.Name, meta.Alias)
+	if err := loadMicrosFromDir(proxy, spacefile.Micros, routeDir); err != nil {
 		return err
 	}
 
@@ -258,8 +263,7 @@ func writePortFile(portfile string, port int) error {
 	return os.WriteFile(portfile, []byte(fmt.Sprintf("%d", port)), 0644)
 }
 
-func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, error) {
-	proxy := proxy.NewReverseProxy()
+func loadMicrosFromDir(proxy *proxy.ReverseProxy, micros []*types.Micro, routeDir string) error {
 	for _, micro := range micros {
 		portFile := filepath.Join(routeDir, fmt.Sprintf("%s.port", micro.Name))
 		if _, err := os.Stat(portFile); err != nil {
@@ -273,13 +277,15 @@ func proxyFromDir(micros []*types.Micro, routeDir string) (*proxy.ReverseProxy, 
 
 		n, err := proxy.AddMicro(micro, microPort)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		utils.Logger.Printf("\nExtracted %d actions from %s\n", n, micro.Name)
+		if n != 0 {
+			utils.Logger.Printf("\nExtracted %d actions from %s\n\n", n, micro.Name)
+		}
 	}
 
-	return proxy, nil
+	return nil
 }
 
 func getMicroPort(micro *types.Micro, routeDir string) (int, error) {
