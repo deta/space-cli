@@ -147,16 +147,19 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			encoder := json.NewEncoder(w)
+			w.Header().Set("Content-Type", "application/json")
 			if err := encoder.Encode(action); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
+			return
 		case http.MethodPost:
 			r.URL.Path = ""
 			proxy.ServeHTTP(w, r)
+			return
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
 		}
-		return
 	}
 
 	prefix := extractPrefix(r.URL.Path)
