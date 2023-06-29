@@ -3,6 +3,7 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -21,10 +22,10 @@ type ProxyEndpoint struct {
 }
 
 type ActionMeta struct {
-	Actions []Action `json:"actions"`
+	Actions []DevAction `json:"actions"`
 }
 
-type Action struct {
+type DevAction struct {
 	Name   string `json:"name"`
 	Title  string `json:"title"`
 	Path   string `json:"path"`
@@ -32,13 +33,25 @@ type Action struct {
 	Output string `json:"output"`
 }
 
+type ProxyAction struct {
+	Url           string `json:"-"`
+	InstanceID    string `json:"instance_id"`
+	InstanceAlias string `json:"instance_alias"`
+	AppName       string `json:"app_name"`
+	Name          string `json:"name"`
+	Title         string `json:"title"`
+	Channel       string `json:"channel"`
+	Version       string `json:"version"`
+	Input         any    `json:"input,omitempty"`
+	Output        string `json:"output,omitempty"`
+}
+
 type ReverseProxy struct {
 	appID         string
 	appName       string
 	instanceAlias string
 	prefixToProxy map[string]*httputil.ReverseProxy
-	actionToProxy map[string]*httputil.ReverseProxy
-	actionMap     map[string]map[string]any
+	actionMap     map[string]ProxyAction
 }
 
 func NewReverseProxy(appID string, appName string, instanceAlias string) *ReverseProxy {
@@ -47,8 +60,7 @@ func NewReverseProxy(appID string, appName string, instanceAlias string) *Revers
 		appName:       appName,
 		instanceAlias: instanceAlias,
 		prefixToProxy: make(map[string]*httputil.ReverseProxy),
-		actionToProxy: make(map[string]*httputil.ReverseProxy),
-		actionMap:     make(map[string]map[string]any),
+		actionMap:     make(map[string]ProxyAction),
 	}
 }
 
@@ -76,34 +88,29 @@ func (p *ReverseProxy) AddMicro(micro *shared.Micro, port int) (int, error) {
 	}
 
 	for _, devAction := range actionMeta.Actions {
-		p.actionToProxy[devAction.Name] = httputil.NewSingleHostReverseProxy(&url.URL{
-			Scheme: "http",
-			Host:   fmt.Sprintf("localhost:%d", port),
-			Path:   devAction.Path,
-		})
-
-		action := map[string]any{
-			"instance_id":    p.appID,
-			"instance_alias": p.instanceAlias,
-			"app_name":       p.appName,
-			"name":           devAction.Name,
-			"title":          devAction.Title,
-			"channel":        "local",
-			"version":        "dev",
-			"output":         devAction.Output,
+		if devAction.Output == "" {
+			devAction.Output = "@deta/raw"
 		}
 
-		if devAction.Output != "" {
-			action["output"] = devAction.Output
+		var target string
+		if strings.HasPrefix(devAction.Path, "/") {
+			target = fmt.Sprintf("http://localhost:%d%s", port, devAction.Path)
 		} else {
-			action["output"] = "@deta/raw"
+			target = fmt.Sprintf("http://localhost:%d/%s", port, devAction.Path)
 		}
 
-		if devAction.Input != nil {
-			action["input"] = devAction.Input
+		p.actionMap[devAction.Name] = ProxyAction{
+			Url:           target,
+			InstanceID:    p.appID,
+			InstanceAlias: p.instanceAlias,
+			AppName:       p.appName,
+			Name:          devAction.Name,
+			Title:         devAction.Title,
+			Channel:       "local",
+			Version:       "dev",
+			Input:         devAction.Input,
+			Output:        devAction.Output,
 		}
-
-		p.actionMap[devAction.Name] = action
 	}
 	return len(actionMeta.Actions), nil
 }
@@ -119,7 +126,7 @@ func extractPrefix(path string) string {
 
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == actionEndpoint {
-		var actions = make([]map[string]any, 0, len(p.actionMap))
+		var actions = make([]ProxyAction, 0, len(p.actionMap))
 		for _, action := range p.actionMap {
 			actions = append(actions, action)
 		}
@@ -133,7 +140,7 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(r.URL.Path, actionEndpoint) {
 		actionName := strings.TrimPrefix(r.URL.Path, actionEndpoint+"/")
-		proxy, ok := p.actionToProxy[actionName]
+		action, ok := p.actionMap[actionName]
 		if !ok {
 			http.NotFound(w, r)
 			return
@@ -153,8 +160,33 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		case http.MethodPost:
-			r.URL.Path = ""
-			proxy.ServeHTTP(w, r)
+			resp, err := http.Post(action.Url, "application/json", r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			defer resp.Body.Close()
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			var data any
+			if err := json.Unmarshal(body, &data); err != nil {
+				data = string(body)
+			}
+
+			payload := map[string]interface{}{
+				"type": action.Output,
+				"data": data,
+			}
+
+			encoder := json.NewEncoder(w)
+			if err := encoder.Encode(payload); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
 			return
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
