@@ -30,7 +30,7 @@ import (
 
 const (
 	actionEndpoint  = "__space/v0/actions"
-	spaceDevDocsURL = "https://deta.space/docs/en/basics/local"
+	spaceDevDocsURL = "https://deta.space/docs/en/build/fundamentals/development/local-development"
 )
 
 var (
