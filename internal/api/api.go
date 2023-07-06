@@ -215,7 +215,7 @@ type GetRevisionsResponse struct {
 func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/apps/%s/revisions?limit=5", version, r.ID),
+		Path:      fmt.Sprintf("/%s/apps/%s/revisions?per_page=5", version, r.ID),
 		Method:    "GET",
 		NeedsAuth: true,
 		Body:      r,
@@ -571,7 +571,7 @@ type FetchPromotionResponse struct {
 func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetReleasePromotionResponse, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/promotions?revision_id=%s&limit=1", version, r.RevisionID),
+		Path:      fmt.Sprintf("/%s/promotions?revision_id=%s&per_page=1", version, r.RevisionID),
 		Method:    "GET",
 		NeedsAuth: true,
 		Body:      r,
@@ -628,7 +628,7 @@ type FetchInstallationsResponse struct {
 func (c *DetaClient) GetInstallationByRelease(r *GetInstallationByReleaseRequest) (*Installation, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/installations?release_id=%s&limit=1", version, r.ReleaseID),
+		Path:      fmt.Sprintf("/%s/installations?release_id=%s&per_page=1", version, r.ReleaseID),
 		Method:    "GET",
 		NeedsAuth: true,
 	}
