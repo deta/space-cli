@@ -40,6 +40,11 @@ var (
 	InputTypeBool   InputType = "bool"
 )
 
+type ActionOutput struct {
+	Type string `json:"type"`
+	Data any    `json:"data"`
+}
+
 func newCmdTrigger() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "trigger <instance-alias> <action-name>",
@@ -197,7 +202,16 @@ func newCmdTrigger() *cobra.Command {
 				return err
 			}
 
-			os.Stdout.Write(actionRes)
+			var actionOutput ActionOutput
+			if err = json.Unmarshal(actionRes, &actionOutput); err != nil {
+				return err
+			}
+
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			if err := encoder.Encode(actionOutput.Data); err != nil {
+				return err
+			}
 
 			return nil
 		},
