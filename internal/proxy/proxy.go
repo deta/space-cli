@@ -126,22 +126,30 @@ func extractPrefix(path string) string {
 
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == actionEndpoint {
-		var actions = make([]ProxyAction, 0, len(p.actionMap))
-		for _, action := range p.actionMap {
-			actions = append(actions, action)
-		}
+		switch r.Method {
+		case http.MethodOptions:
+			w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.WriteHeader(http.StatusOK)
+			return
+		case http.MethodGet:
+			var actions = make([]ProxyAction, 0, len(p.actionMap))
+			for _, action := range p.actionMap {
+				actions = append(actions, action)
+			}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
 
-		encoder := json.NewEncoder(w)
-		if err := encoder.Encode(actions); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			encoder := json.NewEncoder(w)
+			if err := encoder.Encode(actions); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
 			return
 		}
-
-		return
 	}
 
 	if strings.HasPrefix(r.URL.Path, actionEndpoint) {
@@ -152,6 +160,11 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch r.Method {
+		case http.MethodOptions:
+			w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.WriteHeader(http.StatusOK)
+			return
 		case http.MethodGet:
 			action, ok := p.actionMap[actionName]
 			if !ok {
