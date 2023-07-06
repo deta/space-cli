@@ -131,10 +131,16 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			actions = append(actions, action)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+
 		encoder := json.NewEncoder(w)
 		if err := encoder.Encode(actions); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+
 		return
 	}
 
@@ -153,11 +159,15 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			encoder := json.NewEncoder(w)
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+
+			encoder := json.NewEncoder(w)
 			if err := encoder.Encode(action); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
+
 			return
 		case http.MethodPost:
 			resp, err := http.Post(action.Url, "application/json", r.Body)
@@ -169,6 +179,7 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 
 			var data any
@@ -181,12 +192,16 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"data": data,
 			}
 
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Access-Control-Allow-Origin", "https://deta.space")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+
 			encoder := json.NewEncoder(w)
 			if err := encoder.Encode(payload); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 
-			w.Header().Set("Content-Type", "application/json")
 			return
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
