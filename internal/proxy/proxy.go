@@ -186,6 +186,7 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			resp, err := http.Post(action.Url, "application/json", r.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			defer resp.Body.Close()
 
