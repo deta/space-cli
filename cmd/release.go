@@ -46,10 +46,12 @@ func newCmdRelease() *cobra.Command {
 				return err
 			}
 
+			var revisionID string
+
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")
 			releaseNotes, _ := cmd.Flags().GetString("notes")
-			revisionID, _ := cmd.Flags().GetString("rid")
+			revisionTagName, _ := cmd.Flags().GetString("rid")
 			useLatestRevision, _ := cmd.Flags().GetBool("confirm")
 			listedRelease, _ := cmd.Flags().GetBool("listed")
 			releaseVersion, _ := cmd.Flags().GetString("version")
@@ -113,11 +115,20 @@ func newCmdRelease() *cobra.Command {
 				utils.Logger.Printf("\nSelected revision: %s", styles.Blue(revision.Tag))
 
 				revisionID = revision.ID
-
+			} else {
+				revision, err := selectRevisionByTagName(projectID, revisionTagName)
+				if err != nil {
+					return err
+				}
+				utils.Logger.Printf("\nSelected revision: %s", styles.Blue(revision.Tag))
+				revisionID = revision.ID
 			}
 
 			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
-			if err := release(projectDir, projectID, revisionID, releaseVersion, listedRelease, releaseNotes, discoveryData); err != nil {
+
+			err = release(projectDir, projectID, revisionID, releaseVersion,
+				listedRelease, releaseNotes, discoveryData)
+			if err != nil {
 				return err
 			}
 
@@ -306,6 +317,21 @@ func getDiscoveryData(projectDir string) (*shared.DiscoveryData, error) {
 	return discoveryData, nil
 }
 
+func selectRevisionByTagName(projectID string, tagName string) (*api.Revision, error) {
+	r, err := utils.Client.GetRevision(&api.GetRevisionRequest{ID: projectID, Tag: tagName})
+	if err != nil {
+		if errors.Is(err, auth.ErrNoAccessTokenFound) {
+			utils.Logger.Println(utils.LoginInfo())
+			return nil, err
+		} else {
+			utils.Logger.Println(styles.Errorf("%s Failed to get revision: %v", emoji.ErrorExclamation, err))
+			return nil, err
+		}
+	}
+
+	return r.Revision, nil
+}
+
 func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, error) {
 	r, err := utils.Client.GetRevisions(&api.GetRevisionsRequest{ID: projectID})
 	if err != nil {
@@ -320,7 +346,10 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 	revisions := r.Revisions
 
 	if len(r.Revisions) == 0 {
-		utils.Logger.Printf(styles.Errorf("%s No revisions found. Please create a revision by running %s", emoji.ErrorExclamation, styles.Code("space push")))
+		utils.Logger.Printf(
+			styles.Errorf("%s No revisions found. Please create a revision by running %s",
+				emoji.ErrorExclamation, styles.Code("space push"),
+			))
 		return nil, err
 	}
 

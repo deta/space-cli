@@ -188,6 +188,11 @@ func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, er
 	return o.BodyReadCloser, nil
 }
 
+type GetRevisionRequest struct {
+	ID  string `json:"id"`
+	Tag string `json:"tag"`
+}
+
 type GetRevisionsRequest struct {
 	ID string `json:"id"`
 }
@@ -201,6 +206,41 @@ type Revision struct {
 type Page struct {
 	Size int     `json:"size"`
 	Last *string `json:"last"`
+}
+
+type GetRevisionResponse struct {
+	Revision *Revision `json:"revision"`
+}
+
+func (c *DetaClient) GetRevision(r *GetRevisionRequest) (*GetRevisionResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/revisions/tag/%s", version, r.ID, r.Tag),
+		Method:    "GET",
+		NeedsAuth: true,
+		Body:      r,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch revision: %v", msg)
+	}
+
+	var resp GetRevisionResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch revision: %w", err)
+	}
+
+	return &resp, nil
 }
 
 type fetchRevisionsResponse struct {
