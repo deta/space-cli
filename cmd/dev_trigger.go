@@ -117,7 +117,16 @@ Make sure that the corresponding micro is running before triggering the action.`
 			}
 			defer actionResponse.Body.Close()
 
-			io.Copy(os.Stdout, actionResponse.Body)
+			var actionOuput ActionOutput
+			if err := json.NewDecoder(actionResponse.Body).Decode(&actionOuput); err != nil {
+				return err
+			}
+
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			if err := encoder.Encode(actionOuput.Data); err != nil {
+				return err
+			}
 
 			return nil
 		},

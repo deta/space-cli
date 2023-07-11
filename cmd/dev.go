@@ -281,7 +281,8 @@ func loadMicrosFromDir(proxy *proxy.ReverseProxy, micros []*types.Micro, routeDi
 		}
 
 		if n != 0 {
-			utils.Logger.Printf("\nExtracted %d actions from %s\n\n", n, micro.Name)
+			utils.Logger.Printf("\nExtracted %d actions from %s.", n, micro.Name)
+			utils.Logger.Printf("L Preview URL: %s\n\n", "https://deta.space?devServer=http://localhost:4200")
 		}
 	}
 
