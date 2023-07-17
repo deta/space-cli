@@ -154,12 +154,6 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 		}
 	}
 
-	// add .space folder to gitignore
-	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
-		utils.Logger.Printf("failed to add .space to gitignore: %s", err)
-		return err
-	}
-
 	// Create project
 	meta, err := createProject(projectName)
 	if err != nil {
