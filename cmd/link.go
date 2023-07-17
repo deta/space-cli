@@ -66,11 +66,6 @@ func selectLinkProjectID() (string, error) {
 }
 
 func link(projectDir string, projectID string) error {
-	if err := runtime.AddSpaceToGitignore(projectDir); err != nil {
-		utils.Logger.Println("failed to add .space to .gitignore, %w", err)
-		return err
-	}
-
 	projectRes, err := utils.Client.GetProject(&api.GetProjectRequest{ID: projectID})
 	if err != nil {
 		if errors.Is(auth.ErrNoAccessTokenFound, err) {
