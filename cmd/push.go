@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const fetchPromotionsRetryCount = 5
+
 func newCmdPush() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "push [flags]",
@@ -197,10 +199,19 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 	}
 
 	// get promotion via build id (build id == revision id)
-	p, err := utils.Client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: build.ID})
-	if err != nil {
-		utils.Logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-		return err
+	// loop until either p is not nil, err is not nil, or i is equal to `fetchPromotionRetryCount`
+	var p *api.GetReleasePromotionResponse
+	for i := 0; i < fetchPromotionsRetryCount; i++ {
+		p, err = utils.Client.GetPromotionByRevision(&api.GetPromotionRequest{RevisionID: build.ID})
+
+		if p != nil {
+			break
+		}
+
+		if err != nil {
+			utils.Logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
+			return err
+		}
 	}
 
 	utils.Logger.Printf("\n%s Updating your Builder instance with the new revision...\n\n", emoji.Tools)
