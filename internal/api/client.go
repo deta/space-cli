@@ -125,44 +125,49 @@ func (d *DetaClient) Post(path string, body []byte) ([]byte, error) {
 	return output.Body, nil
 }
 
-func (d *DetaClient) Delete(path string, body []byte) ([]byte, error) {
-	output, err := d.request(&requestInput{
-		Method:      "DELETE",
-		Path:        path,
-		Root:        spaceRoot,
-		ContentType: "application/json",
-		Body:        body,
-		NeedsAuth:   true,
+func (d *DetaClient) AuthenticateRequest(accessToken string, req *http.Request) error {
+	now := time.Now().UTC().Unix()
+
+	// client timestamps can be off by a lot, so we compute the shift from the server
+	if d.TimestampShift == 0 {
+		serverTimestamp, err := fetchServerTimestamp()
+		if err != nil {
+			return fmt.Errorf("failed to compute timestamp shift: %w", err)
+		}
+
+		d.TimestampShift = serverTimestamp - now
+	}
+
+	timestamp := strconv.FormatInt(now+d.TimestampShift, 10)
+
+	var rawBody []byte
+	if req.Body != nil {
+		bs, err := io.ReadAll(req.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read request body: %w", err)
+		}
+
+		rawBody = bs
+		req.Body = io.NopCloser(bytes.NewBuffer(bs))
+	}
+
+	// compute signature
+	signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
+		AccessToken: accessToken,
+		HTTPMethod:  req.Method,
+		URI:         req.URL.RequestURI(),
+		Timestamp:   timestamp,
+		ContentType: req.Header.Get("Content-type"),
+		RawBody:     rawBody,
 	})
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to calculate auth signature: %w", err)
 	}
+	// set needed access key auth headers
+	req.Header.Set("X-Deta-Timestamp", timestamp)
+	req.Header.Set("X-Deta-Signature", signature)
 
-	if output.Status != 200 {
-		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
-	}
-
-	return output.Body, err
-}
-
-func (d *DetaClient) Patch(path string, body []byte) ([]byte, error) {
-	output, err := d.request(&requestInput{
-		Method:      "PATCH",
-		Path:        path,
-		Root:        spaceRoot,
-		ContentType: "application/json",
-		Body:        body,
-		NeedsAuth:   true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if output.Status != 200 {
-		return nil, fmt.Errorf("request failed, status code: %v", output.Status)
-	}
-
-	return output.Body, err
+	return nil
 }
 
 // Request send an http request to the deta api
@@ -209,35 +214,9 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 			}
 		}
 
-		now := time.Now().UTC().Unix()
-
-		// client timestamps can be off by a lot, so we compute the shift from the server
-		if d.TimestampShift == 0 {
-			serverTimestamp, err := fetchServerTimestamp()
-			if err != nil {
-				return nil, fmt.Errorf("failed to compute timestamp shift: %w", err)
-			}
-
-			d.TimestampShift = serverTimestamp - now
+		if err := d.AuthenticateRequest(i.AccessToken, req); err != nil {
+			return nil, fmt.Errorf("failed to authenticate request: %w", err)
 		}
-
-		timestamp := strconv.FormatInt(now+d.TimestampShift, 10)
-
-		// compute signature
-		signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
-			AccessToken: i.AccessToken,
-			HTTPMethod:  i.Method,
-			URI:         req.URL.RequestURI(),
-			Timestamp:   timestamp,
-			ContentType: i.ContentType,
-			RawBody:     marshalled,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to calculate auth signature: %w", err)
-		}
-		// set needed access key auth headers
-		req.Header.Set("X-Deta-Timestamp", timestamp)
-		req.Header.Set("X-Deta-Signature", signature)
 	}
 
 	res, err := d.Client.Do(req)

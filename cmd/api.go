@@ -1,15 +1,17 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/deta/space/cmd/utils"
+	"github.com/deta/space/internal/auth"
 	"github.com/itchyny/gojq"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -22,60 +24,57 @@ func newCmdAPI() *cobra.Command {
 		Hidden: true,
 		Short:  "Makes an authenticated HTTP request to the Space API and prints the response.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			method, _ := cmd.Flags().GetString("method")
+			method = strings.ToUpper(method)
+
 			var body []byte
-			if !isatty.IsTerminal(os.Stdin.Fd()) {
-				b, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return err
+			if cmd.Flags().Changed("body") {
+				data, _ := cmd.Flags().GetString("data")
+				if data != "" {
+					body = []byte(data)
 				}
-				body = b
 			}
 
-			var method string
-			if cmd.Flags().Changed("method") {
-				method, _ = cmd.Flags().GetString("method")
-				if strings.ToUpper(method) == "GET" && body != nil {
-					return errors.New("cannot send body with GET request")
-				}
-			} else if body != nil {
-				method = "POST"
-			} else {
-				method = "GET"
+			if method == "GET" && len(body) > 0 {
+				return fmt.Errorf("cannot use GET method with body")
 			}
 
-			path := args[0]
-			var res []byte
-			switch strings.ToUpper(method) {
-			case "GET":
-				r, err := utils.Client.Get(path)
-				if err != nil {
-					return err
+			url := args[0]
+			if !strings.HasPrefix(url, "http") && !strings.HasPrefix(url, "https") {
+				if !strings.HasPrefix(url, "/") {
+					url = "/" + url
 				}
 
-				res = r
-			case "POST":
-				r, err := utils.Client.Post(path, body)
-				if err != nil {
-					return err
+				if !strings.HasPrefix(url, "/v0") {
+					url = "/v0" + url
 				}
 
-				res = r
-			case "DELETE":
-				r, err := utils.Client.Delete(path, body)
-				if err != nil {
-					return err
-				}
+				url = fmt.Sprintf("https://deta.space/api%s", url)
+			}
 
-				res = r
-			case "PATCH":
-				r, err := utils.Client.Patch(path, body)
-				if err != nil {
-					return err
-				}
+			req, err := http.NewRequest(method, url, bytes.NewReader(body))
+			if err != nil {
+				return err
+			}
 
-				res = r
-			default:
-				return errors.New("invalid method")
+			accessToken, err := auth.GetAccessToken()
+			if err != nil {
+				return err
+			}
+
+			if err := prepareRequest(accessToken, req); err != nil {
+				return err
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			res, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
 			}
 
 			if !cmd.Flags().Changed("jq") {
@@ -117,7 +116,37 @@ func newCmdAPI() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("method", "X", "", "HTTP method")
+	cmd.Flags().StringP("method", "X", "GET", "HTTP method")
+	cmd.Flags().StringP("data", "d", "", "HTTP request body")
 	cmd.Flags().String("jq", "", "jq filter")
 	return cmd
+}
+
+func prepareRequest(accessToken string, req *http.Request) error {
+	if req.URL.Hostname() == "deta.space" {
+		return utils.Client.AuthenticateRequest(accessToken, req)
+	} else if req.URL.Hostname() == "database.deta.sh" || req.URL.Hostname() == "drive.deta.sh" {
+		parts := strings.Split(req.URL.Path, "/")
+		if len(parts) < 3 {
+			return fmt.Errorf("invalid path: %s", req.URL.Path)
+		}
+		projectID := parts[2]
+		dataKey, err := utils.GenerateDataKeyIfNotExists(projectID)
+		if err != nil {
+			return fmt.Errorf("failed to generate data key: %w", err)
+		}
+
+		req.Header.Set("X-Api-Key", dataKey)
+		return nil
+	} else {
+		hostname := req.URL.Hostname()
+
+		apiKey, err := utils.GenerateApiKeyIfNotExists(accessToken, hostname)
+		if err != nil {
+			return fmt.Errorf("failed to generate api key: %w", err)
+		}
+
+		req.Header.Set("X-Space-App-Key", apiKey)
+		return nil
+	}
 }

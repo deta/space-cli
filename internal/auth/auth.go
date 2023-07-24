@@ -22,12 +22,13 @@ const (
 	oldSpaceDir                 = ".deta"
 	dirModePermReadWriteExecute = 0760
 	fileModePermReadWrite       = 0660
-	spaceProjectKeysPath        = ".detaspace/space_project_keys"
 )
 
 var (
-	spaceAuthTokenPath    = filepath.Join(spaceDir, spaceTokensFile)
-	oldSpaceAuthTokenPath = filepath.Join(oldSpaceDir, spaceTokensFile)
+	spaceAuthTokenPath    string
+	oldSpaceAuthTokenPath string
+	spaceProjectKeysPath  string
+	spaceApiKeysPath      string
 
 	// ErrNoProjectKeyFound no access token found
 	ErrNoProjectKeyFound = errors.New("no project key was found or was empty")
@@ -38,6 +39,17 @@ var (
 	// ErrBadAccessTokenFile bad access token file
 	ErrBadAccessTokenFile = errors.New("bad access token file")
 )
+
+func init() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	spaceProjectKeysPath = filepath.Join(home, spaceDir, "space_project_keys")
+	spaceApiKeysPath = filepath.Join(home, spaceDir, "space_api_keys")
+	spaceAuthTokenPath = filepath.Join(home, spaceDir, spaceTokensFile)
+	oldSpaceAuthTokenPath = filepath.Join(home, oldSpaceDir, spaceTokensFile)
+}
 
 type Token struct {
 	AccessToken string `json:"access_token"`
@@ -67,19 +79,14 @@ func GetAccessToken() (string, error) {
 		return spaceAccessToken, nil
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user home directory: %w", err)
-	}
-
-	tokensFilePath := filepath.Join(home, spaceAuthTokenPath)
+	tokensFilePath := spaceAuthTokenPath
 	accessToken, err := getAccessTokenFromFile(tokensFilePath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return accessToken, fmt.Errorf("failed to get access token from file: %w", err)
 		}
 		// fallback to old space auth token path
-		tokensFilePath = filepath.Join(home, oldSpaceAuthTokenPath)
+		tokensFilePath = oldSpaceAuthTokenPath
 		accessToken, err = getAccessTokenFromFile(tokensFilePath)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
@@ -165,14 +172,8 @@ func CalcSignature(i *CalcSignatureInput) (string, error) {
 
 type Keys map[string]string
 
-// GetProjectKey retrieves a project key storage or env var
-func GetProjectKey(projectId string) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", nil
-	}
-
-	keysFilePath := filepath.Join(home, spaceProjectKeysPath)
+// GetKey retrieves a project key storage or env var
+func GetKey(keysFilePath string, keyName string) (string, error) {
 	f, err := os.Open(keysFilePath)
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
@@ -180,40 +181,51 @@ func GetProjectKey(projectId string) (string, error) {
 	defer f.Close()
 
 	var keys Keys
-	contents, _ := ioutil.ReadAll(f)
-	json.Unmarshal(contents, &keys)
+	if err := json.NewDecoder(f).Decode(&keys); err != nil {
+		return "", err
+	}
 
-	if key, ok := keys[projectId]; ok {
+	if key, ok := keys[keysFilePath]; ok {
 		return key, nil
 	}
 
 	return "", ErrNoProjectKeyFound
 }
 
-func StoreProjectKey(projectId string, projectKey string) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	spaceDirPath := filepath.Join(home, spaceDir)
-	err = os.MkdirAll(spaceDirPath, 0760)
-	if err != nil {
-		return err
+func StoreKey(keysFilePath string, keyName string, keyValue string) error {
+	if _, err := os.Stat(keysFilePath); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(keysFilePath), dirModePermReadWriteExecute); err != nil {
+			return err
+		}
 	}
 
 	keys := make(map[string]interface{})
-	keys[projectId] = projectKey
+	keys[keyName] = keyValue
 
 	marshalled, err := json.Marshal(keys)
 	if err != nil {
 		return err
 	}
 
-	keysFilePath := filepath.Join(home, spaceProjectKeysPath)
 	err = ioutil.WriteFile(keysFilePath, marshalled, 0660)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func GetProjectKey(projectID string) (string, error) {
+	return GetKey(spaceProjectKeysPath, projectID)
+}
+
+func GetApiKey(hostname string) (string, error) {
+	return GetKey(spaceApiKeysPath, hostname)
+}
+
+func StoreProjectKey(name string, value string) error {
+	return StoreKey(spaceProjectKeysPath, name, value)
+}
+
+func StoreApiKey(name string, value string) error {
+	return StoreKey(spaceApiKeysPath, name, value)
 }
