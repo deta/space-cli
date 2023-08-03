@@ -626,6 +626,34 @@ type FetchDevAppInstanceResponse struct {
 	Instances []*AppInstance `json:"instances"`
 }
 
+func (c *DetaClient) PatchDevAppInstancePresets(instanceID string, micro *AppInstanceMicro) error {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/instances/%s", version, instanceID),
+		Method:    "PATCH",
+		NeedsAuth: true,
+		Body: struct {
+			Micros []*AppInstanceMicro `json:"micros"`
+		}{Micros: []*AppInstanceMicro{micro}},
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return err
+	}
+
+	if errors.Is(auth.ErrNoAccessTokenFound, err) {
+		return fmt.Errorf("no access token found, please login via space login")
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return fmt.Errorf("failed to patch dev instance preset: %v", msg)
+	}
+
+	return nil
+}
+
 func (c *DetaClient) GetDevAppInstance(projectID string) (*AppInstance, error) {
 	i := &requestInput{
 		Root:      spaceRoot,
@@ -640,11 +668,12 @@ func (c *DetaClient) GetDevAppInstance(projectID string) (*AppInstance, error) {
 		return nil, err
 	}
 
-	if o.Status != 200 {
+	if errors.Is(auth.ErrNoAccessTokenFound, err) {
+		return nil, fmt.Errorf("no access token found, please login via space login")
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		if msg == "" && len(o.Error.Errors) > 0 {
-			msg = o.Error.Errors[0]
-		}
 		return nil, fmt.Errorf("failed to fetch the dev instance: %v", msg)
 	}
 
