@@ -599,6 +599,97 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 	return &resp, nil
 }
 
+type MicroPresets struct {
+	Environment []*MicroPresetEnv `json:"env"`
+}
+
+type MicroPresetEnv struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Value       string `json:"value"`
+	Default     string `json:"default,omitempty"`
+	DefaultSet  bool   `json:"default_set,omitempty"`
+}
+
+type AppInstanceMicro struct {
+	ID      string        `json:"id"`
+	Name    string        `json:"name"`
+	Presets *MicroPresets `json:"presets"`
+}
+
+type AppInstance struct {
+	ID     string              `json:"id"`
+	Micros []*AppInstanceMicro `json:"micros,omitempty"`
+}
+
+type FetchDevAppInstanceResponse struct {
+	Instances []*AppInstance `json:"instances"`
+}
+
+func (c *DetaClient) GetDevAppInstance(projectID string) (*AppInstance, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/instances?app_id=%s&per_page=1&channel=development", version, projectID),
+		Method:    "GET",
+		NeedsAuth: true,
+		Body:      nil,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch the dev instance: %v", msg)
+	}
+
+	var fetchResp FetchDevAppInstanceResponse
+	err = json.Unmarshal(o.Body, &fetchResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch the dev instance: %v", err)
+	}
+
+	if len(fetchResp.Instances) == 0 {
+		return nil, fmt.Errorf("no dev instance found")
+	}
+
+	// partially initialized `AppInstance`
+	devInstance := fetchResp.Instances[0]
+
+	i = &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/instances/%s", version, devInstance.ID),
+		Method:    "GET",
+		NeedsAuth: true,
+		Body:      nil,
+	}
+
+	o, err = c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to fetch the dev instance: %v", msg)
+	}
+
+	err = json.Unmarshal(o.Body, &devInstance)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch the dev instance: %v", err)
+	}
+
+	return devInstance, nil
+}
+
 type GetPromotionRequest struct {
 	RevisionID string `json:"revision_id"`
 }
