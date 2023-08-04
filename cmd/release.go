@@ -87,6 +87,11 @@ func newCmdRelease() *cobra.Command {
 				}
 			}
 
+			if latestRelease != nil && releaseNotes == "" {
+				utils.Logger.Printf("Providing a release note is mandatory for each release after the first one\n\n")
+				return cmd.Usage()
+			}
+
 			discoveryData, err := getDiscoveryData(projectDir)
 			if err != nil {
 				utils.Logger.Printf("Failed to get discovery data: %v", err)
