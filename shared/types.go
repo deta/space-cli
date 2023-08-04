@@ -22,13 +22,16 @@ const (
 	SvelteKit = "svelte-kit"
 	Python38  = "python3.8"
 	Python39  = "python3.9"
+	Python310 = "python3.10"
+	Python311 = "python3.11"
 	Node14x   = "nodejs14.x"
 	Node16x   = "nodejs16.x"
+	Node18x   = "nodejs18.x"
 	Custom    = "custom"
 )
 
 var (
-	SupportedEngines = []string{Static, React, Svelte, Vue, Next, Nuxt, SvelteKit, Python38, Python39, Node14x, Node16x, Custom}
+	SupportedEngines = []string{Static, React, Svelte, Vue, Next, Nuxt, SvelteKit, Python38, Python39, Python310, Python311, Node14x, Node16x, Node18x, Custom}
 
 	EngineAliases = map[string]string{
 		"static":     Static,
@@ -40,10 +43,14 @@ var (
 		"svelte-kit": SvelteKit,
 		"python3.9":  Python39,
 		"python3.8":  Python38,
+		"python3.10": Python310,
+		"python3.11": Python311,
 		"nodejs14.x": Node14x,
 		"nodejs14":   Node14x,
 		"nodejs16.x": Node16x,
 		"nodejs16":   Node16x,
+		"nodejs18.x": Node18x,
+		"nodejs18":   Node18x,
 		"custom":     Custom,
 	}
 
@@ -57,8 +64,11 @@ var (
 		SvelteKit: Node16x,
 		Python38:  Python38,
 		Python39:  Python38,
+		Python310: Python310,
+		Python311: Python311,
 		Node14x:   Node14x,
 		Node16x:   Node16x,
+		Node18x:   Node18x,
 		Custom:    Custom,
 	}
 
@@ -225,7 +235,8 @@ func IsFrontendEngine(engine string) bool {
 }
 
 func IsPythonEngine(engine string) bool {
-	return engine == Python38 || engine == Python39
+	// return strings.HasPrefix(engine, "python")
+	return engine == Python38 || engine == Python39 || engine == Python310 || engine == Python311
 }
 
 func IsFullstackEngine(engine string) bool {
