@@ -756,11 +756,11 @@ func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetRelease
 		return nil, fmt.Errorf("failed to fetch promotions: %w", err)
 	}
 
-	var promotion *GetReleasePromotionResponse
-	if len(fetchResp.Promotions) > 0 {
-		promotion = &fetchResp.Promotions[0]
+	if len(fetchResp.Promotions) == 0 {
+		return nil, nil
 	}
 
+	promotion := &fetchResp.Promotions[0]
 	if promotion.Channel != "development" {
 		return nil, fmt.Errorf("failed to fetch promotions for revision: %s, no development promotion found", r.RevisionID)
 	}
