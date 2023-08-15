@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/adrg/frontmatter"
+	"github.com/spf13/cobra"
+
 	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
@@ -25,7 +27,6 @@ import (
 	"github.com/deta/space/pkg/components/text"
 	"github.com/deta/space/pkg/util/fs"
 	"github.com/deta/space/shared"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -379,7 +380,12 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 	return revisionMap[tag], nil
 }
 
-func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *shared.DiscoveryData) (err error) {
+// release xx
+func release(projectDir string, projectID string,
+	revisionID string, releaseVersion string,
+	listedRelease bool, releaseNotes string,
+	discoveryData *shared.DiscoveryData) (err error) {
+
 	cr, err := utils.Client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         projectID,
@@ -397,10 +403,28 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 		return err
 	}
 
+	screenshots, err := discovery.ParseScreenshot(discoveryData.Media)
+	if err != nil {
+		utils.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
+		return err
+	}
+
 	err = utils.Client.StoreDiscoveryData(cr.ID, discoveryData)
 	if err != nil {
 		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
+	}
+
+	for _, screenshot := range screenshots {
+		_, err = utils.Client.PushScreenshot(&api.PushScreenshotRequest{
+			PromotionID: cr.ID,
+			Image:       screenshot.Raw,
+			ContentType: screenshot.ContentType,
+		})
+		if err != nil {
+			utils.Logger.Println(styles.Errorf("\n%s Failed to push screenshot, %v", emoji.ErrorExclamation, err))
+			return err
+		}
 	}
 
 	readCloser, err := utils.Client.GetReleaseLogs(&api.GetReleaseLogsRequest{
@@ -410,10 +434,9 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
 	}
+	defer readCloser.Close()
 
 	var releaseUrl string
-
-	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -430,7 +453,10 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 
 	r, err := utils.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		utils.Logger.Printf(styles.Errorf("\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
+		utils.Logger.Printf(
+			styles.Errorf(
+				"\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.",
+				emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
 		return err
 	}
 

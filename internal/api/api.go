@@ -1041,6 +1041,51 @@ func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
 	return &release, nil
 }
 
+// PushScreenshotRequest xx
+type PushScreenshotRequest struct {
+	PromotionID string `json:"promotion_id"`
+	Image       []byte `json:"image"`
+	ContentType string `json:"content_type"`
+}
+
+// PushScreenshotResponse xx
+type PushScreenshotResponse struct {
+	ID string `json:"release_id"`
+}
+
+// PushScreenshot pushes image
+func (c *DetaClient) PushScreenshot(r *PushScreenshotRequest) (*PushScreenshotResponse, error) {
+
+	path := fmt.Sprintf("/%s/promotions/%s/discovery/screenshot", version, r.PromotionID)
+
+	i := &requestInput{
+		Root:        spaceRoot,
+		Path:        path,
+		Method:      "POST",
+		Headers:     make(map[string]string),
+		Body:        r.Image,
+		NeedsAuth:   true,
+		ContentType: r.ContentType,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if !(o.Status >= 200 && o.Status <= 299) {
+		msg := o.Error.Detail
+		return nil, fmt.Errorf("failed to push screenshot, %v", msg)
+	}
+
+	var resp PushScreenshotResponse
+	err = json.Unmarshal(o.Body, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to push screenshot, %w", err)
+	}
+	return &resp, nil
+}
+
 func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryData) error {
 	i := &requestInput{
 		Root:      spaceRoot,
