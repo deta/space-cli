@@ -78,7 +78,13 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 		return err
 	}
 
-	reverseProxy := proxy.NewReverseProxy(meta.ID, meta.Name, meta.Alias)
+	projectKey, err := utils.GenerateDataKeyIfNotExists(meta.ID)
+	if err != nil {
+		utils.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
+		return err
+	}
+
+	reverseProxy := proxy.NewReverseProxy(projectKey, meta.ID, meta.Name, meta.Alias)
 	if err := loadMicrosFromDir(reverseProxy, spacefile.Micros, microDir); err != nil {
 		return err
 	}
