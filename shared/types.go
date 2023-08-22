@@ -144,6 +144,7 @@ type DiscoveryData struct {
 	ThemeColor string `yaml:"theme_color,omitempty" json:"theme_color"`
 	Git        string `yaml:"git,omitempty" json:"git"`
 	Homepage   string `yaml:"homepage,omitempty" json:"homepage"`
+	OpenCode   bool   `yaml:"open_code,omitempty" json:"open_code"`
 	ContentRaw string `yaml:"-" json:"content_raw"`
 }
 
