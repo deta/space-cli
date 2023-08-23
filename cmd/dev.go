@@ -205,7 +205,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	}
 
 	time.Sleep(3 * time.Second)
-	proxy := proxy.NewReverseProxy(meta.ID, meta.Name, meta.Alias)
+	proxy := proxy.NewReverseProxy(projectKey, meta.ID, meta.Name, meta.Alias)
 	if err := loadMicrosFromDir(proxy, spacefile.Micros, routeDir); err != nil {
 		return err
 	}

@@ -3,17 +3,25 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/deta/space/shared"
 )
 
 const (
-	actionEndpoint = "/__space/actions"
+	actionEndpoint      = "/__space/actions"
+	clientBaseEndpoint  = "/__space/v0/base"
+	clientDriveEndpoint = "/__space/v0/drive"
+)
+
+const (
+	baseHost  = "database.deta.sh"
+	driveHost = "drive.deta.sh"
 )
 
 type ProxyEndpoint struct {
@@ -52,15 +60,19 @@ type ReverseProxy struct {
 	instanceAlias string
 	prefixToProxy map[string]*httputil.ReverseProxy
 	actionMap     map[string]ProxyAction
+	projectKey    string
+	client        *http.Client
 }
 
-func NewReverseProxy(appID string, appName string, instanceAlias string) *ReverseProxy {
+func NewReverseProxy(projectKey string, appID string, appName string, instanceAlias string) *ReverseProxy {
 	return &ReverseProxy{
 		appID:         appID,
 		appName:       appName,
 		instanceAlias: instanceAlias,
 		prefixToProxy: make(map[string]*httputil.ReverseProxy),
 		actionMap:     make(map[string]ProxyAction),
+		projectKey:    projectKey,
+		client:        &http.Client{},
 	}
 }
 
@@ -124,7 +136,47 @@ func extractPrefix(path string) string {
 	return "/"
 }
 
+func (p *ReverseProxy) ServeClientSDKAuth(targetHost string, w http.ResponseWriter, r *http.Request) {
+	newURL := *r.URL
+	newURL.Host = targetHost
+	newURL.Scheme = "https"
+	newURL.Path = regexp.MustCompile("^/__space/v0/(drive|base)/v1/[^/]+").
+		ReplaceAllString(newURL.Path, "/v1/"+strings.Split(p.projectKey, "_")[0])
+
+	newReq, err := http.NewRequest(r.Method, newURL.String(), r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newReq.Header.Add("X-API-Key", p.projectKey)
+	newReq.Header.Add("Content-Type", "application/json")
+	resp, err := p.client.Do(newReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
+}
+
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, clientBaseEndpoint) {
+		p.ServeClientSDKAuth(baseHost, w, r)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, clientDriveEndpoint) {
+		p.ServeClientSDKAuth(driveHost, w, r)
+		return
+	}
+
 	if r.URL.Path == actionEndpoint {
 		switch r.Method {
 		case http.MethodOptions:
@@ -190,7 +242,7 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			defer resp.Body.Close()
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -237,6 +289,4 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fallback.ServeHTTP(w, r)
 		return
 	}
-
-	http.NotFound(w, r)
 }
