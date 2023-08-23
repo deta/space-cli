@@ -1044,6 +1044,7 @@ func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
 // PushScreenshotRequest xx
 type PushScreenshotRequest struct {
 	PromotionID string `json:"promotion_id"`
+	Index       int    `json:"-"`
 	Image       []byte `json:"image"`
 	ContentType string `json:"content_type"`
 }
@@ -1056,7 +1057,7 @@ type PushScreenshotResponse struct {
 // PushScreenshot pushes image
 func (c *DetaClient) PushScreenshot(r *PushScreenshotRequest) (*PushScreenshotResponse, error) {
 
-	path := fmt.Sprintf("/%s/promotions/%s/discovery/screenshot", version, r.PromotionID)
+	path := fmt.Sprintf("/%s/promotions/%s/discovery/screenshots/%d", version, r.PromotionID, r.Index)
 
 	i := &requestInput{
 		Root:        spaceRoot,

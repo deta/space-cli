@@ -2,7 +2,7 @@ package discovery
 
 import (
 	"errors"
-	"fmt"
+	"io"
 	"mime"
 	"net/url"
 	"os"
@@ -21,15 +21,13 @@ type Screenshot struct {
 }
 
 func ParseScreenshot(paths []string) ([]Screenshot, error) {
-
 	screenshots := make([]Screenshot, 0)
 
 	for _, path := range paths {
 		screenshot := Screenshot{}
-		var raw []byte
 		if isValidVideoURL(path) {
-			raw = []byte(path)
-			screenshot.ContentType = "text/html"
+			screenshot.Raw = []byte(path)
+			screenshot.ContentType = "text/plain"
 		} else {
 			absPath, err := filepath.Abs(path)
 			if err != nil {
@@ -61,18 +59,15 @@ func ParseScreenshot(paths []string) ([]Screenshot, error) {
 				return screenshots, ErrInvalidScreenshotPath
 			}
 			defer file.Close()
-
-			raw = make([]byte, 0)
-			_, err = file.Read(raw)
+			content, err := io.ReadAll(file)
 			if err != nil {
-				return nil, fmt.Errorf("Can't read screenshot image")
+				return screenshots, err
 			}
+			screenshot.Raw = content
 
 			ext := filepath.Ext(absPath)
 			screenshot.ContentType = mime.TypeByExtension(ext)
 		}
-
-		screenshot.Raw = raw
 		screenshots = append(screenshots, screenshot)
 	}
 

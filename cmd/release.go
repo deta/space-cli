@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/adrg/frontmatter"
@@ -403,24 +404,38 @@ func release(projectDir string, projectID string,
 		return err
 	}
 
-	screenshots, err := discovery.ParseScreenshot(discoveryData.Media)
-	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
-		return err
-	}
-
 	err = utils.Client.StoreDiscoveryData(cr.ID, discoveryData)
 	if err != nil {
 		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 
-	for _, screenshot := range screenshots {
-		_, err = utils.Client.PushScreenshot(&api.PushScreenshotRequest{
-			PromotionID: cr.ID,
-			Image:       screenshot.Raw,
-			ContentType: screenshot.ContentType,
-		})
+	screenshots, err := discovery.ParseScreenshot(discoveryData.Media)
+	if err != nil {
+		utils.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
+		return err
+	}
+
+	var wg sync.WaitGroup
+	var errChan = make(chan error, len(screenshots))
+	for n, screenshot := range screenshots {
+		screenshot := screenshot
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, errChan chan error, index int, screenshot *discovery.Screenshot) {
+			defer wg.Done()
+			_, err = utils.Client.PushScreenshot(&api.PushScreenshotRequest{
+				PromotionID: cr.ID,
+				Index:       index,
+				Image:       screenshot.Raw,
+				ContentType: screenshot.ContentType,
+			})
+			errChan <- err
+		}(&wg, errChan, n, &screenshot)
+	}
+
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
 		if err != nil {
 			utils.Logger.Println(styles.Errorf("\n%s Failed to push screenshot, %v", emoji.ErrorExclamation, err))
 			return err
