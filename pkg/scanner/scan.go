@@ -9,11 +9,6 @@ import (
 )
 
 func Scan(sourceDir string) ([]*shared.Micro, error) {
-	files, err := os.ReadDir(sourceDir)
-	if err != nil {
-		return nil, err
-	}
-
 	var micros []*shared.Micro
 
 	// scan root source dir for a micro
@@ -21,7 +16,6 @@ func Scan(sourceDir string) ([]*shared.Micro, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if m != nil {
 		// root folder has a micro return as a single micro app
 		micros = append(micros, m)
@@ -29,9 +23,14 @@ func Scan(sourceDir string) ([]*shared.Micro, error) {
 	}
 
 	// scan subfolders for micros
-	for _, file := range files {
-		if file.IsDir() {
-			m, err = scanDir(filepath.Join(sourceDir, file.Name()))
+	entries, err := os.ReadDir(sourceDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			m, err = scanDir(filepath.Join(sourceDir, entry.Name()))
 			if err != nil {
 				return nil, err
 			}
@@ -49,6 +48,7 @@ func scanDir(dir string) (*shared.Micro, error) {
 		pythonScanner,
 		nodeScanner,
 		goScanner,
+		rustScanner,
 		staticScanner,
 	}
 

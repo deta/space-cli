@@ -14,8 +14,8 @@ type ScanTestInfo struct {
 	ExpectedEngine string
 }
 
-var (
-	microsTestInfo = []ScanTestInfo{
+func TestScanSingleMicroProjects(t *testing.T) {
+	microsTestInfo := []ScanTestInfo{
 		{Name: "python", Path: "testdata/micros/python", ExpectedEngine: shared.Python39},
 		{Name: "go", Path: "testdata/micros/go", ExpectedEngine: shared.Custom},
 		{Name: "next", Path: "testdata/micros/next", ExpectedEngine: shared.Next},
@@ -27,9 +27,7 @@ var (
 		{Name: "svelte-kit", Path: "testdata/micros/svelte-kit", ExpectedEngine: shared.SvelteKit},
 		{Name: "vue", Path: "testdata/micros/vue", ExpectedEngine: shared.Vue},
 	}
-)
 
-func TestScanSingleMicroProjects(t *testing.T) {
 	for _, project := range microsTestInfo {
 		t.Run(project.Path, func(t *testing.T) {
 			micros, err := Scan(project.Path)
@@ -44,7 +42,6 @@ func TestScanSingleMicroProjects(t *testing.T) {
 }
 
 func TestScanMultiMicroProject(t *testing.T) {
-
 	expectedMicros := []string{"python", "go", "next", "node", "nuxt", "react", "static", "svelte", "svelte-kit", "vue"}
 	expectedMicrosToEngines := map[string]string{
 		"python":     shared.Python39,
@@ -69,12 +66,10 @@ func TestScanMultiMicroProject(t *testing.T) {
 	assert.Equal(t, len(micros), len(expectedMicros), "detected %d micros, but expected %d", len(micros), len(expectedMicros))
 
 	for _, micro := range micros {
-		t.Run(micro.Name, func(t *testing.T) {
-			if !slices.Contains(expectedMicros, micro.Name) {
-				t.Fatalf("micro %s at %s is detected, but should not be detected as part of a multi-micro project", micro.Name, micro.Src)
-			}
-			assert.Equal(t, micro.Engine, expectedMicrosToEngines[micro.Name], "detected engine for micro %s as %s, but expected %s", micro.Name, micro.Engine, expectedMicrosToEngines[micro.Name])
-		})
+		if !slices.Contains(expectedMicros, micro.Name) {
+			t.Fatalf("micro %s at %s is detected, but should not be detected as part of a multi-micro project", micro.Name, micro.Src)
+		}
+		assert.Equal(t, micro.Engine, expectedMicrosToEngines[micro.Name], "detected engine for micro %s as %s, but expected %s", micro.Name, micro.Engine, expectedMicrosToEngines[micro.Name])
 	}
 }
 
