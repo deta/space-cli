@@ -54,11 +54,7 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 			skipLogs, _ := cmd.Flags().GetBool("skip-logs")
 			experimental, _ := cmd.Flags().GetBool("experimental")
 
-			err := push(projectID, projectDir, pushTag, openInBrowser, skipLogs, experimental)
-			if err != nil {
-				return err
-			}
-			return nil
+			return push(projectID, projectDir, pushTag, openInBrowser, skipLogs, experimental)
 		},
 	}
 
@@ -195,7 +191,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 	}
 	if b.Status != api.Complete {
 		utils.Logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
-		return err
+		return fmt.Errorf("build isn't complete")
 	}
 
 	// get promotion via build id (build id == revision id)
