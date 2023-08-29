@@ -17,7 +17,7 @@ func ProjectNotes(projectName string, projectId string) string {
 %s Use the %s to configure your app: %s
 %s Push your code to Space with %s`, styles.Bold("Next steps:"), emoji.Eyes,
 		styles.Bold(fmt.Sprintf("%s/%s", BuilderUrl, projectId)),
-		emoji.Files,
+		emoji.File,
 		styles.Code("Spacefile"), styles.Bold(SpacefileDocsUrl),
 		emoji.Swirl,
 		styles.Code("space push"))
