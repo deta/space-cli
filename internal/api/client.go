@@ -85,8 +85,8 @@ func fetchServerTimestamp() (int64, error) {
 	return serverTimestamp, nil
 }
 
-func (d *DetaClient) Get(path string) ([]byte, error) {
-	output, err := d.request(&requestInput{
+func (c *DetaClient) Get(path string) ([]byte, error) {
+	output, err := c.request(&requestInput{
 		Method:    "GET",
 		Root:      spaceRoot,
 		Path:      path,
@@ -104,8 +104,8 @@ func (d *DetaClient) Get(path string) ([]byte, error) {
 	return output.Body, nil
 }
 
-func (d *DetaClient) Post(path string, body []byte) ([]byte, error) {
-	output, err := d.request(&requestInput{
+func (c *DetaClient) Post(path string, body []byte) ([]byte, error) {
+	output, err := c.request(&requestInput{
 		Method:      "POST",
 		Path:        path,
 		Root:        spaceRoot,
@@ -125,8 +125,8 @@ func (d *DetaClient) Post(path string, body []byte) ([]byte, error) {
 	return output.Body, nil
 }
 
-func (d *DetaClient) Delete(path string, body []byte) ([]byte, error) {
-	output, err := d.request(&requestInput{
+func (c *DetaClient) Delete(path string, body []byte) ([]byte, error) {
+	output, err := c.request(&requestInput{
 		Method:      "DELETE",
 		Path:        path,
 		Root:        spaceRoot,
@@ -145,8 +145,8 @@ func (d *DetaClient) Delete(path string, body []byte) ([]byte, error) {
 	return output.Body, err
 }
 
-func (d *DetaClient) Patch(path string, body []byte) ([]byte, error) {
-	output, err := d.request(&requestInput{
+func (c *DetaClient) Patch(path string, body []byte) ([]byte, error) {
+	output, err := c.request(&requestInput{
 		Method:      "PATCH",
 		Path:        path,
 		Root:        spaceRoot,
@@ -166,7 +166,7 @@ func (d *DetaClient) Patch(path string, body []byte) ([]byte, error) {
 }
 
 // Request send an http request to the deta api
-func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
+func (c *DetaClient) request(i *requestInput) (*requestOutput, error) {
 	marshalled, _ := i.Body.([]byte)
 	if i.Body != nil && i.ContentType == "" {
 		// default set content-type to application/json
@@ -191,7 +191,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		req.Header.Set(k, v)
 	}
 
-	clientHeader := fmt.Sprintf("cli/%s %s", d.Version, d.Platform)
+	clientHeader := fmt.Sprintf("cli/%s %s", c.Version, c.Platform)
 	req.Header.Set(SpaceClientHeader, clientHeader)
 
 	// query params
@@ -212,16 +212,16 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		now := time.Now().UTC().Unix()
 
 		// client timestamps can be off by a lot, so we compute the shift from the server
-		if d.TimestampShift == 0 {
+		if c.TimestampShift == 0 {
 			serverTimestamp, err := fetchServerTimestamp()
 			if err != nil {
 				return nil, fmt.Errorf("failed to compute timestamp shift: %w", err)
 			}
 
-			d.TimestampShift = serverTimestamp - now
+			c.TimestampShift = serverTimestamp - now
 		}
 
-		timestamp := strconv.FormatInt(now+d.TimestampShift, 10)
+		timestamp := strconv.FormatInt(now+c.TimestampShift, 10)
 
 		// compute signature
 		signature, err := auth.CalcSignature(&auth.CalcSignatureInput{
@@ -240,7 +240,7 @@ func (d *DetaClient) request(i *requestInput) (*requestOutput, error) {
 		req.Header.Set("X-Deta-Signature", signature)
 	}
 
-	res, err := d.Client.Do(req)
+	res, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}

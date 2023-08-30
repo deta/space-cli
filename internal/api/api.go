@@ -22,7 +22,7 @@ var (
 	ErrProjectNotFound = errors.New("project not found")
 	ErrReleaseNotFound = errors.New("release not found")
 
-	// Status
+	// Complete status
 	Complete = "complete"
 )
 
@@ -1006,10 +1006,14 @@ type Release struct {
 	Discovery  *shared.DiscoveryData `json:"discovery"`
 }
 
-func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
+func (c *DetaClient) getLatestReleaseByApp(appID string, listed bool) (*Release, error) {
+	path := fmt.Sprintf("/%s/releases/latest?app_id=%s", version, appID)
+	if listed {
+		path = fmt.Sprintf("%s&listed=true", path)
+	}
 	i := &requestInput{
 		Root:      spaceRoot,
-		Path:      fmt.Sprintf("/%s/releases/latest?app_id=%s", version, appID),
+		Path:      path,
 		Method:    "GET",
 		NeedsAuth: true,
 	}
@@ -1039,6 +1043,14 @@ func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
 	}
 
 	return &release, nil
+}
+
+func (c *DetaClient) GetLatestReleaseByApp(appID string) (*Release, error) {
+	return c.getLatestReleaseByApp(appID, false)
+}
+
+func (c *DetaClient) GetLatestListedReleaseByApp(appID string) (*Release, error) {
+	return c.getLatestReleaseByApp(appID, true)
 }
 
 // PushScreenshotRequest xx
@@ -1106,7 +1118,7 @@ func (c *DetaClient) StoreDiscoveryData(PromotionID string, r *shared.DiscoveryD
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return fmt.Errorf("failed to store discovery data: %v", msg)
+		return fmt.Errorf("%v", msg)
 	}
 
 	return nil

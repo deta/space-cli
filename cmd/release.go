@@ -126,6 +126,19 @@ func newCmdRelease() *cobra.Command {
 				revisionID = revision.ID
 			}
 
+			if !cmd.Flags().Changed("notes") && utils.IsOutputInteractive() {
+				latestListedRelease, err := utils.Client.GetLatestListedReleaseByApp(projectID)
+				if err != nil {
+					return err
+				}
+				if latestListedRelease != nil {
+					releaseNotes, err = promptForReleaseNotes()
+					if err != nil {
+						return err
+					}
+				}
+			}
+
 			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 
 			err = release(projectDir, projectID, revisionID, releaseVersion,
@@ -196,6 +209,21 @@ func promptForDiscoveryData() (*shared.DiscoveryData, error) {
 	discoveryData.Tagline = tagline
 
 	return discoveryData, nil
+}
+
+func promptForReleaseNotes() (string, error) {
+	utils.Logger.Printf("\nPlease add some release notes to help others understand what's new in this release.\n\n")
+	notes, err := text.Run(&text.Input{
+		Prompt:      "Release Notes",
+		Placeholder: "",
+		Validator: func(value string) error {
+			return validatePromptValue(value, 1, 4250)
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("problem while trying to get release notes from text prompt, %w", err)
+	}
+	return notes, nil
 }
 
 func validatePromptValue(value string, min int, max int) error {
