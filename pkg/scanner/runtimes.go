@@ -103,6 +103,7 @@ func staticScanner(dir string) (*shared.Micro, error) {
 	m := &shared.Micro{
 		Name:   name,
 		Src:    dir,
+		Serve:  "./",
 		Engine: shared.Static,
 	}
 	return m, nil
