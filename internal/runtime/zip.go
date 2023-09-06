@@ -51,9 +51,14 @@ func ZipDir(sourceDir string) ([]byte, int, error) {
 		if err != nil {
 			return err
 		}
+		if path == absDir {
+			return nil
+		}
 
+		// matching against the the `TrimPrefix`ed transformation so that you can have your
+		// project in a folder called `dist`, for example.
 		// skip if shouldSkip according to skipPaths which are derived from .spaceignore
-		shouldSkip := spaceignore.MatchesPath(path)
+		shouldSkip := spaceignore.MatchesPath(strings.TrimPrefix(path, absDir+"/"))
 		if shouldSkip && info.IsDir() {
 			return filepath.SkipDir
 		}
