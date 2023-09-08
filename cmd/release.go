@@ -129,7 +129,10 @@ func newCmdRelease() *cobra.Command {
 			if !cmd.Flags().Changed("notes") && utils.IsOutputInteractive() {
 				latestListedRelease, err := utils.Client.GetLatestListedReleaseByApp(projectID)
 				if err != nil {
-					return err
+					if !errors.Is(err, api.ErrReleaseNotFound) {
+						utils.Logger.Println(styles.Errorf("%s Failed to fetch latest listed release: %v", emoji.ErrorExclamation, err))
+						return err
+					}
 				}
 				if latestListedRelease != nil {
 					releaseNotes, err = promptForReleaseNotes()
