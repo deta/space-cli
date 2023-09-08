@@ -146,6 +146,7 @@ type DiscoveryData struct {
 	Homepage   string   `yaml:"homepage,omitempty" json:"homepage"`
 	Media      []string `yaml:"media" json:"media"`
 	PortedFrom string   `yaml:"ported_from" json:"ported_from"`
+	OpenCode   bool     `yaml:"open_code,omitempty" json:"open_code"`
 	WorksWith  []string `yaml:"works_with" json:"works_with"`
 	ContentRaw string   `yaml:"-" json:"content_raw"`
 }
