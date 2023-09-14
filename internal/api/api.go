@@ -64,13 +64,13 @@ func (c *DetaClient) GetProject(r *GetProjectRequest) (*GetProjectResponse, erro
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to get project: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp GetProjectResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project: %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -105,13 +105,13 @@ func (c *DetaClient) CreateProject(r *CreateProjectRequest) (*CreateProjectRespo
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create project: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp CreateProjectResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new project: %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -149,13 +149,13 @@ func (c *DetaClient) CreateRelease(r *CreateReleaseRequest) (*CreateReleaseRespo
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create release: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp CreateReleaseResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new release: %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -183,7 +183,7 @@ func (c *DetaClient) GetReleaseLogs(r *GetReleaseLogsRequest) (io.ReadCloser, er
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create release: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 	return o.BodyReadCloser, nil
 }
@@ -231,13 +231,13 @@ func (c *DetaClient) GetRevision(r *GetRevisionRequest) (*GetRevisionResponse, e
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch revision: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp GetRevisionResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch revision: %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -271,13 +271,13 @@ func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch revisions: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var fetchResp fetchRevisionsResponse
 	err = json.Unmarshal(o.Body, &fetchResp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch revisions: %w", err)
+		return nil, err
 	}
 
 	var revisions []*Revision
@@ -317,13 +317,13 @@ func (c *DetaClient) CreateBuild(r *CreateBuildRequest) (*CreateBuildResponse, e
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create build request: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp CreateBuildResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create build request: %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -358,13 +358,13 @@ func (c *DetaClient) PushSpacefile(r *PushSpacefileRequest) (*PushSpacefileRespo
 	}
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push spacefile file, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp PushSpacefileResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push spacefile file %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -401,13 +401,13 @@ func (c *DetaClient) PushIcon(r *PushIconRequest) (*PushIconResponse, error) {
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push icon, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp PushIconResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push icon, %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -441,13 +441,13 @@ func (c *DetaClient) PushDiscoveryFile(r *PushDiscoveryFileRequest) (*PushDiscov
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push discovery file, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp PushDiscoveryFileResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push discovery file, %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -481,13 +481,13 @@ func (c *DetaClient) PushCode(r *PushCodeRequest) (*PushCodeResponse, error) {
 	}
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push code, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp PushCodeResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push code, %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -516,7 +516,7 @@ func (c *DetaClient) GetBuildLogs(r *GetBuildLogsRequest) (io.ReadCloser, error)
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to get build logs: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 	return o.BodyReadCloser, nil
 }
@@ -546,13 +546,13 @@ func (c *DetaClient) GetBuild(r *GetBuildRequest) (*GetBuildResponse, error) {
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to get build status, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp GetBuildResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get build status, %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -587,13 +587,13 @@ func (c *DetaClient) GetReleasePromotion(r *GetReleasePromotionRequest) (*GetRel
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to get build status, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp GetReleasePromotionResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get build status, %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -648,7 +648,7 @@ func (c *DetaClient) PatchDevAppInstancePresets(instanceID string, micro *AppIns
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return fmt.Errorf("failed to patch dev instance preset: %v", msg)
+		return fmt.Errorf(msg)
 	}
 
 	return nil
@@ -674,13 +674,13 @@ func (c *DetaClient) GetDevAppInstance(projectID string) (*AppInstance, error) {
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to fetch the dev instance: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var fetchResp FetchDevAppInstanceResponse
 	err = json.Unmarshal(o.Body, &fetchResp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the dev instance: %v", err)
+		return nil, err
 	}
 
 	if len(fetchResp.Instances) == 0 {
@@ -708,12 +708,12 @@ func (c *DetaClient) GetDevAppInstance(projectID string) (*AppInstance, error) {
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch the dev instance: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	err = json.Unmarshal(o.Body, &devInstance)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the dev instance: %v", err)
+		return nil, err
 	}
 
 	return devInstance, nil
@@ -747,13 +747,13 @@ func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetRelease
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch promotions: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var fetchResp FetchPromotionResponse
 	err = json.Unmarshal(o.Body, &fetchResp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch promotions: %w", err)
+		return nil, err
 	}
 
 	if len(fetchResp.Promotions) == 0 {
@@ -762,7 +762,7 @@ func (c *DetaClient) GetPromotionByRevision(r *GetPromotionRequest) (*GetRelease
 
 	promotion := &fetchResp.Promotions[0]
 	if promotion.Channel != "development" {
-		return nil, fmt.Errorf("failed to fetch promotions for revision: %s, no development promotion found", r.RevisionID)
+		return nil, fmt.Errorf("no development promotion found")
 	}
 
 	return promotion, nil
@@ -803,13 +803,13 @@ func (c *DetaClient) GetInstallationByRelease(r *GetInstallationByReleaseRequest
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch installations: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var fetchResp FetchInstallationsResponse
 	err = json.Unmarshal(o.Body, &fetchResp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch installations: %w", err)
+		return nil, err
 	}
 
 	var installation *Installation
@@ -842,13 +842,13 @@ func (c *DetaClient) GetInstallation(r *GetInstallationRequest) (*Installation, 
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch installation: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp Installation
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch installation: %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -877,7 +877,7 @@ func (c *DetaClient) GetInstallationLogs(r *GetInstallationLogsRequest) (io.Read
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to get installation logs: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 	return o.BodyReadCloser, nil
 }
@@ -911,13 +911,13 @@ func (c *DetaClient) GetSpace(r *GetSpaceRequest) (*GetSpaceResponse, error) {
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to get space, %s", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp GetSpaceResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get space, %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -951,13 +951,13 @@ func (c *DetaClient) CreateProjectKey(AppID string, r *CreateProjectKeyRequest) 
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create project key: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp CreateProjectKeyResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new project key: %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -987,13 +987,13 @@ func (c *DetaClient) ListProjectKeys(AppID string) (*ListProjectResponse, error)
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to create project key: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp ListProjectResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list project keys: %w", err)
+		return nil, err
 	}
 
 	return &resp, nil
@@ -1033,13 +1033,13 @@ func (c *DetaClient) getLatestReleaseByApp(appID string, listed bool) (*Release,
 		if msg == "" && len(o.Error.Errors) > 0 {
 			msg = o.Error.Errors[0]
 		}
-		return nil, fmt.Errorf("failed to fetch release: %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var release Release
 	err = json.Unmarshal(o.Body, &release)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resp: %w", err)
+		return nil, err
 	}
 
 	return &release, nil
@@ -1088,13 +1088,13 @@ func (c *DetaClient) PushScreenshot(r *PushScreenshotRequest) (*PushScreenshotRe
 
 	if !(o.Status >= 200 && o.Status <= 299) {
 		msg := o.Error.Detail
-		return nil, fmt.Errorf("failed to push screenshot, %v", msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var resp PushScreenshotResponse
 	err = json.Unmarshal(o.Body, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push screenshot, %w", err)
+		return nil, err
 	}
 	return &resp, nil
 }
