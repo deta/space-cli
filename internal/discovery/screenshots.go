@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	// ErrInvalidScreenshotPath cannot find screenshot path
-	ErrInvalidScreenshotPath = errors.New("invalid screenshot path")
+	// ErrInvalidMediaPath cannot find media path
+	ErrInvalidMediaPath = errors.New("invalid media path")
 )
 
 // Screenshot xx
@@ -31,7 +31,7 @@ func ParseScreenshot(paths []string) ([]Screenshot, error) {
 		} else {
 			absPath, err := filepath.Abs(path)
 			if err != nil {
-				return screenshots, ErrInvalidScreenshotPath
+				return screenshots, ErrInvalidMediaPath
 			}
 
 			isdir, err := isDir(&absPath)
@@ -56,7 +56,7 @@ func ParseScreenshot(paths []string) ([]Screenshot, error) {
 
 			file, err := os.Open(absPath)
 			if err != nil {
-				return screenshots, ErrInvalidScreenshotPath
+				return screenshots, ErrInvalidMediaPath
 			}
 			defer file.Close()
 			content, err := io.ReadAll(file)
@@ -80,7 +80,7 @@ func getFilesInDirectory(directoryPath string) ([]string, error) {
 
 	files, err := os.ReadDir(directoryPath)
 	if err != nil {
-		return nil, ErrInvalidScreenshotPath
+		return nil, ErrInvalidMediaPath
 	}
 
 	for _, file := range files {
@@ -98,7 +98,7 @@ func getFilesInDirectory(directoryPath string) ([]string, error) {
 func isDir(path *string) (bool, error) {
 	fileInfo, err := os.Stat(*path)
 	if err != nil {
-		return false, ErrInvalidScreenshotPath
+		return false, ErrInvalidMediaPath
 	}
 
 	if fileInfo.IsDir() {
