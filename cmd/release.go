@@ -193,7 +193,7 @@ func promptForDiscoveryData() (*shared.DiscoveryData, error) {
 		Validator:   validateAppName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("problem while trying to get title from text prompt, %w", err)
+		return nil, err
 	}
 	discoveryData.AppName = name
 
@@ -203,7 +203,7 @@ func promptForDiscoveryData() (*shared.DiscoveryData, error) {
 		Validator:   validateAppDescription,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("problem while trying to get tagline from text prompt, %w", err)
+		return nil, err
 	}
 	discoveryData.Tagline = tagline
 
@@ -220,7 +220,7 @@ func promptForReleaseNotes() (string, error) {
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("problem while trying to get release notes from text prompt, %w", err)
+		return "", err
 	}
 	return notes, nil
 }

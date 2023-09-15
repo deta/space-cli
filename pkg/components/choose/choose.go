@@ -2,6 +2,7 @@ package choose
 
 import (
 	"fmt"
+	"github.com/deta/space/pkg/components"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/space/pkg/components/styles"
@@ -117,7 +118,7 @@ func Run(prompt string, choices ...string) (string, error) {
 	}
 
 	if model.Cancelled {
-		return "", fmt.Errorf("cancelled")
+		return "", components.ErrPromptCancelled
 	}
 
 	return model.Selection(), nil
