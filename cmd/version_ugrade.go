@@ -9,7 +9,6 @@ import (
 	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	detaruntime "github.com/deta/space/internal/runtime"
-	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/spf13/cobra"
 )
@@ -24,8 +23,7 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 			if !cmd.Flags().Changed("version") {
 				latestVersion, err := api.GetLatestCliVersion()
 				if err != nil {
-					utils.Logger.Println(styles.Errorf("%s Failed to get latest version. Please try again.", emoji.X))
-					return err
+					return fmt.Errorf("failed to get the latest version, %w, please try again", err)
 				}
 				targetVersion = latestVersion
 			}
@@ -39,18 +37,17 @@ func newCmdVersionUpgrade(currentVersion string) *cobra.Command {
 			case "linux", "darwin":
 				err := upgradeUnix(targetVersion)
 				if err != nil {
-					utils.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
-					return err
+					return fmt.Errorf("failed to upgrade, %w, please try again", err)
 				}
 			case "windows":
 				err := upgradeWin(targetVersion)
 				if err != nil {
-					utils.Logger.Println(styles.Errorf("%s Upgrade failed. Please try again.", emoji.X))
-					return err
+					if err != nil {
+						return fmt.Errorf("failed to upgrade, %w, please try again", err)
+					}
 				}
 			default:
-				utils.Logger.Println(styles.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS))
-				return fmt.Errorf("%s Upgrade not supported for %s", emoji.X, runtime.GOOS)
+				return fmt.Errorf("unsupported OS, %s", runtime.GOOS)
 			}
 
 			detaruntime.CacheLatestVersion(targetVersion)

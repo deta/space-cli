@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 
 	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/runtime"
-	"github.com/deta/space/pkg/components/emoji"
 	"github.com/spf13/cobra"
 )
 
@@ -26,8 +26,7 @@ The data key will be automatically injected into the command's environment.`,
 				cwd, _ := os.Getwd()
 				projectID, err = runtime.GetProjectID(cwd)
 				if err != nil {
-					utils.Logger.Printf("project id not provided and could not be inferred from current working directory")
-					return err
+					return fmt.Errorf("project id not provided and could not be inferred from current working directory")
 				}
 			}
 
@@ -49,8 +48,7 @@ func execRun(projectID string, args []string) error {
 
 	projectKey, err := utils.GenerateDataKeyIfNotExists(projectID)
 	if err != nil {
-		utils.Logger.Printf("%sError generating data key: %s\n", emoji.ErrorExclamation, err.Error())
-		return err
+		return fmt.Errorf("failed to generate data key: %w", err)
 	}
 
 	name := args[0]

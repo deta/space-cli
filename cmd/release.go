@@ -69,8 +69,7 @@ func newCmdRelease() *cobra.Command {
 			latestRelease, err := utils.Client.GetLatestReleaseByApp(projectID)
 			if err != nil {
 				if !errors.Is(err, api.ErrReleaseNotFound) {
-					utils.Logger.Println(styles.Errorf("%s Failed to fetch releases: %v", emoji.ErrorExclamation, err))
-					return err
+					return fmt.Errorf("failed to the latest release, %w", err)
 				}
 			}
 
@@ -81,18 +80,16 @@ func newCmdRelease() *cobra.Command {
 					if err != nil {
 						return err
 					}
-
 					if !continueReleasing {
-						utils.Logger.Println("Aborted releasing this app.")
-						return err
+						utils.Logger.Println("Aborted.")
+						return nil
 					}
 				}
 			}
 
 			discoveryData, err := getDiscoveryData(projectDir)
 			if err != nil {
-				utils.Logger.Printf("Failed to get discovery data: %v", err)
-				return err
+				return fmt.Errorf("failed to get Discovery data, %w", err)
 			}
 
 			if latestRelease != nil {
@@ -130,8 +127,7 @@ func newCmdRelease() *cobra.Command {
 				latestListedRelease, err := utils.Client.GetLatestListedReleaseByApp(projectID)
 				if err != nil {
 					if !errors.Is(err, api.ErrReleaseNotFound) {
-						utils.Logger.Println(styles.Errorf("%s Failed to fetch latest listed release: %v", emoji.ErrorExclamation, err))
-						return err
+						return fmt.Errorf("failed to fetch the latest listed release for this app, %w", err)
 					}
 				}
 				if latestListedRelease != nil {
@@ -144,7 +140,7 @@ func newCmdRelease() *cobra.Command {
 
 			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 
-			err = release(projectDir, projectID, revisionID, releaseVersion,
+			err = release(projectID, revisionID, releaseVersion,
 				listedRelease, releaseNotes, discoveryData)
 			if err != nil {
 				return err
@@ -254,14 +250,12 @@ func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *ap
 		p := filepath.Join(projectDir, discovery.DiscoveryFilename)
 		modTime, err := fs.GetFileLastChanged(p)
 		if err != nil {
-			utils.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
-			return err
+			return fmt.Errorf("failed to check if your local Discovery data is outdated, %w", err)
 		}
 
 		parsedTime, err := time.Parse(time.RFC3339, latestRelease.ReleasedAt)
 		if err != nil {
-			utils.Logger.Println(styles.Errorf("%s Failed to check if local Discovery data is outdated: %v", emoji.ErrorExclamation, err))
-			return err
+			return fmt.Errorf("failed to check if your local Discovery data is outdated, %w", err)
 		}
 
 		if modTime.Before(parsedTime) {
@@ -269,7 +263,7 @@ func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *ap
 
 			updateLocalDiscovery, err := confirm.Run("Do you want to update your local Discovery.md file with the data from the latest release?")
 			if err != nil {
-				utils.Logger.Println("Aborted releasing this app.")
+				utils.Logger.Println("Aborted.")
 				return err
 			}
 
@@ -278,19 +272,18 @@ func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *ap
 				discoveryPath := filepath.Join(projectDir, discovery.DiscoveryFilename)
 				err := discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
 				if err != nil {
-					utils.Logger.Println(styles.Errorf("%s Failed to update local Discovery.md file: %v", emoji.ErrorExclamation, err))
-					return err
+					return fmt.Errorf("failed to update local Discovery.md file, %w", err)
 				}
 
 				utils.Logger.Printf("\n%s Updated your local Discovery.md file with the latest data!\n\n", emoji.Check)
 			} else {
 				continueReleasing, err := confirm.Run("Are you sure you want to continue releasing the app with the local Discovery data?")
 				if err != nil {
-					utils.Logger.Println("Aborted releasing this app.")
+					utils.Logger.Println("Aborted.")
 					return err
 				} else if !continueReleasing {
-					utils.Logger.Println("Aborted releasing this app.")
-					return fmt.Errorf("aborted releasing this app")
+					utils.Logger.Println("Aborted.")
+					return nil
 				}
 			}
 		}
@@ -307,12 +300,11 @@ func getDiscoveryData(projectDir string) (*shared.DiscoveryData, error) {
 		}
 		discoveryData, err := promptForDiscoveryData()
 		if err != nil {
-			utils.Logger.Printf("%s Error: %v", emoji.ErrorExclamation, err)
+			return nil, err
 		}
 		err = discovery.CreateDiscoveryFile(discoveryPath, *discoveryData)
 		if err != nil {
-			utils.Logger.Printf("%s Failed to create Discovery.md file, %v", emoji.ErrorExclamation, err)
-			return nil, err
+			return nil, fmt.Errorf("failed to create Discovery.md file, %w", err)
 		}
 
 		utils.Logger.Printf("\n%s Created a new Discovery.md file that stores this data!\n\n", emoji.Check)
@@ -330,8 +322,7 @@ func getDiscoveryData(projectDir string) (*shared.DiscoveryData, error) {
 	discoveryData := &shared.DiscoveryData{}
 	rest, err := frontmatter.Parse(bytes.NewReader(df), &discoveryData)
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("\n%s Failed to parse Discovery file, %v", emoji.ErrorExclamation, err))
-		return nil, err
+		return nil, fmt.Errorf("failed to parse the Discovery file, %w", err)
 	}
 
 	discoveryData.ContentRaw = string(rest)
@@ -357,8 +348,7 @@ func selectRevisionByTagName(projectID string, tagName string) (*api.Revision, e
 			utils.Logger.Println(utils.LoginInfo())
 			return nil, err
 		} else {
-			utils.Logger.Println(styles.Errorf("%s Failed to get revision: %v", emoji.ErrorExclamation, err))
-			return nil, err
+			return nil, fmt.Errorf("failed to fetch the revision from the tag: %w", err)
 		}
 	}
 
@@ -372,8 +362,7 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 			utils.Logger.Println(utils.LoginInfo())
 			return nil, err
 		} else {
-			utils.Logger.Println(styles.Errorf("%s Failed to get revisions: %v", emoji.ErrorExclamation, err))
-			return nil, err
+			return nil, fmt.Errorf("failed to fetch the revisions: %w", err)
 		}
 	}
 	revisions := r.Revisions
@@ -413,7 +402,7 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 }
 
 // release xx
-func release(projectDir string, projectID string,
+func release(projectID string,
 	revisionID string, releaseVersion string,
 	listedRelease bool, releaseNotes string,
 	discoveryData *shared.DiscoveryData) (err error) {
@@ -431,20 +420,17 @@ func release(projectDir string, projectID string,
 			utils.Logger.Println(utils.LoginInfo())
 			return nil
 		}
-		utils.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
-		return err
+		return fmt.Errorf("failed to create a new release, %w", err)
 	}
 
 	err = utils.Client.StoreDiscoveryData(cr.ID, discoveryData)
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		return err
+		return fmt.Errorf("failed to store Discovery data, %w", err)
 	}
 
 	screenshots, err := discovery.ParseScreenshot(discoveryData.Media)
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Failed to create release: %v", emoji.ErrorExclamation, err))
-		return err
+		return fmt.Errorf("failed to process Discovery data media, %w", err)
 	}
 
 	var wg sync.WaitGroup
@@ -468,8 +454,7 @@ func release(projectDir string, projectID string,
 	close(errChan)
 	for err := range errChan {
 		if err != nil {
-			utils.Logger.Println(styles.Errorf("\n%s Failed to push screenshot, %v", emoji.ErrorExclamation, err))
-			return err
+			return fmt.Errorf("failed to push Discovery data media, %w", err)
 		}
 	}
 
@@ -477,8 +462,7 @@ func release(projectDir string, projectID string,
 		ID: cr.ID,
 	})
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		return err
+		return fmt.Errorf("failed to get release logs, %w", err)
 	}
 	defer readCloser.Close()
 
@@ -493,17 +477,12 @@ func release(projectDir string, projectID string,
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		utils.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return err
 	}
 
 	r, err := utils.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: cr.ID})
 	if err != nil {
-		utils.Logger.Printf(
-			styles.Errorf(
-				"\n%s Failed to check if release succeeded. Please check %s if a new release was created successfully.",
-				emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-		return err
+		return fmt.Errorf("failed to check if the release succeeded, please check %s manually", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 	}
 
 	if r.Status == api.Complete {
@@ -519,8 +498,7 @@ func release(projectDir string, projectID string,
 			utils.Logger.Printf("\nRelease: %s", styles.Code(releaseUrl))
 		}
 	} else {
-		utils.Logger.Println(styles.Errorf("\n%s Failed to create release. Please try again!", emoji.ErrorExclamation))
-		return fmt.Errorf("release failed: %s", r.Status)
+		return fmt.Errorf("failed to create the release, please try again")
 	}
 
 	return nil

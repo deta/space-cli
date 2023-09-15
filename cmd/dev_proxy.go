@@ -40,8 +40,7 @@ The micros will be automatically discovered and proxied to.`,
 			if !cmd.Flags().Changed("port") {
 				port, err = GetFreePort(utils.DevPort)
 				if err != nil {
-					utils.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
-					return err
+					return fmt.Errorf("failed to get free port: %w", err)
 				}
 			}
 
@@ -80,8 +79,7 @@ func devProxy(projectDir string, host string, port int, open bool) error {
 
 	projectKey, err := utils.GenerateDataKeyIfNotExists(meta.ID)
 	if err != nil {
-		utils.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
-		return err
+		return fmt.Errorf("failed to generate project key: %w", err)
 	}
 
 	reverseProxy := proxy.NewReverseProxy(projectKey, meta.ID, meta.Name, meta.Alias)
