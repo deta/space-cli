@@ -16,11 +16,12 @@ const (
 )
 
 var (
-	SpaceVersion string = "dev"
-	DevPort      int    = 4200
 	Platform     string
+	SpaceVersion = "dev"
+	DevPort      = 4200
 	Client       = api.NewDetaClient(SpaceVersion, Platform)
-	Logger       = log.New(os.Stderr, "", 0)
+	Logger       = log.New(os.Stdout, "", 0)
+	StdErrLogger = log.New(os.Stderr, "", 0)
 )
 
 func IsPortActive(port int) bool {

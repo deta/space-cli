@@ -40,5 +40,10 @@ Complete documentation available at %s`, utils.DocsUrl),
 	// while calling the Execute function in the main.go file.
 	cmd.SilenceUsage = true
 
+	// This will prevent the error message from being displayed when an error
+	// We will handle printing the error message ourselves.
+	// Each subcommand must use RunE instead of Run.
+	cmd.SilenceErrors = true
+
 	return cmd
 }
