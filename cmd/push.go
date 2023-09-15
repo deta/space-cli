@@ -174,7 +174,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 	// check build status
 	b, err := utils.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 	if err != nil {
-		return fmt.Errorf("%s failed to check if push succeded, please check %s if a new revision was created successfully", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
+		return fmt.Errorf("failed to check if push succeded, please check %s if a new revision was created successfully", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 	}
 	if b.Status != api.Complete {
 		return fmt.Errorf("failed to push code and create a revision, please try again")
