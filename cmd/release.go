@@ -130,11 +130,9 @@ func newCmdRelease() *cobra.Command {
 						return fmt.Errorf("failed to fetch the latest listed release for this app, %w", err)
 					}
 				}
-				if latestListedRelease != nil {
-					releaseNotes, err = promptForReleaseNotes()
-					if err != nil {
-						return err
-					}
+				releaseNotes, err = promptForReleaseNotes(latestListedRelease != nil && listedRelease)
+				if err != nil {
+					return err
 				}
 			}
 
@@ -210,13 +208,17 @@ func promptForDiscoveryData() (*shared.DiscoveryData, error) {
 	return discoveryData, nil
 }
 
-func promptForReleaseNotes() (string, error) {
+func promptForReleaseNotes(required bool) (string, error) {
 	utils.Logger.Printf("\nPlease add some release notes to help others understand what's new in this release.\n\n")
 	notes, err := text.Run(&text.Input{
 		Prompt:      "Release Notes",
 		Placeholder: "",
 		Validator: func(value string) error {
-			return validatePromptValue(value, 1, 4250)
+			min := 1
+			if !required {
+				min = 0
+			}
+			return validatePromptValue(value, min, 4250)
 		},
 	})
 	if err != nil {
@@ -247,9 +249,10 @@ func validateAppDescription(value string) error {
 
 func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *api.Release, projectDir string) error {
 	// TODO: fix this behavior
-	// right now the media is using the same key but the values are different in the request and the response
-	// this is fine for now because there is no way to update the media except for the CLI
+	// the media and works with are using the same key but the values are different in the request and the response
+	// this is fine for now because there is no way to update the media and works with except for the CLI
 	latestRelease.Discovery.Media = discoveryData.Media
+	latestRelease.Discovery.WorksWith = discoveryData.WorksWith
 
 	if latestRelease.Discovery.ContentRaw != "" && !reflect.DeepEqual(latestRelease.Discovery, discoveryData) {
 		p := filepath.Join(projectDir, discovery.DiscoveryFilename)
