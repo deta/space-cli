@@ -246,6 +246,11 @@ func validateAppDescription(value string) error {
 }
 
 func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *api.Release, projectDir string) error {
+	// TODO: fix this behavior
+	// right now the media is using the same key but the values are different in the request and the response
+	// this is fine for now because there is no way to update the media except for the CLI
+	latestRelease.Discovery.Media = discoveryData.Media
+
 	if latestRelease.Discovery.ContentRaw != "" && !reflect.DeepEqual(latestRelease.Discovery, discoveryData) {
 		p := filepath.Join(projectDir, discovery.DiscoveryFilename)
 		modTime, err := fs.GetFileLastChanged(p)
