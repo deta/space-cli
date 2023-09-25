@@ -32,6 +32,14 @@ const (
 	ReleaseChannelExp = "experimental"
 )
 
+type ReleaseStatus string
+
+const (
+	PublicRelease     ReleaseStatus = "public"
+	PrivateRelease    ReleaseStatus = "private"
+	StandaloneRelease ReleaseStatus = "standalone"
+)
+
 func newCmdRelease() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:      "release [flags]",
@@ -47,14 +55,26 @@ func newCmdRelease() *cobra.Command {
 			}
 
 			var revisionID string
+			var releaseStatus ReleaseStatus
 
 			projectDir, _ := cmd.Flags().GetString("dir")
 			projectID, _ := cmd.Flags().GetString("id")
 			releaseNotes, _ := cmd.Flags().GetString("notes")
 			revisionTagName, _ := cmd.Flags().GetString("rid")
 			useLatestRevision, _ := cmd.Flags().GetBool("confirm")
-			listedRelease, _ := cmd.Flags().GetBool("listed")
+			publicRelease, _ := cmd.Flags().GetBool("public")
+			privateRelease, _ := cmd.Flags().GetBool("private")
+			standaloneRelease, _ := cmd.Flags().GetBool("standalone")
 			releaseVersion, _ := cmd.Flags().GetString("version")
+
+			switch {
+			case publicRelease && !privateRelease:
+				releaseStatus = PublicRelease
+			case standaloneRelease:
+				releaseStatus = StandaloneRelease
+			default:
+				releaseStatus = PrivateRelease
+			}
 
 			if !cmd.Flags().Changed("id") {
 				projectMeta, err := runtime.GetProjectMeta(projectDir)
@@ -75,7 +95,7 @@ func newCmdRelease() *cobra.Command {
 			// check there are no previous releases for this project
 			if latestRelease == nil && utils.IsOutputInteractive() {
 				if !cmd.Flags().Changed("confirm") {
-					continueReleasing, err := confirmReleasing(listedRelease)
+					continueReleasing, err := confirmReleasing(publicRelease)
 					if err != nil {
 						return err
 					}
@@ -124,10 +144,14 @@ func newCmdRelease() *cobra.Command {
 				revisionID = revision.ID
 			}
 
-			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
+			utils.Logger.Printf(
+				getCreatingReleaseMsg(
+					releaseStatus,
+					useLatestRevision,
+				))
 
 			err = release(projectDir, projectID, revisionID, releaseVersion,
-				listedRelease, releaseNotes, discoveryData)
+				releaseStatus, releaseNotes, discoveryData)
 			if err != nil {
 				return err
 			}
@@ -140,7 +164,9 @@ func newCmdRelease() *cobra.Command {
 	cmd.Flags().StringP("id", "i", "", "project id of an existing project")
 	cmd.Flags().String("rid", "", "revision id for release")
 	cmd.Flags().StringP("version", "v", "", "version for the release")
-	cmd.Flags().Bool("listed", false, "listed on discovery")
+	cmd.Flags().Bool("public", false, "public release: listed on discovery")
+	cmd.Flags().Bool("standalone", false, "standalone release")
+	cmd.Flags().Bool("private", false, "private release")
 	cmd.Flags().Bool("confirm", false, "confirm to use latest revision")
 	cmd.Flags().StringP("notes", "n", "", "release notes")
 
@@ -149,11 +175,11 @@ func newCmdRelease() *cobra.Command {
 	return cmd
 }
 
-func confirmReleasing(listedRelease bool) (bool, error) {
+func confirmReleasing(publicRelease bool) (bool, error) {
 	var confirmMsg string
 
-	if listedRelease {
-		utils.Logger.Println("Creating a listed release makes your app available on Deta Discovery for anyone to install and use.")
+	if publicRelease {
+		utils.Logger.Println("Creating a public release makes your app available on Deta Discovery for anyone to install and use.")
 		confirmMsg = "Are you sure you want to release this app publicly on Discovery? (y/n)"
 	} else {
 		utils.Logger.Println("Releasing makes your app available via a unique link for others to install and use.")
@@ -379,15 +405,27 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 	return revisionMap[tag], nil
 }
 
-func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *shared.DiscoveryData) (err error) {
-	cr, err := utils.Client.CreateRelease(&api.CreateReleaseRequest{
-		RevisionID:    revisionID,
-		AppID:         projectID,
-		Version:       releaseVersion,
-		ReleaseNotes:  releaseNotes,
-		DiscoveryList: listedRelease,
-		Channel:       ReleaseChannelExp, // always experimental release for now
-	})
+func release(projectDir string, projectID string, revisionID string,
+	releaseVersion string, releaseStatus ReleaseStatus,
+	releaseNotes string, discoveryData *shared.DiscoveryData) (err error) {
+
+	req := &api.CreateReleaseRequest{
+		RevisionID:   revisionID,
+		AppID:        projectID,
+		Version:      releaseVersion,
+		ReleaseNotes: releaseNotes,
+		Channel:      ReleaseChannelExp, // always experimental release for now
+	}
+
+	switch releaseStatus {
+	case PublicRelease:
+		req.DiscoveryList = true
+	case StandaloneRelease:
+		req.Standalone = true
+	}
+
+	cr, err := utils.Client.CreateRelease(req)
+
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
 			utils.Logger.Println(utils.LoginInfo())
@@ -439,7 +477,7 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 		utils.Logger.Println(emoji.Rocket, "Lift off -- successfully created a new release!")
 		utils.Logger.Println(emoji.Earth, "Your release is available globally on 5 Deta Edges")
 		utils.Logger.Println(emoji.PartyFace, "Anyone can install their own copy of your app.")
-		if listedRelease {
+		if releaseStatus == PublicRelease {
 			utils.Logger.Println(emoji.CrystalBall, "Listed on Discovery for others to find!")
 		}
 
@@ -454,14 +492,11 @@ func release(projectDir string, projectID string, revisionID string, releaseVers
 	return nil
 }
 
-func getCreatingReleaseMsg(listed bool, latest bool) string {
-	var listedInfo string
+func getCreatingReleaseMsg(releaseStatus ReleaseStatus, latest bool) string {
 	var latestInfo string
-	if listed {
-		listedInfo = " listed"
-	}
+
 	if latest {
 		latestInfo = " with the latest revision"
 	}
-	return fmt.Sprintf("\n%s Creating a%s release%s ...\n\n", emoji.Package, listedInfo, latestInfo)
+	return fmt.Sprintf("\n%s Creating a %s release%s ...\n\n", emoji.Package, releaseStatus, latestInfo)
 }
