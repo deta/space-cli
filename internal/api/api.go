@@ -124,6 +124,7 @@ type CreateReleaseRequest struct {
 	Description   string `json:"description"`
 	Channel       string `json:"channel"`
 	DiscoveryList bool   `json:"discovery_list"`
+	AutoPWA       bool   `json:"auto_pwa"`
 }
 
 type CreateReleaseResponse struct {
@@ -292,6 +293,7 @@ type CreateBuildRequest struct {
 	AppID        string `json:"app_id"`
 	Tag          string `json:"tag"`
 	Experimental bool   `json:"experimental"`
+	AutoPWA      bool   `json:"auto_pwa"`
 }
 
 type CreateBuildResponse struct {
