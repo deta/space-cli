@@ -85,7 +85,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		return fmt.Errorf("failed to zip your project, %w", err)
 	}
 
-	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental})
+	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental, AutoPWA: *s.AutoPWA})
 	if err != nil {
 		return fmt.Errorf("failed to start a build, %w", err)
 	}

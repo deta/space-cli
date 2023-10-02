@@ -87,7 +87,13 @@ func newCmdRelease() *cobra.Command {
 				}
 			}
 
-			discoveryData, err := getDiscoveryData(projectDir)
+			spacefile, err := spacefile.LoadSpacefile(projectDir)
+			if err != nil {
+				utils.Logger.Printf("Failed to load Spacefile: %v", err)
+				return err
+			}
+
+			discoveryData, err := getDiscoveryData(projectDir, spacefile)
 			if err != nil {
 				return fmt.Errorf("failed to get Discovery data, %w", err)
 			}
@@ -137,9 +143,8 @@ func newCmdRelease() *cobra.Command {
 			}
 
 			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
-
-			err = release(projectID, revisionID, releaseVersion,
-				listedRelease, releaseNotes, discoveryData)
+			err = release(projectDir, projectID, revisionID, releaseVersion,
+				listedRelease, releaseNotes, discoveryData, *spacefile.AutoPWA)
 			if err != nil {
 				return err
 			}
@@ -300,7 +305,7 @@ func compareDiscoveryData(discoveryData *shared.DiscoveryData, latestRelease *ap
 	return nil
 }
 
-func getDiscoveryData(projectDir string) (*shared.DiscoveryData, error) {
+func getDiscoveryData(projectDir string, spacefile *spacefile.Spacefile) (*shared.DiscoveryData, error) {
 	discoveryPath := filepath.Join(projectDir, discovery.DiscoveryFilename)
 	if _, err := os.Stat(discoveryPath); os.IsNotExist(err) {
 		if !utils.IsOutputInteractive() {
@@ -335,11 +340,6 @@ func getDiscoveryData(projectDir string) (*shared.DiscoveryData, error) {
 
 	discoveryData.ContentRaw = string(rest)
 	if discoveryData.AppName == "" {
-		spacefile, err := spacefile.LoadSpacefile(projectDir)
-		if err != nil {
-			return nil, err
-		}
-
 		utils.Logger.Printf("\nNo app name found in Discovery file. Using the app name from your Spacefile: %s", styles.Code(spacefile.AppName))
 		utils.Logger.Printf("Using the app name from your Spacefile is deprecated and will be removed in a future version.\n\n")
 
@@ -409,12 +409,7 @@ func selectRevision(projectID string, useLatestRevision bool) (*api.Revision, er
 	return revisionMap[tag], nil
 }
 
-// release xx
-func release(projectID string,
-	revisionID string, releaseVersion string,
-	listedRelease bool, releaseNotes string,
-	discoveryData *shared.DiscoveryData) (err error) {
-
+func release(projectDir string, projectID string, revisionID string, releaseVersion string, listedRelease bool, releaseNotes string, discoveryData *shared.DiscoveryData, autoPWA bool) (err error) {
 	cr, err := utils.Client.CreateRelease(&api.CreateReleaseRequest{
 		RevisionID:    revisionID,
 		AppID:         projectID,
@@ -422,6 +417,7 @@ func release(projectID string,
 		ReleaseNotes:  releaseNotes,
 		DiscoveryList: listedRelease,
 		Channel:       ReleaseChannelExp, // always experimental release for now
+		AutoPWA:       autoPWA,
 	})
 	if err != nil {
 		if errors.Is(err, auth.ErrNoAccessTokenFound) {
