@@ -272,6 +272,10 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 		spacefile.AutoPWA = new(bool)
 		*spacefile.AutoPWA = true
 	}
+	if spacefile.AutoPWA == nil {
+		spacefile.AutoPWA = new(bool)
+		*spacefile.AutoPWA = true
+	}
 
 	foundPrimaryMicro := false
 	micros := make(map[string]struct{})

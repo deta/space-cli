@@ -87,13 +87,12 @@ func newCmdRelease() *cobra.Command {
 				}
 			}
 
-			spacefile, err := spacefile.LoadSpacefile(projectDir)
+			sf, err := spacefile.LoadSpacefile(projectDir)
 			if err != nil {
 				utils.Logger.Printf("Failed to load Spacefile: %v", err)
 				return err
 			}
-
-			discoveryData, err := getDiscoveryData(projectDir, spacefile)
+			discoveryData, err := getDiscoveryData(projectDir, sf)
 			if err != nil {
 				return fmt.Errorf("failed to get Discovery data, %w", err)
 			}
@@ -144,7 +143,7 @@ func newCmdRelease() *cobra.Command {
 
 			utils.Logger.Printf(getCreatingReleaseMsg(listedRelease, useLatestRevision))
 			err = release(projectDir, projectID, revisionID, releaseVersion,
-				listedRelease, releaseNotes, discoveryData, *spacefile.AutoPWA)
+				listedRelease, releaseNotes, discoveryData, *sf.AutoPWA)
 			if err != nil {
 				return err
 			}
