@@ -138,14 +138,17 @@ type Micro struct {
 }
 
 type DiscoveryData struct {
-	AppName    string `yaml:"app_name,omitempty" json:"app_name"`
-	Title      string `yaml:"title,omitempty" json:"title"`
-	Tagline    string `yaml:"tagline,omitempty" json:"tagline"`
-	ThemeColor string `yaml:"theme_color,omitempty" json:"theme_color"`
-	Git        string `yaml:"git,omitempty" json:"git"`
-	Homepage   string `yaml:"homepage,omitempty" json:"homepage"`
-	OpenCode   bool   `yaml:"open_code,omitempty" json:"open_code"`
-	ContentRaw string `yaml:"-" json:"content_raw"`
+	AppName    string   `yaml:"app_name,omitempty" json:"app_name"`
+	Title      string   `yaml:"title,omitempty" json:"title"`
+	Tagline    string   `yaml:"tagline,omitempty" json:"tagline"`
+	ThemeColor string   `yaml:"theme_color,omitempty" json:"theme_color"`
+	Git        string   `yaml:"git,omitempty" json:"git"`
+	Homepage   string   `yaml:"homepage,omitempty" json:"homepage"`
+	Media      []string `yaml:"media" json:"media"`
+	PortedFrom string   `yaml:"ported_from" json:"ported_from"`
+	OpenCode   bool     `yaml:"open_code,omitempty" json:"open_code"`
+	WorksWith  []string `yaml:"works_with" json:"works_with"`
+	ContentRaw string   `yaml:"-" json:"content_raw"`
 }
 
 func (m Micro) Type() string {

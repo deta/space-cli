@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,9 +12,6 @@ import (
 
 	_ "embed"
 
-	"github.com/deta/space/pkg/components/emoji"
-	"github.com/deta/space/pkg/components/styles"
-	"github.com/deta/space/pkg/util/fs"
 	"github.com/deta/space/shared"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
@@ -28,11 +24,10 @@ const (
 
 //go:embed schemas/spacefile.schema.json
 var spacefileSchemaString string
-var spacefileSchema *jsonschema.Schema = jsonschema.MustCompileString("", spacefileSchemaString)
+var spacefileSchema = jsonschema.MustCompileString("", spacefileSchemaString)
 
 var (
 	ErrSpacefileNotFound = errors.New("Spacefile not found")
-	ErrInvalidSpacefile  = errors.New("unable to parse Spacefile")
 	ErrDuplicateMicros   = errors.New("micro names have to be unique")
 	ErrMultiplePrimary   = errors.New("multiple primary micros present")
 	ErrNoPrimaryMicro    = errors.New("no primary micro present")
@@ -138,14 +133,14 @@ func extractApiKey(v any, microIndex int, apiKeyIndex int) (map[string]any, bool
 }
 
 var (
-	microReg        = regexp.MustCompile(`\/micros\/(\d+)$`)
-	actionReg       = regexp.MustCompile(`\/micros\/(\d+)\/actions\/(\d+)$`)
-	commandsReg     = regexp.MustCompile(`\/micros\/(\d+)\/commands$`)
-	includeReg      = regexp.MustCompile(`\/micros\/(\d+)\/include$`)
-	publicRoutesReg = regexp.MustCompile(`\/micros\/(\d+)\/public_routes$`)
-	presetsReg      = regexp.MustCompile(`\/micros\/(\d+)\/presets$`)
-	envReg          = regexp.MustCompile(`\/micros\/(\d+)\/presets\/env\/(\d+)$`)
-	apiKeyReg       = regexp.MustCompile(`\/micros\/(\d+)\/presets\/api_keys\/(\d+)$`)
+	microReg        = regexp.MustCompile(`/micros/(\d+)$`)
+	actionReg       = regexp.MustCompile(`/micros/(\d+)/actions/(\d+)$`)
+	commandsReg     = regexp.MustCompile(`/micros/(\d+)/commands$`)
+	includeReg      = regexp.MustCompile(`/micros/(\d+)/include$`)
+	publicRoutesReg = regexp.MustCompile(`/micros/(\d+)/public_routes$`)
+	presetsReg      = regexp.MustCompile(`/micros/(\d+)/presets$`)
+	envReg          = regexp.MustCompile(`/micros/(\d+)/presets/env/(\d+)$`)
+	apiKeyReg       = regexp.MustCompile(`/micros/(\d+)/presets/api_keys/(\d+)$`)
 	numberReg       = regexp.MustCompile(`^\d+$`)
 )
 
@@ -251,14 +246,14 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 	}
 
 	// read raw contents from spacefile file
-	content, err := ioutil.ReadFile(filepath.Join(spacefilePath))
+	content, err := os.ReadFile(filepath.Join(spacefilePath))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
+		return nil, fmt.Errorf("failed to read, %w", err)
 	}
 
 	var v any
 	if err := yaml.Unmarshal(content, &v); err != nil {
-		return nil, ErrInvalidSpacefile
+		return nil, err
 	}
 
 	// validate against schema
@@ -271,7 +266,11 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 
 	var spacefile Spacefile
 	if err := yaml.Unmarshal(content, &spacefile); err != nil {
-		return nil, ErrInvalidSpacefile
+		return nil, err
+	}
+	if spacefile.AutoPWA == nil {
+		spacefile.AutoPWA = new(bool)
+		*spacefile.AutoPWA = true
 	}
 	if spacefile.AutoPWA == nil {
 		spacefile.AutoPWA = new(bool)
@@ -282,7 +281,7 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 	micros := make(map[string]struct{})
 	for i, micro := range spacefile.Micros {
 		if _, ok := micros[micro.Name]; ok {
-			return nil, ErrDuplicateMicros
+			return nil, fmt.Errorf("%w, duplicate micro `%s` found", ErrDuplicateMicros, micro.Name)
 		}
 		micros[micro.Name] = struct{}{}
 
@@ -325,29 +324,6 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 	return &spacefile, nil
 }
 
-// OpenRaw returns the raw spacefile file content from sourceDir if it exists
-func OpenRaw(sourceDir string) ([]byte, error) {
-	var exists bool
-	var err error
-
-	exists, err = fs.FileExists(sourceDir, SpacefileName)
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists {
-		return nil, ErrSpacefileNotFound
-	}
-
-	// read raw contents from spacefile file
-	c, err := ioutil.ReadFile(filepath.Join(sourceDir, SpacefileName))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read contents of spacefile file: %w", err)
-	}
-
-	return c, nil
-}
-
 func (s *Spacefile) Save(sourceDir string) error {
 
 	spacefileDocsUrl := "# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0\n"
@@ -365,9 +341,9 @@ func (s *Spacefile) Save(sourceDir string) error {
 	c = append(c, rawSpacefile.Bytes()...)
 
 	// write spacefile object to file
-	err = ioutil.WriteFile(filepath.Join(sourceDir, SpacefileName), c, 0644)
+	err = os.WriteFile(filepath.Join(sourceDir, SpacefileName), c, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write spacefile object: %w", err)
+		return fmt.Errorf("failed to write, %w", err)
 	}
 
 	return nil
@@ -430,7 +406,7 @@ func CreateSpacefileWithMicros(sourceDir string, micros []*shared.Micro) (*Space
 
 	err := s.Save(sourceDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create spacefile with micros in %s, %w", sourceDir, err)
+		return nil, fmt.Errorf("failed to create Spacefile with micros in %s, %w", sourceDir, err)
 	}
 
 	return s, nil
@@ -441,7 +417,7 @@ func CreateBlankSpacefile(sourceDir string) (*Spacefile, error) {
 
 	err := s.Save(sourceDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a blank spacefile in %s, %w", sourceDir, err)
+		return nil, fmt.Errorf("failed to create a blank Spacefile in %s, %w", sourceDir, err)
 	}
 
 	return s, nil
@@ -454,17 +430,4 @@ func (s *Spacefile) HasMicro(otherMicro *shared.Micro) bool {
 		}
 	}
 	return false
-}
-
-func ParseSpacefileUnmarshallTypeError(err *yaml.TypeError) string {
-	errMsg := styles.Errorf("%sError: failed to parse your Spacefile, please make sure you use the correct syntax:", emoji.ErrorExclamation)
-	for _, err := range err.Errors {
-		fieldNotValidMatches := regexp.MustCompile(`(?m)(line \d:) field\s(\w+)\snot found in type.*`).FindStringSubmatch(err)
-		if len(fieldNotValidMatches) > 0 {
-			errMsg += fmt.Sprintf("\n  L %v \"%v\" is not a valid field\n", fieldNotValidMatches[1], fieldNotValidMatches[2])
-		} else {
-			errMsg += styles.Boldf("\n  L %v\n", err)
-		}
-	}
-	return errMsg
 }

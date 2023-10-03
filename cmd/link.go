@@ -73,18 +73,15 @@ func link(projectDir string, projectID string) error {
 			return err
 		}
 		if errors.Is(err, api.ErrProjectNotFound) {
-			utils.Logger.Println(styles.Errorf("%s No project found. Please provide a valid Project ID.", emoji.ErrorExclamation))
-			return err
+			return fmt.Errorf("no project found, please provide a valid project id")
 		}
 
-		utils.Logger.Println(styles.Errorf("%s Failed to link project, %s", emoji.ErrorExclamation, err.Error()))
-		return err
+		return fmt.Errorf("failed to get project details, %w", err)
 	}
 
 	err = runtime.StoreProjectMeta(projectDir, &runtime.ProjectMeta{ID: projectRes.ID, Name: projectRes.Name, Alias: projectRes.Alias})
 	if err != nil {
-		utils.Logger.Printf("failed to link project: %s", err)
-		return err
+		return fmt.Errorf("failed to store project metadata locally, %w", err)
 	}
 
 	utils.Logger.Println(styles.Greenf("%s Project", emoji.Link), styles.Pink(projectRes.Name), styles.Green("was linked!"))

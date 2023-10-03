@@ -18,7 +18,14 @@ Complete documentation available at %s`, utils.DocsUrl),
 			cmd.Usage()
 		},
 		DisableAutoGenTag: true,
-		Version:           utils.SpaceVersion,
+		// This will prevent the usage from being displayed when an error occurs
+		// while calling the Execute function in the main.go file.
+		SilenceUsage: true,
+		// This will prevent the error message from being displayed when an error
+		// We will handle printing the error message ourselves.
+		// Each subcommand must use RunE instead of Run.
+		SilenceErrors: true,
+		Version:       utils.SpaceVersion,
 	}
 
 	cmd.AddCommand(newCmdLogin())
@@ -35,10 +42,6 @@ Complete documentation available at %s`, utils.DocsUrl),
 	cmd.AddCommand(newCmdPrintAccessToken())
 	cmd.AddCommand(newCmdTrigger())
 	cmd.AddCommand(newCmdBuilder())
-
-	// XXX: This will prevent the usage from being displayed when an error occurs
-	// while calling the Execute function in the main.go file.
-	cmd.SilenceUsage = true
 
 	return cmd
 }

@@ -2,6 +2,7 @@ package text
 
 import (
 	"fmt"
+	"github.com/deta/space/pkg/components"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -119,7 +120,7 @@ func Run(i *Input) (string, error) {
 	}
 
 	if model.Cancelled {
-		return "", fmt.Errorf("cancelled")
+		return "", components.ErrPromptCancelled
 	}
 
 	return model.Value(), nil

@@ -143,7 +143,7 @@ Make sure that the corresponding micro is running before triggering the action.`
 func triggerScheduledAction(projectDir string, actionID string) (err error) {
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
-		utils.Logger.Printf("%s failed to parse Spacefile: %s", emoji.X, err.Error())
+		return fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 	routeDir := filepath.Join(projectDir, ".space", "micros")
 
@@ -157,7 +157,7 @@ func triggerScheduledAction(projectDir string, actionID string) (err error) {
 			port, err := getMicroPort(micro, routeDir)
 			if err != nil {
 				upCommand := fmt.Sprintf("space dev up %s", micro.Name)
-				utils.Logger.Printf("%smicro %s is not running, to start it run:", emoji.X, styles.Green(micro.Name))
+				utils.Logger.Printf("%s Micro %s is not running, to start it run:", emoji.X, styles.Green(micro.Name))
 				utils.Logger.Printf("L %s", styles.Blue(upCommand))
 				return err
 			}
@@ -180,8 +180,7 @@ func triggerScheduledAction(projectDir string, actionID string) (err error) {
 
 			res, err := http.Post(actionEndpoint, "application/json", bytes.NewReader(body))
 			if err != nil {
-				utils.Logger.Printf("\n%s failed to trigger action: %s", emoji.X, err.Error())
-				return err
+				return fmt.Errorf("failed to trigger action: %w", err)
 			}
 			defer res.Body.Close()
 
@@ -193,14 +192,11 @@ func triggerScheduledAction(projectDir string, actionID string) (err error) {
 			io.Copy(os.Stdout, res.Body)
 
 			if res.StatusCode >= 400 {
-				utils.Logger.Printf("\n\nL %s", styles.Error("failed to trigger action"))
-				return err
+				return fmt.Errorf("\n\nL failed to trigger action")
 			}
 			utils.Logger.Printf("\n\nL Action triggered successfully!")
 			return nil
 		}
 	}
-
-	utils.Logger.Printf("\n%saction `%s` not found", emoji.X, actionID)
-	return fmt.Errorf("\n%saction `%s` not found", emoji.X, actionID)
+	return fmt.Errorf("\n%s action `%s` not found", emoji.X, actionID)
 }
