@@ -26,6 +26,11 @@
                     "type": "string",
                     "maxLength": 12
                 },
+                "auto_pwa": {
+                    "description": "Turn the application into a PWA by default",
+                    "type": "boolean",
+                    "default": true
+                },
                 "micros": {
                     "description": "List of Micros in the app",
                     "type": "array",

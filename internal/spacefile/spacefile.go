@@ -43,6 +43,7 @@ type Spacefile struct {
 	V       int             `yaml:"v"`
 	Icon    string          `yaml:"icon,omitempty"`
 	AppName string          `yaml:"app_name,omitempty"`
+	AutoPWA *bool           `yaml:"auto_pwa,omitempty"`
 	Micros  []*shared.Micro `yaml:"micros,omitempty"`
 }
 
@@ -271,6 +272,10 @@ func LoadSpacefile(projectDir string) (*Spacefile, error) {
 	var spacefile Spacefile
 	if err := yaml.Unmarshal(content, &spacefile); err != nil {
 		return nil, ErrInvalidSpacefile
+	}
+	if spacefile.AutoPWA == nil {
+		spacefile.AutoPWA = new(bool)
+		*spacefile.AutoPWA = true
 	}
 
 	foundPrimaryMicro := false

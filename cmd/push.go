@@ -88,7 +88,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		return err
 	}
 
-	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental})
+	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental, AutoPWA: *s.AutoPWA})
 	if err != nil {
 		utils.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
 		return err
