@@ -35,6 +35,7 @@ Complete documentation available at %s`, utils.DocsUrl),
 	cmd.AddCommand(newCmdPrintAccessToken())
 	cmd.AddCommand(newCmdTrigger())
 	cmd.AddCommand(newCmdBuilder())
+	cmd.AddCommand(newCmdPull())
 
 	// XXX: This will prevent the usage from being displayed when an error occurs
 	// while calling the Execute function in the main.go file.

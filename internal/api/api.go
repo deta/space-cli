@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/deta/space/internal/auth"
 	"github.com/deta/space/shared"
@@ -73,6 +74,57 @@ func (c *DetaClient) GetProject(r *GetProjectRequest) (*GetProjectResponse, erro
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
 	return &resp, nil
+}
+
+type GetProjectZipballRequest struct {
+	ID string `json:"id"`
+}
+
+type GetProjectZipballResponse struct {
+	Name string
+	Data []byte
+}
+
+func (c *DetaClient) GetProjectZipball(r *GetProjectZipballRequest) (*GetProjectZipballResponse, error) {
+	i := &requestInput{
+		Root:      spaceRoot,
+		Path:      fmt.Sprintf("/%s/apps/%s/zipball", version, r.ID),
+		Method:    "GET",
+		NeedsAuth: true,
+	}
+
+	o, err := c.request(i)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.Status == 401 || o.Status == 404 {
+		return nil, ErrProjectNotFound
+	}
+
+	if o.Status != 200 {
+		msg := o.Error.Detail
+		if msg == "" && len(o.Error.Errors) > 0 {
+			msg = o.Error.Errors[0]
+		}
+		return nil, fmt.Errorf("failed to get project zipball: %v", msg)
+	}
+
+	contentDisposition := o.Header.Get("Content-Disposition")
+	if contentDisposition == "" {
+		return nil, errors.New("missing Content-Disposition header")
+	}
+
+	parts := strings.Split(contentDisposition, `filename=`)
+	if len(parts) != 2 {
+		return nil, errors.New("invalid `Content-Disposition` header format")
+	}
+	filename := strings.TrimSuffix(parts[1], `"`)
+
+	return &GetProjectZipballResponse{
+		Name: filename,
+		Data: o.Body,
+	}, nil
 }
 
 type CreateProjectRequest struct {
