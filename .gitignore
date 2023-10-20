@@ -10,3 +10,6 @@ starters
 .env.*
 
 tags
+
+# system
+.DS_Store
