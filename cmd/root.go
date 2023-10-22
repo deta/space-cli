@@ -42,6 +42,7 @@ Complete documentation available at %s`, utils.DocsUrl),
 	cmd.AddCommand(newCmdPrintAccessToken())
 	cmd.AddCommand(newCmdTrigger())
 	cmd.AddCommand(newCmdBuilder())
+	cmd.AddCommand(newCmdGenerate())
 
 	return cmd
 }
