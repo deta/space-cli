@@ -49,7 +49,7 @@ func nodeScanner(dir string) (*shared.Micro, error) {
 	m := &shared.Micro{
 		Name:   name,
 		Src:    dir,
-		Engine: shared.Node18x,
+		Engine: shared.Node20x,
 	}
 
 	framework, err := detectFramework(dir)

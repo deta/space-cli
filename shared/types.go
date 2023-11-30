@@ -28,67 +28,12 @@ const (
 	Node16x   = "nodejs16.x"
 	Node18x   = "nodejs18.x"
 	Node18    = "nodejs18"
+	Node20x   = "nodejs20.x"
+	Node20    = "nodejs20"
 	Custom    = "custom"
 )
 
 var (
-	SupportedEngines = []string{
-		Static,
-		React,
-		Svelte,
-		Vue,
-		Next,
-		Nuxt,
-		SvelteKit,
-		Python38,
-		Python39,
-		Python310,
-		Python311,
-		Node14x,
-		Node16x,
-		Node18x,
-		Custom,
-	}
-
-	EngineAliases = map[string]string{
-		"static":     Static,
-		"react":      React,
-		"svelte":     Svelte,
-		"vue":        Vue,
-		"next":       Next,
-		"nuxt":       Nuxt,
-		"svelte-kit": SvelteKit,
-		"python3.9":  Python39,
-		"python3.8":  Python38,
-		"python3.10": Python310,
-		"python3.11": Python311,
-		"nodejs14.x": Node14x,
-		"nodejs14":   Node14x,
-		"nodejs16.x": Node16x,
-		"nodejs16":   Node16x,
-		"nodejs18.x": Node18x,
-		"nodejs18":   Node18x,
-		"custom":     Custom,
-	}
-
-	EnginesToRuntimes = map[string]string{
-		Static:    Node18x,
-		React:     Node18x,
-		Svelte:    Node18x,
-		Vue:       Node18x,
-		Next:      Node18x,
-		Nuxt:      Node18x,
-		SvelteKit: Node18x,
-		Python38:  Python38,
-		Python39:  Python38,
-		Python310: Python310,
-		Python311: Python311,
-		Node14x:   Node14x,
-		Node16x:   Node16x,
-		Node18x:   Node18x,
-		Custom:    Custom,
-	}
-
 	supportedFrontendEngines = map[string]struct{}{
 		React:  {},
 		Vue:    {},
