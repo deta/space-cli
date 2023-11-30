@@ -32,35 +32,29 @@ func newCmdValidate() *cobra.Command {
 }
 
 func validate(projectDir string) error {
-	utils.Logger.Printf("\n%s Validating Spacefile...", emoji.Package)
+	utils.Logger.Printf("\n%s Validating your Spacefile...\n", emoji.Package)
 
 	s, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("\n%s Detected some issues with your Spacefile. Please fix them before pushing your code.", emoji.ErrorExclamation))
-		utils.Logger.Println()
-		utils.Logger.Println(err.Error())
-		return err
+		return fmt.Errorf("failed to parse Spacefile, %w", err)
 	}
 
 	if s.Icon == "" {
 		utils.Logger.Printf("\n%s No app icon specified.", styles.Blue("i"))
 	} else {
 		if err := spacefile.ValidateIcon(s.Icon); err != nil {
-			utils.Logger.Println(styles.Errorf("\nDetected some issues with your icon. Please fix them before pushing your code."))
 			switch {
 			case errors.Is(spacefile.ErrInvalidIconType, err):
-				utils.Logger.Println(styles.Error("L Invalid icon type. Please use a 512x512 sized PNG or WebP icon"))
+				return fmt.Errorf("invalid icon type, please use a 512x512 sized PNG or WebP icon")
 			case errors.Is(spacefile.ErrInvalidIconSize, err):
-				utils.Logger.Println(styles.Error("L Icon size is not valid. Please use a 512x512 sized PNG or WebP icon"))
+				return fmt.Errorf("icon size is not valid, please use a 512x512 sized PNG or WebP icon")
 			case errors.Is(spacefile.ErrInvalidIconPath, err):
-				utils.Logger.Println(styles.Error("L Cannot find icon path. Please provide a valid icon path or leave it empty to auto-generate project icon."))
+				return fmt.Errorf("cannot find the icon in provided path, please provide a valid icon path or leave it empty to auto-generate one")
 			default:
-				utils.Logger.Println(styles.Error(fmt.Sprintf("%s Validation Error: %v", emoji.X, err)))
+				return err
 			}
-			return err
 		}
 	}
-
 	utils.Logger.Println(styles.Greenf("\n%s Spacefile looks good!", emoji.Sparkles))
 	return nil
 }

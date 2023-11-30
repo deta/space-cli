@@ -37,14 +37,12 @@ func newCmdDevUp() *cobra.Command {
 				if err != nil {
 					return err
 				}
-
 			}
 
 			if !cmd.Flags().Changed("port") {
 				port, err = GetFreePort(utils.DevPort + 1)
 				if err != nil {
-					utils.Logger.Printf("%s Failed to get free port: %s", emoji.ErrorExclamation, err)
-					return err
+					return fmt.Errorf("failed to get free port: %w", err)
 				}
 			}
 
@@ -68,13 +66,12 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 
 	projectKey, err := utils.GenerateDataKeyIfNotExists(projectId)
 	if err != nil {
-		utils.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
-		return err
+		return fmt.Errorf("failed to generate project key: %w", err)
 	}
 
 	for _, micro := range spacefile.Micros {
@@ -128,7 +125,5 @@ func devUp(projectDir string, projectId string, port int, microName string, open
 		command.Wait()
 		return nil
 	}
-
-	utils.Logger.Printf("micro %s not found", microName)
 	return fmt.Errorf("micro %s not found", microName)
 }

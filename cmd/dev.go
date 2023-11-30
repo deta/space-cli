@@ -67,8 +67,7 @@ The cli will start one process for each of your micros, then expose a single enp
 			if !cmd.Flags().Changed("id") {
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
-					utils.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
-					return err
+					return fmt.Errorf("failed to get proejct id: %w", err)
 				}
 			}
 
@@ -126,17 +125,14 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 	routeDir := filepath.Join(projectDir, ".space", "micros")
 	spacefile, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
-		utils.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
-		return err
+		return fmt.Errorf("failed to parse Spacefile: %w", err)
 	}
 
 	projectKey, err := utils.GenerateDataKeyIfNotExists(projectID)
-
-	addr := fmt.Sprintf("%s:%d", host, port)
 	if err != nil {
-		utils.Logger.Printf("%s Error generating the project key", emoji.ErrorExclamation)
-		return err
+		return fmt.Errorf("failed to generate project key: %w", err)
 	}
+	addr := fmt.Sprintf("%s:%d", host, port)
 
 	utils.Logger.Printf("\n%s Checking for running micros...", emoji.Eyes)
 	var stoppedMicros []*types.Micro
@@ -220,7 +216,7 @@ func dev(projectDir string, projectID string, host string, port int, open bool) 
 		defer wg.Done()
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			utils.Logger.Println("proxy error", err)
+			utils.StdErrLogger.Println("proxy error", err)
 		}
 	}()
 

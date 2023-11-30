@@ -47,8 +47,7 @@ being uploaded during push.
 				var err error
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
-					utils.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
-					return err
+					return fmt.Errorf("failed to get the project id, %w", err)
 				}
 			}
 
@@ -78,8 +77,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 
 	s, err := spacefile.LoadSpacefile(projectDir)
 	if err != nil {
-		utils.Logger.Printf("%s Failed to parse Spacefile: %s", emoji.ErrorExclamation, err)
-		return err
+		return fmt.Errorf("failed to parse your Spacefile, %w", err)
 	}
 
 	utils.Logger.Printf(styles.Green("\nYour Spacefile looks good, proceeding with your push!"))
@@ -87,22 +85,19 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 	// push code & run build steps
 	zippedCode, nbFiles, err := runtime.ZipDir(projectDir)
 	if err != nil {
-		utils.Logger.Printf("%s Failed to zip project: %s", emoji.ErrorExclamation, err)
-		return err
+		return fmt.Errorf("failed to zip your project, %w", err)
 	}
 
-	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental})
+	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental, AutoPWA: *s.AutoPWA})
 	if err != nil {
-		utils.Logger.Printf("%s Failed to push project: %s", emoji.ErrorExclamation, err)
-		return err
+		return fmt.Errorf("failed to start a build, %w", err)
 	}
 	utils.Logger.Printf("\n%s Successfully started your build!", emoji.Check)
 
 	// push spacefile
 	raw, err := os.ReadFile(filepath.Join(projectDir, "Spacefile"))
 	if err != nil {
-		utils.Logger.Printf("%s Failed to read Spacefile: %s", emoji.ErrorExclamation, err)
-		return err
+		return fmt.Errorf("failed to read Spacefile, %w", err)
 	}
 
 	_, err = utils.Client.PushSpacefile(&api.PushSpacefileRequest{
@@ -110,8 +105,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		BuildID:  build.ID,
 	})
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("\n%s Failed to push Spacefile, %v", emoji.ErrorExclamation, err))
-		return fmt.Errorf("failed to push Spacefile: %w", err)
+		return fmt.Errorf("failed to push Spacefile, %w", err)
 	}
 	utils.Logger.Printf("%s Successfully pushed your Spacefile!", emoji.Check)
 
@@ -122,8 +116,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 			ContentType: icon.IconMeta.ContentType,
 			BuildID:     build.ID,
 		}); err != nil {
-			utils.Logger.Println(styles.Errorf("\n%s Failed to push icon, %v", emoji.ErrorExclamation, err))
-			return err
+			return fmt.Errorf("failed to push the icon, %w", err)
 		}
 	}
 
@@ -134,8 +127,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 			utils.Logger.Println(utils.LoginInfo())
 			return err
 		}
-		utils.Logger.Printf("%s Failed to push code: %s", emoji.ErrorExclamation, err)
-		return err
+		return fmt.Errorf("failed to push your code, %w", err)
 	}
 
 	utils.Logger.Printf("\n%s Pushing your code (%d files) & running build process...\n\n", emoji.Package, nbFiles)
@@ -143,8 +135,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 	if skipLogs {
 		b, err := utils.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 		if err != nil {
-			utils.Logger.Printf(styles.Errorf("\n%s Failed to check if build was started. Please check %s for the build status.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-			return fmt.Errorf("failed to check if build was started: %w", err)
+			return fmt.Errorf("failed to check if the build was started, please check %s for the build status", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 		}
 
 		var url = fmt.Sprintf("%s/%s?event=bld-%s", utils.BuilderUrl, projectID, b.Tag)
@@ -156,8 +147,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 			err = browser.OpenURL(url)
 
 			if err != nil {
-				utils.Logger.Printf("%s Failed to open browser window", emoji.ErrorExclamation)
-				return err
+				return fmt.Errorf("failed to open a browser window, %w", err)
 			}
 		}
 
@@ -169,7 +159,6 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		BuildID: build.ID,
 	})
 	if err != nil {
-		utils.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return err
 	}
 	defer readCloser.Close()
@@ -182,19 +171,16 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		buildLogger.Println(line)
 	}
 	if err := scanner.Err(); err != nil {
-		utils.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return err
 	}
 
 	// check build status
 	b, err := utils.Client.GetBuild(&api.GetBuildRequest{BuildID: build.ID})
 	if err != nil {
-		utils.Logger.Printf(styles.Errorf("\n%s Failed to check if push succeded. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-		return err
+		return fmt.Errorf("failed to check if push succeded, please check %s if a new revision was created successfully", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 	}
 	if b.Status != api.Complete {
-		utils.Logger.Println(styles.Errorf("\n%s Failed to push code and create a revision. Please try again!", emoji.ErrorExclamation))
-		return fmt.Errorf("build isn't complete")
+		return fmt.Errorf("failed to push code and create a revision, please try again")
 	}
 
 	// get promotion via build id (build id == revision id)
@@ -208,8 +194,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		}
 
 		if err != nil {
-			utils.Logger.Printf(styles.Errorf("\n%s Failed to get promotion. Please check %s if a new revision was created successfully.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-			return err
+			return fmt.Errorf("failed to check if a new revision was created, please check %s manually", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 		}
 	}
 
@@ -219,7 +204,6 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		ID: p.ID,
 	})
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 
@@ -229,34 +213,28 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		// we don't want to print the logs to the terminal
 	}
 	if err := scannerPromotion.Err(); err != nil {
-		utils.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return err
 	}
 
 	// check promotion status
 	p, err = utils.Client.GetReleasePromotion(&api.GetReleasePromotionRequest{PromotionID: p.ID})
 	if err != nil {
-		utils.Logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-		return err
+		return fmt.Errorf("failed to check if your Builder instance was updated, please check %s manually", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 	}
 	if p.Status != api.Complete {
-		utils.Logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
-		return err
+		return fmt.Errorf("failed to update your Builder instance, please try again")
 	}
 
 	// get installation via promotion id (promotion id == release id)
 	i, err := utils.Client.GetInstallationByRelease(&api.GetInstallationByReleaseRequest{ReleaseID: p.ID})
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
-		utils.Logger.Printf(styles.Errorf("\n%s Failed to get installation. Please check %s if your Builder instance is being updated.", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-		return err
+		return fmt.Errorf("failed to check if your Builder instance is being updated, please check %s manually", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 	}
 
 	readCloserInstallation, err := utils.Client.GetInstallationLogs(&api.GetInstallationLogsRequest{
 		ID: i.ID,
 	})
 	if err != nil {
-		utils.Logger.Println(styles.Errorf("%s Error: %v", emoji.ErrorExclamation, err))
 		return err
 	}
 
@@ -276,19 +254,16 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		}
 	}
 	if err := scannerInstallation.Err(); err != nil {
-		utils.Logger.Printf("%s Error: %v\n", emoji.ErrorExclamation, err)
 		return err
 	}
 
 	// check installation status
 	i, err = utils.Client.GetInstallation(&api.GetInstallationRequest{ID: i.ID})
 	if err != nil {
-		utils.Logger.Printf(styles.Errorf("\n%s Failed to check if Builder instance was updated. Please check %s", emoji.ErrorExclamation, styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID)))
-		return err
+		return fmt.Errorf("failed to check if your Builder instance was updated, please check %s manually", styles.Codef("%s/%s/develop", utils.BuilderUrl, projectID))
 	}
 	if i.Status != api.Complete {
-		utils.Logger.Println(styles.Errorf("\n%s Failed to update Builder instance. Please try again!", emoji.ErrorExclamation))
-		return err
+		return fmt.Errorf("failed to update your Builder instance, please try again")
 	}
 
 	utils.Logger.Println(styles.Greenf("\n%s Successfully pushed your code and updated your Builder instance!", emoji.PartyPopper))
@@ -300,8 +275,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 			err = browser.OpenURL(instanceUrl)
 
 			if err != nil {
-				utils.Logger.Printf("%s Failed to open browser window", emoji.ErrorExclamation)
-				return err
+				return fmt.Errorf("failed to open a browser window, %w", err)
 			}
 		}
 	}

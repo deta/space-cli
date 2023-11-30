@@ -31,8 +31,7 @@ func newCmdNew() *cobra.Command {
 			if !cmd.Flags().Changed("name") {
 				abs, err := filepath.Abs(projectDir)
 				if err != nil {
-					utils.Logger.Printf("%sError getting absolute path of project directory: %s", styles.ErrorExclamation, err.Error())
-					return err
+					return fmt.Errorf("failed to get absolute path of project directory: %w", err)
 				}
 
 				name := filepath.Base(abs)
@@ -149,8 +148,7 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 	if _, err := os.Stat(spaceFilePath); errors.Is(err, os.ErrNotExist) {
 		err := createSpacefile(projectDir, projectName, blankProject)
 		if err != nil {
-			utils.Logger.Printf("failed to create spacefile: %s", err)
-			return err
+			return fmt.Errorf("failed to create Spacefile, %w", err)
 		}
 	}
 
@@ -161,13 +159,11 @@ func newProject(projectDir, projectName string, blankProject bool) error {
 			utils.Logger.Println(utils.LoginInfo())
 			return err
 		}
-		utils.Logger.Printf("failed to create project: %s", err)
-		return err
+		return fmt.Errorf("failed to create a project, %w", err)
 	}
 
 	if err := runtime.StoreProjectMeta(projectDir, meta); err != nil {
-		utils.Logger.Printf("failed to save project meta, %s", err)
-		return err
+		return fmt.Errorf("failed to save project metadata locally, %w", err)
 	}
 
 	utils.Logger.Println(styles.Greenf("\nProject %s created successfully!", projectName))

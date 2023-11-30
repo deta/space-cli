@@ -10,7 +10,6 @@ import (
 	"github.com/deta/space/cmd/utils"
 	"github.com/deta/space/internal/api"
 	"github.com/deta/space/internal/auth"
-	"github.com/deta/space/pkg/components/emoji"
 	"github.com/deta/space/pkg/components/styles"
 	"github.com/deta/space/pkg/components/text"
 	"github.com/spf13/cobra"
@@ -30,8 +29,7 @@ func newCmdLogin() *cobra.Command {
 			if withToken {
 				input, err := io.ReadAll(os.Stdin)
 				if err != nil {
-					utils.Logger.Println("failed to read access token from standard input")
-					return err
+					return fmt.Errorf("failed to read access token from standard input, %w", err)
 				}
 
 				accessToken = strings.TrimSpace(string(input))
@@ -44,8 +42,7 @@ func newCmdLogin() *cobra.Command {
 			}
 
 			if err := login(accessToken); err != nil {
-				utils.Logger.Printf(styles.Errorf("%s Failed to login: %v", emoji.ErrorExclamation, err))
-				return err
+				return fmt.Errorf("failed to login, %w", err)
 			}
 
 			return nil
@@ -84,16 +81,14 @@ func login(accessToken string) (err error) {
 
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidAccessToken) {
-			utils.Logger.Printf(styles.Errorf("%s Invalid access token. Please generate a valid token from your Space settings.", emoji.ErrorExclamation))
-			return fmt.Errorf("invalid access token")
+			return fmt.Errorf("invalid access token, please generate a valid token from your Space settings")
 		}
-		utils.Logger.Printf(styles.Errorf("%s Failed to validate access token: %v", emoji.ErrorExclamation, err))
-		return fmt.Errorf("failed to validate access token: %w", err)
+		return fmt.Errorf("failed to validate access token, %w", err)
 	}
 
 	err = auth.StoreAccessToken(accessToken)
 	if err != nil {
-		return fmt.Errorf("failed to store access token: %w", err)
+		return fmt.Errorf("failed to store access token, %w", err)
 	}
 
 	utils.Logger.Println(styles.Green("👍 Login Successful!"))

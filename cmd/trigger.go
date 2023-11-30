@@ -35,11 +35,6 @@ type ActionInput []struct {
 
 type InputType string
 
-var (
-	InputTypeString InputType = "string"
-	InputTypeBool   InputType = "bool"
-)
-
 type ActionOutput struct {
 	Type string `json:"type"`
 	Data any    `json:"data"`

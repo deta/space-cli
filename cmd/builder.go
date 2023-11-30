@@ -38,8 +38,7 @@ func newCmdEnv() *cobra.Command {
 				var err error
 				projectID, err = runtime.GetProjectID(projectDir)
 				if err != nil {
-					utils.Logger.Printf("%s Failed to get project id: %s", emoji.ErrorExclamation, err)
-					return err
+					return fmt.Errorf("failed to get project id: %w", err)
 				}
 			}
 
@@ -89,7 +88,7 @@ func cmdEnvGetFn(microName string, file string, projectID string) error {
 
 	err = godotenv.Write(envMap, file)
 	if err != nil {
-		return fmt.Errorf("Failed to write to `%s` env file: %s", file, err)
+		return fmt.Errorf("failed to write to `%s` env file: %w", file, err)
 	}
 
 	utils.Logger.Printf("%s Wrote %d environment variables from the micro `%s` to the file `%s`",
@@ -111,12 +110,12 @@ func cmdEnvSetFn(microName string, file string, projectID string) error {
 
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("Failed to read `%s` env file: %s", file, err)
+		return fmt.Errorf("failed to read `%s` env file: %w", file, err)
 	}
 
 	envMap, err := godotenv.UnmarshalBytes(data)
 	if err != nil {
-		return fmt.Errorf("Failed to parse `%s` env file: %s", file, err)
+		return fmt.Errorf("failed to parse `%s` env file: %w", file, err)
 	}
 
 	// update the values in-place
@@ -165,8 +164,8 @@ func cmdEnvGetMicro(microName string, devInstance *api.AppInstance) (*api.AppIns
 	}
 
 	if microName == "" {
-		return nil, fmt.Errorf("Please provide a valid micro name with the `--micro` flag")
+		return nil, fmt.Errorf("please provide a valid micro name with the `--micro` flag")
 	} else {
-		return nil, fmt.Errorf("Micro '%s' not found in this project", microName)
+		return nil, fmt.Errorf("micro '%s' not found in this project", microName)
 	}
 }

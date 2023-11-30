@@ -2,6 +2,7 @@ package confirm
 
 import (
 	"fmt"
+	"github.com/deta/space/pkg/components"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deta/space/pkg/components/styles"
@@ -80,7 +81,7 @@ func Run(input string) (bool, error) {
 	}
 
 	if model.Cancelled {
-		return false, fmt.Errorf("cancelled")
+		return false, components.ErrPromptCancelled
 	}
 	return model.Confirm, nil
 }

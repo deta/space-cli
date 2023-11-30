@@ -211,7 +211,7 @@ func StoreProjectKey(projectId string, projectKey string) error {
 	}
 
 	keysFilePath := filepath.Join(home, spaceProjectKeysPath)
-	err = ioutil.WriteFile(keysFilePath, marshalled, 0660)
+	err = os.WriteFile(keysFilePath, marshalled, 0660)
 	if err != nil {
 		return err
 	}
