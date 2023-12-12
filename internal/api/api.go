@@ -290,10 +290,10 @@ func (c *DetaClient) GetRevisions(r *GetRevisionsRequest) (*GetRevisionsResponse
 }
 
 type CreateBuildRequest struct {
-	AppID        string `json:"app_id"`
-	Tag          string `json:"tag"`
-	Experimental bool   `json:"experimental"`
-	AutoPWA      bool   `json:"auto_pwa"`
+	AppID         string `json:"app_id"`
+	Tag           string `json:"tag"`
+	RunnerVersion string `json:"runner_version"`
+	AutoPWA       bool   `json:"auto_pwa"`
 }
 
 type CreateBuildResponse struct {
