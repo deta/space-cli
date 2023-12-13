@@ -25,7 +25,7 @@ func pythonScanner(dir string) (*shared.Micro, error) {
 	m := &shared.Micro{
 		Name:   name,
 		Src:    dir,
-		Engine: shared.Python39,
+		Engine: shared.Python311,
 	}
 
 	return m, nil
@@ -49,7 +49,7 @@ func nodeScanner(dir string) (*shared.Micro, error) {
 	m := &shared.Micro{
 		Name:   name,
 		Src:    dir,
-		Engine: shared.Node16x,
+		Engine: shared.Node20x,
 	}
 
 	framework, err := detectFramework(dir)

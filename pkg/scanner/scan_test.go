@@ -16,10 +16,10 @@ type ScanTestInfo struct {
 
 var (
 	microsTestInfo = []ScanTestInfo{
-		{Name: "python", Path: "testdata/micros/python", ExpectedEngine: shared.Python39},
+		{Name: "python", Path: "testdata/micros/python", ExpectedEngine: shared.Python311},
 		{Name: "go", Path: "testdata/micros/go", ExpectedEngine: shared.Custom},
 		{Name: "next", Path: "testdata/micros/next", ExpectedEngine: shared.Next},
-		{Name: "node", Path: "testdata/micros/node", ExpectedEngine: "nodejs16"},
+		{Name: "node", Path: "testdata/micros/node", ExpectedEngine: shared.Node20},
 		{Name: "nuxt", Path: "testdata/micros/nuxt", ExpectedEngine: shared.Nuxt},
 		{Name: "react", Path: "testdata/micros/react", ExpectedEngine: shared.React},
 		{Name: "static", Path: "testdata/micros/static", ExpectedEngine: shared.Static},
@@ -47,10 +47,10 @@ func TestScanMultiMicroProject(t *testing.T) {
 
 	expectedMicros := []string{"python", "go", "next", "node", "nuxt", "react", "static", "svelte", "svelte-kit", "vue"}
 	expectedMicrosToEngines := map[string]string{
-		"python":     shared.Python39,
+		"python":     shared.Python311,
 		"go":         shared.Custom,
 		"next":       shared.Next,
-		"node":       "nodejs16",
+		"node":       shared.Node20,
 		"nuxt":       shared.Nuxt,
 		"react":      shared.React,
 		"static":     shared.Static,
@@ -73,7 +73,9 @@ func TestScanMultiMicroProject(t *testing.T) {
 			if !slices.Contains(expectedMicros, micro.Name) {
 				t.Fatalf("micro %s at %s is detected, but should not be detected as part of a multi-micro project", micro.Name, micro.Src)
 			}
-			assert.Equal(t, micro.Engine, expectedMicrosToEngines[micro.Name], "detected engine for micro %s as %s, but expected %s", micro.Name, micro.Engine, expectedMicrosToEngines[micro.Name])
+			assert.Equal(t, micro.Engine, expectedMicrosToEngines[micro.Name],
+				"detected engine for micro %s as %s, but expected %s",
+				micro.Name, micro.Engine, expectedMicrosToEngines[micro.Name])
 		})
 	}
 }

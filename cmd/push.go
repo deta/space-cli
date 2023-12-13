@@ -30,9 +30,12 @@ func newCmdPush() *cobra.Command {
 
 Space will automatically update your Builder instance with the new revision.
 
-If you don't want to follow the logs of the build and update, pass the --skip-logs argument which will exit the process as soon as the build is started instead of waiting for it to finish.
+If you don't want to follow the logs of the build and update, pass the
+--skip-logs argument which will exit the process as soon as the build is started
+instead of waiting for it to finish.
 
-Tip: Use the .spaceignore file to exclude certain files and directories from being uploaded during push.
+Tip: Use the .spaceignore file to exclude certain files and directories from
+being uploaded during push.
 `,
 		Args:     cobra.NoArgs,
 		PreRunE:  utils.CheckAll(utils.CheckProjectInitialized("dir"), utils.CheckNotEmpty("id", "tag")),
@@ -51,9 +54,9 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 			pushTag, _ := cmd.Flags().GetString("tag")
 			openInBrowser, _ := cmd.Flags().GetBool("open")
 			skipLogs, _ := cmd.Flags().GetBool("skip-logs")
-			experimental, _ := cmd.Flags().GetBool("experimental")
+			runnerVersion, _ := cmd.Flags().GetString("runner-version")
 
-			return push(projectID, projectDir, pushTag, openInBrowser, skipLogs, experimental)
+			return push(projectID, projectDir, pushTag, runnerVersion, openInBrowser, skipLogs)
 		},
 	}
 
@@ -63,13 +66,13 @@ Tip: Use the .spaceignore file to exclude certain files and directories from bei
 	cmd.Flags().StringP("tag", "t", "", "tag to identify this push")
 	cmd.Flags().Bool("open", false, "open builder instance/project in browser after push")
 	cmd.Flags().BoolP("skip-logs", "", false, "skip following logs after push")
-	cmd.Flags().BoolP("experimental", "", false, "use experimental builds")
-	cmd.Flags().MarkHidden("experimental")
+	cmd.Flags().StringP("runner-version", "", "", "runner version to use for this push")
+	cmd.Flags().MarkHidden("runner-version")
 
 	return cmd
 }
 
-func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experimental bool) error {
+func push(projectID, projectDir, pushTag, runnerVersion string, openInBrowser, skipLogs bool) error {
 	utils.Logger.Printf("Validating your Spacefile...")
 
 	s, err := spacefile.LoadSpacefile(projectDir)
@@ -85,7 +88,7 @@ func push(projectID, projectDir, pushTag string, openInBrowser, skipLogs, experi
 		return fmt.Errorf("failed to zip your project, %w", err)
 	}
 
-	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, Experimental: experimental, AutoPWA: *s.AutoPWA})
+	build, err := utils.Client.CreateBuild(&api.CreateBuildRequest{AppID: projectID, Tag: pushTag, RunnerVersion: runnerVersion, AutoPWA: *s.AutoPWA})
 	if err != nil {
 		return fmt.Errorf("failed to start a build, %w", err)
 	}
